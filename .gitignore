@@ -1,0 +1,44 @@
+# R specific files
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+
+# RStudio files
+.Rproj.user/
+*.Rproj
+
+# Package specific
+*.tar.gz
+*.tgz
+*.zip
+*.pdf
+*.html
+
+# Documentation
+docs/
+pkgdown/
+
+# Build artifacts
+*.Rcheck/
+*.Rcheck.bak/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Log files
+*.log
+
+# Backup files
+*.bak
+*.backup 

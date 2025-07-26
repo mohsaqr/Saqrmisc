@@ -1,0 +1,47 @@
+url: https://mohsaqr.github.io/Saqrmisc/
+
+template:
+  params:
+    bootswatch: cosmo
+
+reference:
+- title: "Clustering Analysis"
+  desc: "Functions for model-based clustering analysis"
+- title: "Comparison Analysis" 
+  desc: "Functions for statistical comparison and visualization"
+- title: "Categorical Analysis"
+  desc: "Functions for categorical variable analysis"
+
+articles:
+- title: "Introduction to Saqrmisc"
+  navbar: "Get started"
+  contents:
+  - Saqrmisc-introduction
+
+navbar:
+  type: default
+  left:
+  - href: reference/index.html
+    text: Reference
+  - href: articles/index.html
+    text: Articles
+  - href: news/index.html
+    text: News
+  right:
+  - href: https://github.com/mohsaqr/Saqrmisc
+    icon: fa-github fa-lg
+  - href: https://github.com/mohsaqr/Saqrmisc/issues
+    icon: fa-bug fa-lg
+
+footer:
+  left:
+  - href: articles/Saqrmisc-introduction.html
+    text: Get started
+  - href: reference/index.html
+    text: Reference
+  - href: news/index.html
+    text: News
+  right:
+  - href: https://github.com/mohsaqr/Saqrmisc
+    icon: fa-github fa-lg
+    text: View source code 
