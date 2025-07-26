@@ -8,6 +8,9 @@
 
 **Saqrmisc** is a comprehensive R package that provides a collection of powerful functions for data processing, statistical analysis, and visualization. The package is designed to simplify complex statistical tasks while providing robust error handling and comprehensive documentation.
 
+Designed for exploratory data analysis and not necessarily tested and therefore, not recommended for any serious work without scrutiny.
+
+
 ### 🎯 Key Features
 
 - **Model-Based Clustering Analysis**: Complete MoEClust analysis with multiple covariance models
