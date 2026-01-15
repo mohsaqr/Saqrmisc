@@ -397,12 +397,14 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #'
 #' @export
 compare_groups <- function(data, category, Vars, repeat_category = NULL,
+                                      repeat_levels = NULL,
                                       plots = TRUE, table = TRUE,
                                       type = "auto",
                                       bayesian = FALSE,
                                       equivalence = FALSE, equivalence_bounds = c(-0.5, 0.5),
                                       nonparametric = FALSE, p_adjust_method = "none",
                                       posthoc = TRUE, posthoc_method = "games-howell",
+                                      posthoc_table = FALSE,
                                       pairwise_display = "significant",
                                       min_threshold = 0.05, min_subcategory = 5,
                                       colors = NULL, verbose = TRUE,
@@ -514,16 +516,48 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
     stop("Category variable '", category_name_str, "' not found in data")
   }
 
-  # Handle repeat_category variable
-  repeat_category_name_str <- if (!is.null(substitute(repeat_category))) {
-    rc <- deparse(substitute(repeat_category))
-    if (rc != "NULL") rc else NULL
-  } else {
-    NULL
+  # Handle repeat_category variable(s)
+  # Can be single unquoted name OR character vector for multiple variables
+  repeat_category_vars <- NULL
+  if (!is.null(substitute(repeat_category))) {
+    rc_expr <- substitute(repeat_category)
+
+    # Check if it's a c() call (multiple variables)
+    if (is.call(rc_expr) && as.character(rc_expr[[1]]) == "c") {
+      # Multiple variables passed as c("var1", "var2") or c(var1, var2)
+      repeat_category_vars <- sapply(as.list(rc_expr)[-1], function(x) {
+        if (is.character(x)) x else deparse(x)
+      })
+    } else {
+      # Single variable
+      rc <- deparse(rc_expr)
+      if (rc != "NULL") {
+        # Remove quotes if passed as string
+        repeat_category_vars <- gsub('^"|"$', '', rc)
+      }
+    }
   }
 
-  if (!is.null(repeat_category_name_str) && !repeat_category_name_str %in% names(data)) {
-    stop("Repeat category variable '", repeat_category_name_str, "' not found in data")
+  # Validate all repeat_category variables exist
+  if (!is.null(repeat_category_vars)) {
+    missing_vars <- setdiff(repeat_category_vars, names(data))
+    if (length(missing_vars) > 0) {
+      stop("Repeat category variable(s) not found in data: ", paste(missing_vars, collapse = ", "))
+    }
+
+    # Create combined grouping variable if multiple
+    if (length(repeat_category_vars) > 1) {
+      data$.repeat_group <- apply(data[, repeat_category_vars, drop = FALSE], 1, paste, collapse = " | ")
+      repeat_category_name_str <- ".repeat_group"
+      # Store original variable names for labeling
+      repeat_category_orig_vars <- repeat_category_vars
+    } else {
+      repeat_category_name_str <- repeat_category_vars
+      repeat_category_orig_vars <- repeat_category_vars
+    }
+  } else {
+    repeat_category_name_str <- NULL
+    repeat_category_orig_vars <- NULL
   }
 
   # Set default colors
@@ -1242,16 +1276,28 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       ) %>%
       dplyr::arrange(dplyr::desc(percentage))
 
-    categories_to_include <- category_counts %>%
-      dplyr::filter(above_threshold) %>%
-      dplyr::pull(.data[[repeat_category_name_str]])
+    # If repeat_levels specified, use those; otherwise use threshold filtering
+    if (!is.null(repeat_levels)) {
+      # Validate that specified levels exist in data
+      available_levels <- unique(data[[repeat_category_name_str]])
+      invalid_levels <- setdiff(repeat_levels, available_levels)
+      if (length(invalid_levels) > 0) {
+        warning("repeat_levels not found in data: ", paste(invalid_levels, collapse = ", "))
+      }
+      categories_to_include <- intersect(repeat_levels, available_levels)
+      excluded_categories <- setdiff(available_levels, categories_to_include)
+    } else {
+      categories_to_include <- category_counts %>%
+        dplyr::filter(above_threshold) %>%
+        dplyr::pull(.data[[repeat_category_name_str]])
 
-    excluded_categories <- category_counts %>%
-      dplyr::filter(!above_threshold) %>%
-      dplyr::pull(.data[[repeat_category_name_str]])
+      excluded_categories <- category_counts %>%
+        dplyr::filter(!above_threshold) %>%
+        dplyr::pull(.data[[repeat_category_name_str]])
+    }
 
     if (length(categories_to_include) == 0) {
-      warning("No categories meet threshold. Consider lowering min_threshold.")
+      warning("No categories to analyze. Check repeat_levels or min_threshold.")
       return(list())
     }
 
@@ -1349,6 +1395,13 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
           ) %>%
           dplyr::ungroup()
 
+        # Determine display name for repeat_category column
+        repeat_col_display <- if (length(repeat_category_orig_vars) > 1) {
+          paste(repeat_category_orig_vars, collapse = " x ")
+        } else {
+          repeat_category_name_str
+        }
+
         # Build display table
         display_combined <- formatted_combined %>%
           dplyr::select(
@@ -1359,12 +1412,12 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
             ES = ES_formatted,
             `P-value` = p_formatted,
             is_highest
-          ) %>%
-          dplyr::rename(
-            !!repeat_category_name_str := 1,
-            Variable = variable,
-            !!category_name_str := 3
           )
+
+        # Rename columns properly
+        names(display_combined)[1] <- repeat_col_display
+        names(display_combined)[2] <- "Variable"
+        names(display_combined)[3] <- category_name_str
 
         # Identify rows with highest mean for bold formatting
         highest_rows <- which(display_combined$is_highest)
@@ -1387,7 +1440,7 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
           dplyr::select(-is_highest) %>%
           gt::gt() %>%
           gt::tab_header(
-            title = paste0("Comparison: ", category_name_str, " by ", repeat_category_name_str),
+            title = paste0("Comparison: ", category_name_str, " by ", repeat_col_display),
             subtitle = paste(subtitle_parts, collapse = " | ")
           ) %>%
           gt::tab_style(
@@ -1403,7 +1456,7 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
             locations = gt::cells_title(groups = "title")
           ) %>%
           gt::cols_align(align = "center") %>%
-          gt::cols_align(align = "left", columns = c(repeat_category_name_str, "Variable")) %>%
+          gt::cols_align(align = "left", columns = c(repeat_col_display, "Variable")) %>%
           gt::tab_options(
             table.border.top.width = gt::px(2),
             table.border.top.color = "black",
@@ -1462,12 +1515,101 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       })
     }
 
+    # Create post-hoc table if requested (before verbose block so it's available for printing)
+    if (posthoc_table && posthoc) {
+      # Collect all post-hoc results
+      all_posthoc <- data.frame()
+      for (stat in all_stats) {
+        if (!is.null(stat$posthoc) && nrow(stat$posthoc) > 0) {
+          ph_data <- stat$posthoc
+          ph_data$Group <- stat$group
+          ph_data$Variable <- stat$variable
+          all_posthoc <- rbind(all_posthoc, ph_data)
+        }
+      }
+
+      if (nrow(all_posthoc) > 0) {
+        # Format the post-hoc table
+        posthoc_display <- all_posthoc %>%
+          dplyr::select(
+            Group,
+            Variable = variable,
+            Comparison = comparison,
+            Difference = diff,
+            `P-adj` = p_adj
+          ) %>%
+          dplyr::mutate(
+            Difference = ifelse(is.na(Difference), "-", sprintf("%.2f", Difference)),
+            `P-adj` = dplyr::case_when(
+              is.na(`P-adj`) ~ "NA",
+              `P-adj` < 0.001 ~ "< .001",
+              TRUE ~ sprintf("%.3f", `P-adj`)
+            ),
+            Sig = dplyr::case_when(
+              `P-adj` == "NA" ~ "",
+              `P-adj` == "< .001" ~ "***",
+              suppressWarnings(as.numeric(`P-adj`)) < 0.01 ~ "**",
+              suppressWarnings(as.numeric(`P-adj`)) < 0.05 ~ "*",
+              TRUE ~ ""
+            )
+          )
+
+        # Identify significant rows
+        sig_rows <- which(posthoc_display$Sig != "")
+
+        # Create gt table
+        gt_posthoc <- posthoc_display %>%
+          gt::gt() %>%
+          gt::tab_header(
+            title = "Post-hoc Pairwise Comparisons",
+            subtitle = paste0("Method: ", posthoc_method, " | Adjustment: ",
+                             if (p_adjust_method == "none") "bonferroni" else p_adjust_method)
+          ) %>%
+          gt::tab_style(
+            style = list(
+              gt::cell_text(weight = "bold"),
+              gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(2))
+            ),
+            locations = gt::cells_column_labels()
+          ) %>%
+          gt::cols_align(align = "center") %>%
+          gt::cols_align(align = "left", columns = c("Group", "Variable", "Comparison")) %>%
+          gt::tab_options(
+            table.border.top.width = gt::px(2),
+            table.border.top.color = "black",
+            table.border.bottom.width = gt::px(2),
+            table.border.bottom.color = "black"
+          )
+
+        # Highlight significant rows
+        if (length(sig_rows) > 0) {
+          gt_posthoc <- gt_posthoc %>%
+            gt::tab_style(
+              style = gt::cell_text(weight = "bold"),
+              locations = gt::cells_body(rows = sig_rows)
+            ) %>%
+            gt::tab_style(
+              style = gt::cell_text(color = "red"),
+              locations = gt::cells_body(columns = "P-adj", rows = sig_rows)
+            )
+        }
+
+        results_by_group$posthoc_table <- gt_posthoc
+      }
+    }
+
     # Print clean output
     if (verbose) {
       # Print header
       cat("\n")
       cat(paste(rep("=", 60), collapse = ""), "\n")
-      cat("  COMPARISON ANALYSIS: ", category_name_str, " by ", repeat_category_name_str, "\n", sep = "")
+      # Use original variable names for display if multiple repeat_category vars
+      repeat_display_name <- if (length(repeat_category_orig_vars) > 1) {
+        paste(repeat_category_orig_vars, collapse = " x ")
+      } else {
+        repeat_category_name_str
+      }
+      cat("  COMPARISON ANALYSIS: ", category_name_str, " by ", repeat_display_name, "\n", sep = "")
       cat(paste(rep("=", 60), collapse = ""), "\n\n")
 
       # Print sample info
@@ -1545,6 +1687,13 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       if (!is.null(results_by_group$combined_table)) {
         print(results_by_group$combined_table)
         cat("\n")
+      }
+
+      # Print post-hoc table if it exists
+      if (!is.null(results_by_group$posthoc_table)) {
+        cat("\n")
+        print(results_by_group$posthoc_table)
+        cat("\n*** p < .001, ** p < .01, * p < .05\n")
       }
 
       # Display combined plot
