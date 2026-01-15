@@ -406,6 +406,17 @@ generate_comparison_plots <- function(data, category, Vars, repeat_category = NU
   # ===========================================================================
   # Input Validation
   # ===========================================================================
+
+
+  # Check for ggstatsplot (optional dependency)
+  has_ggstatsplot <- requireNamespace("ggstatsplot", quietly = TRUE)
+  if (plots && !has_ggstatsplot) {
+    warning("Package 'ggstatsplot' is not installed. Plots will be disabled.\n",
+            "Install with: install.packages('ggstatsplot') (requires R >= 4.3.0)",
+            call. = FALSE)
+    plots <- FALSE
+  }
+
   if (!is.data.frame(data)) {
     stop("data must be a data frame")
   }
