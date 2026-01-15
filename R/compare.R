@@ -550,7 +550,8 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
   # ===========================================================================
   # Single Analysis Function
   # ===========================================================================
-  run_single_analysis <- function(data_subset, group_label = NULL) {
+  run_single_analysis <- function(data_subset, group_label = NULL, silent = FALSE) {
+    # When silent = TRUE, suppress all printing (for combined mode)
     result <- list()
 
     # -------------------------------------------------------------------------
@@ -565,7 +566,7 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       kept_subcats <- subcategory_counts[[category_name_str]]
       excluded_subcats <- setdiff(original_subcats, kept_subcats)
 
-      if (verbose && length(excluded_subcats) > 0) {
+      if (verbose && !silent && length(excluded_subcats) > 0) {
         cat("  Excluded subcategories (<", min_subcategory, "obs):",
             paste(excluded_subcats, collapse = ", "), "\n")
       }
@@ -574,7 +575,7 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
         dplyr::filter(.data[[category_name_str]] %in% kept_subcats)
 
       if (nrow(data_subset) < 2 || length(unique(data_subset[[category_name_str]])) < 2) {
-        if (verbose) cat("  Warning: Insufficient data after filtering\n")
+        if (verbose && !silent) cat("  Warning: Insufficient data after filtering\n")
         return(list(
           plots = NULL, grid_plot = NULL, summary_table = NULL,
           summary_data = NULL, filtered_out = TRUE,
@@ -1182,7 +1183,7 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
 
         result$summary_table <- gt_table
 
-        if (verbose) {
+        if (verbose && !silent) {
           cat("\n")
           print(result$summary_table)
           cat("\n")
@@ -1190,7 +1191,7 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       }, error = function(e) {
         warning("Error creating table: ", e$message)
         result$summary_table <- summary_data
-        if (verbose) print(summary_data)
+        if (verbose && !silent) print(summary_data)
       })
     }
 
@@ -1214,21 +1215,6 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       ) %>%
       dplyr::arrange(dplyr::desc(percentage))
 
-    if (verbose) {
-      cat("=== Category Filtering Results ===\n")
-      cat("Total observations:", total_n, "\n")
-      cat("Minimum threshold:", paste0(min_threshold * 100, "%"), "\n\n")
-
-      for (i in 1:nrow(category_counts)) {
-        status <- if (category_counts$above_threshold[i]) "INCLUDED" else "EXCLUDED"
-        cat(sprintf("  %s: %d obs (%.1f%%) - %s\n",
-                    category_counts[[repeat_category_name_str]][i],
-                    category_counts$n[i],
-                    category_counts$percentage[i] * 100,
-                    status))
-      }
-    }
-
     categories_to_include <- category_counts %>%
       dplyr::filter(above_threshold) %>%
       dplyr::pull(.data[[repeat_category_name_str]])
@@ -1237,32 +1223,24 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       dplyr::filter(!above_threshold) %>%
       dplyr::pull(.data[[repeat_category_name_str]])
 
-    if (verbose) {
-      if (length(excluded_categories) > 0) {
-        cat("\nExcluded:", paste(excluded_categories, collapse = ", "), "\n")
-      }
-      cat("Proceeding with", length(categories_to_include), "categories\n\n")
-    }
-
     if (length(categories_to_include) == 0) {
       warning("No categories meet threshold. Consider lowering min_threshold.")
       return(list())
     }
 
-    # Run analysis for each category
+    # Run analysis for each category (suppress individual output when combined_table = TRUE)
     results_by_group <- list()
     successful <- 0
     all_summary_data <- list()
+    all_plots <- list()
+    all_stats <- list()
 
     for (repeat_val in categories_to_include) {
-      if (verbose) cat("=== Analyzing:", repeat_val, "===\n")
-
       filtered_data <- data %>%
         dplyr::filter(.data[[repeat_category_name_str]] == repeat_val)
 
-      if (verbose) cat("  N =", nrow(filtered_data), "\n")
-
-      analysis_result <- run_single_analysis(filtered_data, repeat_val)
+      # Run analysis silently when combined_table = TRUE
+      analysis_result <- run_single_analysis(filtered_data, repeat_val, silent = combined_table)
 
       if (is.null(analysis_result$filtered_out) || !analysis_result$filtered_out) {
         successful <- successful + 1
@@ -1270,15 +1248,38 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
         if (!is.null(analysis_result$summary_data) && nrow(analysis_result$summary_data) > 0) {
           analysis_result$summary_data[[repeat_category_name_str]] <- repeat_val
           all_summary_data[[as.character(repeat_val)]] <- analysis_result$summary_data
+
+          # Collect statistics for clean output
+          for (var in comparison_categories) {
+            var_data <- analysis_result$summary_data[analysis_result$summary_data$variable == var, ]
+            if (nrow(var_data) > 0) {
+              p_val <- var_data$p_value[1]
+              ef <- var_data$efsz[1]
+              ef_type <- var_data$ef_type[1]
+              n_total <- sum(var_data$n)
+
+              all_stats[[length(all_stats) + 1]] <- list(
+                group = repeat_val,
+                variable = var,
+                n = n_total,
+                p_value = p_val,
+                effect_size = ef,
+                effect_type = ef_type
+              )
+            }
+          }
+        }
+
+        # Collect plots for combined grid
+        if (!is.null(analysis_result$plots)) {
+          for (plot_name in names(analysis_result$plots)) {
+            new_name <- paste0(repeat_val, "_", plot_name)
+            all_plots[[new_name]] <- analysis_result$plots[[plot_name]]
+          }
         }
       }
 
       results_by_group[[as.character(repeat_val)]] <- analysis_result
-      if (verbose) cat("\n")
-    }
-
-    if (verbose) {
-      cat("Completed", successful, "of", length(categories_to_include), "analyses\n\n")
     }
 
     # Create combined table if requested
@@ -1386,15 +1387,72 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
 
         results_by_group$combined_table <- gt_combined
         results_by_group$combined_data <- combined_data
-
-        if (verbose) {
-          cat("=== Combined Results Table ===\n")
-          print(gt_combined)
-          cat("\n")
-        }
       }, error = function(e) {
         warning("Error creating combined table: ", e$message)
       })
+    }
+
+    # Create combined plot grid
+    if (plots && length(all_plots) > 0) {
+      results_by_group$all_plots <- all_plots
+
+      tryCatch({
+        valid_plots <- all_plots[sapply(all_plots, function(x) {
+          !is.null(x) && inherits(x, "ggplot")
+        })]
+
+        if (length(valid_plots) > 0) {
+          n_plots <- length(valid_plots)
+          n_cols <- if (n_plots == 1) 1 else if (n_plots <= 4) 2 else if (n_plots <= 6) 3 else 4
+
+          results_by_group$combined_plot <- do.call(
+            gridExtra::grid.arrange,
+            c(valid_plots, ncol = n_cols)
+          )
+        }
+      }, error = function(e) {
+        warning("Error creating combined plot: ", e$message)
+      })
+    }
+
+    # Print clean output
+    if (verbose) {
+      # Print header
+      cat("\n")
+      cat(paste(rep("=", 60), collapse = ""), "\n")
+      cat("  COMPARISON ANALYSIS: ", category_name_str, " by ", repeat_category_name_str, "\n", sep = "")
+      cat(paste(rep("=", 60), collapse = ""), "\n\n")
+
+      # Print sample info
+      cat("Sample: N =", total_n, "\n")
+      cat("Groups:", paste(categories_to_include, collapse = ", "), "\n")
+      cat("Variables:", paste(comparison_categories, collapse = ", "), "\n")
+      cat("Test:", if (nonparametric) "Nonparametric (Mann-Whitney/Kruskal-Wallis)" else "Parametric (t-test/ANOVA)", "\n\n")
+
+      # Print statistical results
+      cat(paste(rep("-", 60), collapse = ""), "\n")
+      cat("  STATISTICAL RESULTS\n")
+      cat(paste(rep("-", 60), collapse = ""), "\n\n")
+
+      for (stat in all_stats) {
+        sig_marker <- if (!is.na(stat$p_value) && stat$p_value < 0.05) "*" else ""
+        p_str <- if (is.na(stat$p_value)) "NA" else if (stat$p_value < 0.001) "< .001" else sprintf("%.3f", stat$p_value)
+        ef_str <- if (is.na(stat$effect_size)) "NA" else sprintf("%.2f", stat$effect_size)
+        ef_label <- if (!is.na(stat$effect_type)) paste0(" (", stat$effect_type, ")") else ""
+
+        cat(sprintf("  %-15s | %-25s | n = %4d | p = %-7s | ES = %s%s %s\n",
+                    stat$group, stat$variable, stat$n, p_str, ef_str, ef_label, sig_marker))
+      }
+
+      cat("\n")
+      cat("  * p < .05\n")
+      cat(paste(rep("=", 60), collapse = ""), "\n\n")
+
+      # Print combined table
+      if (!is.null(results_by_group$combined_table)) {
+        print(results_by_group$combined_table)
+        cat("\n")
+      }
     }
 
     # Add metadata
