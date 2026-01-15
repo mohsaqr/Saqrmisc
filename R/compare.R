@@ -1,7 +1,7 @@
 # Saqrmisc Package: Comparison Analysis Functions
 #
 # This file contains functions for group comparison analysis using ggbetweenstats.
-# Functions: generate_comparison_plots
+# Functions: compare_groups
 
 #' @importFrom dplyr group_by summarise mutate filter count select bind_rows any_of case_when ungroup first
 #' @importFrom rlang sym .data
@@ -287,7 +287,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #'             rnorm(50, mean = 105, sd = 15))
 #' )
 #'
-#' results <- generate_comparison_plots(
+#' results <- compare_groups(
 #'   data = data,
 #'   category = gender,
 #'   Vars = c("score")
@@ -308,7 +308,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #'   score2 = c(rnorm(40, 50, 8), rnorm(40, 55, 9), rnorm(40, 48, 7))
 #' )
 #'
-#' results <- generate_comparison_plots(
+#' results <- compare_groups(
 #'   data = data,
 #'   category = country,
 #'   Vars = c("score1", "score2"),
@@ -326,7 +326,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' # ============================================================
 #' # EXAMPLE 3: Bayesian Analysis
 #' # ============================================================
-#' results <- generate_comparison_plots(
+#' results <- compare_groups(
 #'   data = data,
 #'   category = country,
 #'   Vars = c("score1"),
@@ -339,7 +339,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' # ============================================================
 #' # EXAMPLE 4: Nonparametric Tests
 #' # ============================================================
-#' results <- generate_comparison_plots(
+#' results <- compare_groups(
 #'   data = data,
 #'   category = country,
 #'   Vars = c("score1"),
@@ -356,7 +356,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' )
 #'
 #' # Compare gender WITHIN each country
-#' results <- generate_comparison_plots(
+#' results <- compare_groups(
 #'   data = data,
 #'   category = gender,
 #'   Vars = c("score"),
@@ -371,7 +371,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' # ============================================================
 #' # EXAMPLE 6: Equivalence Testing (TOST)
 #' # ============================================================
-#' results <- generate_comparison_plots(
+#' results <- compare_groups(
 #'   data = data,
 #'   category = gender,
 #'   Vars = c("score"),
@@ -392,7 +392,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' @importFrom stats t.test aov sd var p.adjust pairwise.t.test pairwise.wilcox.test TukeyHSD as.formula kruskal.test wilcox.test
 #'
 #' @export
-generate_comparison_plots <- function(data, category, Vars, repeat_category = NULL,
+compare_groups <- function(data, category, Vars, repeat_category = NULL,
                                       plots = TRUE, table = TRUE,
                                       type = "auto",
                                       bayesian = FALSE,

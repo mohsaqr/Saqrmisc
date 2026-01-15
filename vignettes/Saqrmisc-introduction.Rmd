@@ -39,7 +39,7 @@ library(Saqrmisc)
 
 The Saqrmisc package includes six main functional areas:
 
-1. **Group Comparisons** (`generate_comparison_plots`)
+1. **Group Comparisons** (`compare_groups`)
 2. **Descriptive Statistics** (`descriptive_table`)
 3. **Categorical Frequency Tables** (`categorical_table`)
 4. **Model-Based Clustering** (`clustering`)
@@ -48,7 +48,7 @@ The Saqrmisc package includes six main functional areas:
 
 ## 1. Group Comparisons
 
-The `generate_comparison_plots()` function creates comprehensive comparison plots using `ggbetweenstats` to compare groups across multiple variables.
+The `compare_groups()` function creates comprehensive comparison plots using `ggbetweenstats` to compare groups across multiple variables.
 
 ### Example: Treatment Effect Analysis
 
@@ -65,7 +65,7 @@ treatment_data <- data.frame(
 )
 
 # Basic comparison analysis
-comparison_results <- generate_comparison_plots(
+comparison_results <- compare_groups(
   data = treatment_data,
   category = group,
   Vars = c("anxiety", "depression", "stress"),
@@ -78,7 +78,7 @@ comparison_results$plots$group_vs_anxiety
 comparison_results$summary_table
 
 # Stratified analysis by study site
-stratified_results <- generate_comparison_plots(
+stratified_results <- compare_groups(
   data = treatment_data,
   category = group,
   Vars = c("anxiety", "depression"),

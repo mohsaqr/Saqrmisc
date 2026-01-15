@@ -12,7 +12,7 @@
 
 | Function | Purpose |
 |----------|---------|
-| `generate_comparison_plots()` | Group comparisons with t-tests, ANOVA, post-hoc tests, Bayesian analysis |
+| `compare_groups()` | Group comparisons with t-tests, ANOVA, post-hoc tests, Bayesian analysis |
 | `descriptive_table()` | Publication-ready descriptive statistics with gt formatting |
 | `categorical_table()` | Frequency tables with cross-tabulation and chi-square tests |
 | `clustering()` | Model-based clustering with MoEClust (14 covariance models) |
@@ -44,7 +44,7 @@ install.packages(c(
 
 # Function Reference
 
-## 1. Group Comparisons (`generate_comparison_plots`)
+## 1. Group Comparisons (`compare_groups`)
 
 Compare groups using publication-ready visualizations powered by `ggstatsplot`. **Automatic test selection** based on the number of groups:
 
@@ -57,7 +57,7 @@ Compare groups using publication-ready visualizations powered by `ggstatsplot`. 
 
 ```r
 # Two-group comparison (t-test)
-results <- generate_comparison_plots(
+results <- compare_groups(
   data = mydata,
   category = gender,
   Vars = c("score1", "score2")
@@ -81,7 +81,7 @@ data <- data.frame(
 )
 
 # Run analysis with post-hoc comparisons
-results <- generate_comparison_plots(
+results <- compare_groups(
   data = data,
   category = country,
   Vars = c("score"),
@@ -152,7 +152,7 @@ data <- data.frame(
   )
 )
 
-results <- generate_comparison_plots(
+results <- compare_groups(
   data = data,
   category = gender,
   Vars = c("score"),
@@ -169,7 +169,7 @@ results$metadata  # Analysis information
 ### Bayesian Analysis
 
 ```r
-results <- generate_comparison_plots(
+results <- compare_groups(
   data = data,
   category = group,
   Vars = c("score"),
@@ -189,7 +189,7 @@ Use the `type` parameter for easy test selection:
 
 ```r
 # Using type parameter (recommended)
-results <- generate_comparison_plots(
+results <- compare_groups(
   data = data,
   category = country,
   Vars = c("score"),
@@ -204,7 +204,7 @@ type = "mw"     # Mann-Whitney (2 groups)
 type = "bayes"  # Bayesian tests
 
 # Or use the nonparametric parameter
-results <- generate_comparison_plots(
+results <- compare_groups(
   data = data,
   category = group,
   Vars = c("score"),
@@ -215,7 +215,7 @@ results <- generate_comparison_plots(
 ### Equivalence Testing (TOST)
 
 ```r
-results <- generate_comparison_plots(
+results <- compare_groups(
   data = data,
   category = gender,
   Vars = c("score"),
@@ -653,7 +653,7 @@ data <- data.frame(
 # =====================================================
 
 # Basic comparison with ANOVA text report
-comparison <- generate_comparison_plots(
+comparison <- compare_groups(
   data = data,
   category = treatment,
   Vars = c("var1", "var2", "var3"),
@@ -667,7 +667,7 @@ comparison$summary_table
 cat(comparison$summary_data$anova_report[1])
 
 # Stratified analysis by site
-stratified <- generate_comparison_plots(
+stratified <- compare_groups(
   data = data,
   category = treatment,
   Vars = c("var1", "var2"),
@@ -705,7 +705,7 @@ generate_cluster_report(clusters)
 # =====================================================
 
 # Now compare the identified clusters on outcomes
-cluster_comparison <- generate_comparison_plots(
+cluster_comparison <- compare_groups(
   data = data,
   category = cluster,
   Vars = c("var1", "var2", "var3"),
