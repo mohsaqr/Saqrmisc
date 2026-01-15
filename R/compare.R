@@ -265,6 +265,10 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' @param colors Character vector of colors for groups. Default: `NULL` uses
 #'   a built-in palette.
 #' @param verbose Logical. Print progress messages? Default: `TRUE`.
+#' @param combined_table Logical. When `repeat_category` is used, combine all
+#'   results into a single table? Default: `TRUE`. The combined table shows
+#'   all repeat_category levels together with bold highest means and red
+#'   significant p-values.
 #'
 #' @return A list with class "comparison_results" containing:
 #' \itemize{
@@ -401,7 +405,8 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
                                       posthoc = TRUE, posthoc_method = "games-howell",
                                       pairwise_display = "significant",
                                       min_threshold = 0.05, min_subcategory = 5,
-                                      colors = NULL, verbose = TRUE) {
+                                      colors = NULL, verbose = TRUE,
+                                      combined_table = TRUE) {
 
   # ===========================================================================
   # Input Validation
@@ -1247,6 +1252,7 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
     # Run analysis for each category
     results_by_group <- list()
     successful <- 0
+    all_summary_data <- list()
 
     for (repeat_val in categories_to_include) {
       if (verbose) cat("=== Analyzing:", repeat_val, "===\n")
@@ -1260,6 +1266,11 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
 
       if (is.null(analysis_result$filtered_out) || !analysis_result$filtered_out) {
         successful <- successful + 1
+        # Collect summary data for combined table
+        if (!is.null(analysis_result$summary_data) && nrow(analysis_result$summary_data) > 0) {
+          analysis_result$summary_data[[repeat_category_name_str]] <- repeat_val
+          all_summary_data[[as.character(repeat_val)]] <- analysis_result$summary_data
+        }
       }
 
       results_by_group[[as.character(repeat_val)]] <- analysis_result
@@ -1268,6 +1279,122 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
 
     if (verbose) {
       cat("Completed", successful, "of", length(categories_to_include), "analyses\n\n")
+    }
+
+    # Create combined table if requested
+    if (combined_table && length(all_summary_data) > 0) {
+      combined_data <- dplyr::bind_rows(all_summary_data)
+
+      # Create combined formatted table
+      tryCatch({
+        formatted_combined <- combined_data %>%
+          dplyr::group_by(.data[[repeat_category_name_str]], variable) %>%
+          dplyr::mutate(
+            mean_formatted = sprintf("%.2f", mean),
+            sd_formatted = sprintf("%.2f", sd),
+            ES_formatted = ifelse(is.na(efsz), "NA", sprintf("%.2f", efsz)),
+            is_highest = mean == max(mean, na.rm = TRUE),
+            p_formatted = dplyr::case_when(
+              is.na(dplyr::first(p_value[!is.na(p_value)])) ~ "NA",
+              dplyr::first(p_value[!is.na(p_value)]) < 0.001 ~ "< 0.001",
+              TRUE ~ sprintf("%.3f", dplyr::first(p_value[!is.na(p_value)]))
+            )
+          ) %>%
+          dplyr::ungroup()
+
+        # Build display table
+        display_combined <- formatted_combined %>%
+          dplyr::select(
+            dplyr::all_of(c(repeat_category_name_str, "variable", category_name_str)),
+            Mean = mean_formatted,
+            SD = sd_formatted,
+            N = n,
+            ES = ES_formatted,
+            `P-value` = p_formatted,
+            is_highest
+          ) %>%
+          dplyr::rename(
+            !!repeat_category_name_str := 1,
+            Variable = variable,
+            !!category_name_str := 3
+          )
+
+        # Identify rows with highest mean for bold formatting
+        highest_rows <- which(display_combined$is_highest)
+
+        # Identify significant p-values for red coloring
+        sig_rows <- which(
+          display_combined$`P-value` == "< 0.001" |
+            (suppressWarnings(as.numeric(display_combined$`P-value`)) < 0.05 &
+               !is.na(suppressWarnings(as.numeric(display_combined$`P-value`))))
+        )
+
+        # Build subtitle
+        test_info <- if (nonparametric) "Nonparametric tests" else "Parametric tests"
+        subtitle_parts <- c(test_info)
+        if (bayesian) subtitle_parts <- c(subtitle_parts, "Bayesian analysis")
+        if (p_adjust_method != "none") subtitle_parts <- c(subtitle_parts, paste0("p-adjust: ", p_adjust_method))
+
+        # Create gt table
+        gt_combined <- display_combined %>%
+          dplyr::select(-is_highest) %>%
+          gt::gt() %>%
+          gt::tab_header(
+            title = paste0("Comparison: ", category_name_str, " by ", repeat_category_name_str),
+            subtitle = paste(subtitle_parts, collapse = " | ")
+          ) %>%
+          gt::tab_style(
+            style = list(
+              gt::cell_text(weight = "bold"),
+              gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+              gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+            ),
+            locations = gt::cells_column_labels()
+          ) %>%
+          gt::tab_style(
+            style = gt::cell_text(weight = "bold"),
+            locations = gt::cells_title(groups = "title")
+          ) %>%
+          gt::cols_align(align = "center") %>%
+          gt::cols_align(align = "left", columns = c(repeat_category_name_str, "Variable")) %>%
+          gt::tab_options(
+            table.border.top.width = gt::px(2),
+            table.border.top.color = "black",
+            table.border.bottom.width = gt::px(2),
+            table.border.bottom.color = "black",
+            column_labels.border.bottom.color = "black",
+            table_body.border.bottom.color = "black"
+          )
+
+        # Bold highest mean rows
+        if (length(highest_rows) > 0) {
+          gt_combined <- gt_combined %>%
+            gt::tab_style(
+              style = gt::cell_text(weight = "bold"),
+              locations = gt::cells_body(rows = highest_rows)
+            )
+        }
+
+        # Red significant p-values
+        if (length(sig_rows) > 0) {
+          gt_combined <- gt_combined %>%
+            gt::tab_style(
+              style = gt::cell_text(color = "red"),
+              locations = gt::cells_body(columns = "P-value", rows = sig_rows)
+            )
+        }
+
+        results_by_group$combined_table <- gt_combined
+        results_by_group$combined_data <- combined_data
+
+        if (verbose) {
+          cat("=== Combined Results Table ===\n")
+          print(gt_combined)
+          cat("\n")
+        }
+      }, error = function(e) {
+        warning("Error creating combined table: ", e$message)
+      })
     }
 
     # Add metadata
