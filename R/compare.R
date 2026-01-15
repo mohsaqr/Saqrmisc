@@ -978,11 +978,12 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
     }
 
     # -------------------------------------------------------------------------
-    # Create Plots Grid
+    # Create Plots Grid (only when not silent)
     # -------------------------------------------------------------------------
     if (plots && length(all_plots) > 0) {
       result$plots <- all_plots
 
+      # Create grid plot (use arrangeGrob to avoid immediate display)
       n_plots <- length(all_plots)
       n_cols <- if (n_plots == 1) 1 else if (n_plots <= 4) 2 else if (n_plots <= 6) 3 else 4
 
@@ -992,10 +993,15 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
         })]
 
         if (length(valid_plots) > 0) {
+          # Use arrangeGrob (doesn't display) instead of grid.arrange
           result$grid_plot <- do.call(
-            gridExtra::grid.arrange,
+            gridExtra::arrangeGrob,
             c(valid_plots, ncol = n_cols, top = group_label)
           )
+          # Only display when not silent
+          if (!silent && verbose) {
+            gridExtra::grid.arrange(result$grid_plot)
+          }
         }
       }, error = function(e) {
         warning("Error creating grid plot: ", e$message)
@@ -1405,8 +1411,9 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
           n_plots <- length(valid_plots)
           n_cols <- if (n_plots == 1) 1 else if (n_plots <= 4) 2 else if (n_plots <= 6) 3 else 4
 
+          # Use arrangeGrob to create without displaying
           results_by_group$combined_plot <- do.call(
-            gridExtra::grid.arrange,
+            gridExtra::arrangeGrob,
             c(valid_plots, ncol = n_cols)
           )
         }
@@ -1452,6 +1459,11 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       if (!is.null(results_by_group$combined_table)) {
         print(results_by_group$combined_table)
         cat("\n")
+      }
+
+      # Display combined plot
+      if (!is.null(results_by_group$combined_plot)) {
+        gridExtra::grid.arrange(results_by_group$combined_plot)
       }
     }
 
