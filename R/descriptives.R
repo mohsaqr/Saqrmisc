@@ -1207,3 +1207,196 @@ categorical_table <- function(data,
 
   return(gt_table)
 }
+
+
+# =============================================================================
+# AUTO DESCRIBE FUNCTION
+# =============================================================================
+
+#' Automatically Generate Descriptive Statistics for All Variables
+#'
+#' @description
+#' Automatically detects numeric and categorical variables in a data frame
+#' and generates appropriate descriptive statistics tables for each type.
+#' Numeric variables get summary statistics (mean, SD, etc.) and categorical
+#' variables get frequency tables.
+#'
+#' @param data A data frame to describe.
+#' @param group_by Optional. Unquoted name of a grouping variable for
+#'   stratified statistics.
+#' @param numeric_stats Character vector of statistics for numeric variables.
+#'   Default: `c("n", "mean", "sd", "median", "min", "max")`.
+#' @param digits Integer. Decimal places for numeric output. Default: `2`.
+#' @param max_categories Integer. Maximum unique values for a variable to be
+#'   treated as categorical. Default: `10`.
+#' @param exclude Character vector of column names to exclude. Default: `NULL`.
+#' @param title_numeric Title for numeric table. Default: `"Numeric Variables"`.
+#' @param title_categorical Title for categorical tables. Default: `"Categorical Variables"`.
+#' @param theme Visual theme: `"default"`, `"minimal"`, `"dark"`, `"colorful"`.
+#'   Default: `"default"`.
+#' @param format Output format: `"gt"` or `"data.frame"`. Default: `"gt"`.
+#' @param print Logical. Print tables to console? Default: `TRUE`.
+#'
+#' @return A list with:
+#' \itemize{
+#'   \item numeric: Descriptive table for numeric variables (or NULL if none)
+#'   \item categorical: List of frequency tables for categorical variables
+#'   \item variable_types: Data frame showing detected variable types
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Automatic description of all variables
+#' data <- data.frame(
+#'   age = rnorm(100, 35, 10),
+#'   score = rnorm(100, 75, 15),
+#'   gender = sample(c("M", "F"), 100, replace = TRUE),
+#'   education = sample(c("HS", "BA", "MA", "PhD"), 100, replace = TRUE)
+#' )
+#'
+#' # Describe all variables automatically
+#' results <- auto_describe(data)
+#'
+#' # With grouping
+#' results <- auto_describe(data, group_by = gender)
+#'
+#' # Access individual tables
+#' results$numeric
+#' results$categorical$education
+#' }
+#'
+#' @export
+auto_describe <- function(data,
+                          group_by = NULL,
+                          numeric_stats = c("n", "mean", "sd", "median", "min", "max"),
+                          digits = 2,
+                          max_categories = 10,
+                          exclude = NULL,
+                          title_numeric = "Numeric Variables",
+                          title_categorical = "Categorical Variables",
+                          theme = "default",
+                          format = "gt",
+                          print = TRUE) {
+
+  # Input validation
+  if (!is.data.frame(data)) {
+    stop("data must be a data frame")
+  }
+
+  # Handle group_by
+  group_by_str <- NULL
+  if (!missing(group_by) && !is.null(substitute(group_by))) {
+    group_by_str <- deparse(substitute(group_by))
+    if (!group_by_str %in% names(data)) {
+      stop("group_by variable '", group_by_str, "' not found in data")
+    }
+  }
+
+  # Exclude specified columns and group_by column from analysis
+  cols_to_analyze <- setdiff(names(data), c(exclude, group_by_str))
+
+  # Detect variable types
+  var_types <- sapply(data[cols_to_analyze], function(x) {
+    if (is.numeric(x)) {
+      n_unique <- length(unique(x[!is.na(x)]))
+      if (n_unique <= max_categories) {
+        return("categorical")
+      }
+      return("numeric")
+    } else if (is.factor(x) || is.character(x) || is.logical(x)) {
+      return("categorical")
+    } else {
+      return("other")
+    }
+  })
+
+  numeric_vars <- names(var_types[var_types == "numeric"])
+  categorical_vars <- names(var_types[var_types == "categorical"])
+
+  # Create variable types summary
+  var_types_df <- data.frame(
+    Variable = names(var_types),
+    Type = as.character(var_types),
+    stringsAsFactors = FALSE
+  )
+
+  if (print) {
+    cat("=== Variable Types Detected ===\n")
+    cat("Numeric variables:", length(numeric_vars), "\n")
+    cat("Categorical variables:", length(categorical_vars), "\n\n")
+  }
+
+  # Initialize results
+  results <- list(
+    numeric = NULL,
+    categorical = list(),
+    variable_types = var_types_df
+  )
+
+  # Generate numeric descriptives
+  if (length(numeric_vars) > 0) {
+    if (print) cat("=== Numeric Variables ===\n")
+
+    if (is.null(group_by_str)) {
+      results$numeric <- descriptive_table(
+        data = data,
+        Vars = numeric_vars,
+        stats = numeric_stats,
+        digits = digits,
+        title = title_numeric,
+        theme = theme,
+        format = format
+      )
+    } else {
+      results$numeric <- descriptive_table(
+        data = data,
+        Vars = numeric_vars,
+        group_by = !!rlang::sym(group_by_str),
+        stats = numeric_stats,
+        digits = digits,
+        title = title_numeric,
+        theme = theme,
+        format = format
+      )
+    }
+
+    if (print && format == "gt") {
+      print(results$numeric)
+      cat("\n")
+    }
+  } else {
+    if (print) cat("No numeric variables found.\n\n")
+  }
+
+  # Generate categorical descriptives
+  if (length(categorical_vars) > 0) {
+    if (print) cat("=== Categorical Variables ===\n")
+
+    for (cat_var in categorical_vars) {
+      if (print) cat("\n--- ", cat_var, " ---\n")
+
+      # Build the call dynamically
+      cat_call <- substitute(
+        categorical_table(
+          data = data,
+          var = VAR,
+          title = TITLE,
+          theme = theme,
+          format = format
+        ),
+        list(VAR = as.name(cat_var), TITLE = paste(title_categorical, "-", cat_var))
+      )
+
+      cat_table <- eval(cat_call)
+      results$categorical[[cat_var]] <- cat_table
+
+      if (print && format == "gt") {
+        print(cat_table)
+      }
+    }
+  } else {
+    if (print) cat("No categorical variables found.\n")
+  }
+
+  invisible(results)
+}
