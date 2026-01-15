@@ -1562,9 +1562,14 @@ categorical_table <- function(data,
 #' @param numeric_stats Character vector of statistics for numeric variables.
 #'   Default: `c("n", "mean", "sd", "median", "min", "max")`.
 #' @param digits Integer. Decimal places for numeric output. Default: `2`.
-#' @param max_categories Integer. Maximum unique values for a variable to be
-#'   treated as categorical. Default: `10`.
+#' @param max_categories Integer. Maximum unique values for a numeric variable
+#'   to be auto-classified as categorical. Default: `10`.
 #' @param exclude Character vector of column names to exclude. Default: `NULL`.
+#' @param force_numeric Character vector of column names to force-treat as numeric,
+#'   regardless of unique value count. Useful for Likert scales, ratings, etc.
+#'   Default: `NULL`.
+#' @param force_categorical Character vector of column names to force-treat as
+#'   categorical, even if numeric. Default: `NULL`.
 #' @param title_numeric Title for numeric table. Default: `"Numeric Variables"`.
 #' @param title_categorical Title for categorical tables. Default: `"Categorical Variables"`.
 #' @param theme Visual theme: `"default"`, `"minimal"`, `"dark"`, `"colorful"`.
@@ -1607,6 +1612,8 @@ auto_describe <- function(data,
                           digits = 2,
                           max_categories = 10,
                           exclude = NULL,
+                          force_numeric = NULL,
+                          force_categorical = NULL,
                           title_numeric = "Numeric Variables",
                           title_categorical = "Categorical Variables",
                           theme = "default",
@@ -1631,7 +1638,16 @@ auto_describe <- function(data,
   cols_to_analyze <- setdiff(names(data), c(exclude, group_by_str))
 
   # Detect variable types
-  var_types <- sapply(data[cols_to_analyze], function(x) {
+  var_types <- sapply(cols_to_analyze, function(col_name) {
+    # Check forced classifications first
+    if (!is.null(force_numeric) && col_name %in% force_numeric) {
+      return("numeric")
+    }
+    if (!is.null(force_categorical) && col_name %in% force_categorical) {
+      return("categorical")
+    }
+
+    x <- data[[col_name]]
     if (is.numeric(x)) {
       n_unique <- length(unique(x[!is.na(x)]))
       if (n_unique <= max_categories) {
