@@ -16,7 +16,8 @@ knitr::opts_chunk$set(
   fig.width = 7,
   fig.height = 5,
   warning = FALSE,
-  message = FALSE
+  message = FALSE,
+  eval = FALSE
 )
 ```
 
@@ -28,7 +29,7 @@ The **Saqrmisc** package provides a comprehensive suite of functions for data pr
 
 ```{r install}
 # Install from GitHub (if not already installed)
-# devtools::install_github("your_username/Saqrmisc")
+# devtools::install_github("mohsaqr/Saqrmisc")
 
 # Load the package
 library(Saqrmisc)
@@ -36,17 +37,122 @@ library(Saqrmisc)
 
 ## Package Overview
 
-The Saqrmisc package includes three main functional areas:
+The Saqrmisc package includes six main functional areas:
 
-1. **Model-Based Clustering Analysis** (`run_full_moe_analysis`)
-2. **Statistical Comparison Analysis** (`generate_comparison_plots`)
-3. **Categorical Variable Analysis** (`mosaic_analysis`)
+1. **Group Comparisons** (`generate_comparison_plots`)
+2. **Descriptive Statistics** (`descriptive_table`)
+3. **Categorical Frequency Tables** (`categorical_table`)
+4. **Model-Based Clustering** (`clustering`)
+5. **Categorical Variable Analysis** (`mosaic_analysis`)
+6. **Network Estimation** (`estimate_single_network`)
 
-## 1. Model-Based Clustering Analysis
+## 1. Group Comparisons
 
-The `run_full_moe_analysis()` function performs comprehensive model-based clustering using the MoEClust package. It systematically tests all available covariance models and provides detailed outputs for both original and scaled data.
+The `generate_comparison_plots()` function creates comprehensive comparison plots using `ggbetweenstats` to compare groups across multiple variables.
 
-### Example: Customer Segmentation
+### Example: Treatment Effect Analysis
+
+```{r comparison_example}
+# Generate sample treatment data
+set.seed(456)
+treatment_data <- data.frame(
+  patient_id = 1:200,
+  group = sample(c("Control", "Treatment"), 200, replace = TRUE),
+  anxiety = rnorm(200, mean = 5, sd = 1.5),
+  depression = rnorm(200, mean = 4, sd = 1.2),
+  stress = rnorm(200, mean = 6, sd = 1.8),
+  study_site = sample(c("Site_A", "Site_B", "Site_C"), 200, replace = TRUE)
+)
+
+# Basic comparison analysis
+comparison_results <- generate_comparison_plots(
+  data = treatment_data,
+  category = group,
+  Vars = c("anxiety", "depression", "stress"),
+  plots = TRUE,
+  table = TRUE
+)
+
+# View results
+comparison_results$plots$group_vs_anxiety
+comparison_results$summary_table
+
+# Stratified analysis by study site
+stratified_results <- generate_comparison_plots(
+  data = treatment_data,
+  category = group,
+  Vars = c("anxiety", "depression"),
+  repeat_category = study_site,
+  plots = TRUE,
+  table = TRUE
+)
+```
+
+### Key Features
+
+- **Automatic test selection**: t-test (2 groups) or ANOVA (3+ groups)
+- **Post-hoc tests**: Tukey HSD or Games-Howell for multiple comparisons
+- **Effect sizes**: Cohen's d, eta-squared, epsilon-squared
+- **Bayesian analysis**: Optional Bayes Factor computation
+- **Type shortcuts**: `type = "np"` for nonparametric, `type = "kw"` for Kruskal-Wallis
+
+## 2. Descriptive Statistics
+
+The `descriptive_table()` function creates publication-ready descriptive statistics tables.
+
+```{r descriptive_example}
+# Generate sample data
+data <- data.frame(
+  age = rnorm(100, mean = 35, sd = 10),
+  score = rnorm(100, mean = 75, sd = 15),
+  income = rnorm(100, mean = 50000, sd = 15000),
+  gender = sample(c("Male", "Female"), 100, replace = TRUE)
+)
+
+# Basic descriptive table
+descriptive_table(
+  data = data,
+  Vars = c("age", "score", "income")
+)
+
+# With grouping and extended statistics
+descriptive_table(
+  data = data,
+  Vars = c("age", "score"),
+  group_by = gender,
+  stats = c("n", "mean", "sd", "median", "iqr", "skewness"),
+  title = "Sample Characteristics",
+  theme = "colorful"
+)
+```
+
+## 3. Categorical Frequency Tables
+
+The `categorical_table()` function creates frequency tables with chi-square tests.
+
+```{r categorical_example}
+# Generate sample data
+data <- data.frame(
+  gender = sample(c("Male", "Female", "Other"), 200, replace = TRUE),
+  education = sample(c("High School", "Bachelor", "Master", "PhD"), 200, replace = TRUE)
+)
+
+# Single variable frequency table
+categorical_table(data, var = gender)
+
+# Cross-tabulation with chi-square test
+categorical_table(
+  data = data,
+  var = gender,
+  by = education,
+  chi_square = TRUE,
+  cramers_v = TRUE
+)
+```
+
+## 4. Model-Based Clustering
+
+The `clustering()` function performs comprehensive model-based clustering using MoEClust.
 
 ```{r clustering_example}
 # Generate sample customer data
@@ -59,89 +165,47 @@ customer_data <- data.frame(
   satisfaction = rnorm(300, mean = 7, sd = 2)
 )
 
-# Run comprehensive clustering analysis
-clustering_results <- run_full_moe_analysis(
-  input_data = customer_data,
-  cluster_vars = c("age", "income", "spending", "satisfaction"),
+# Run clustering analysis
+clustering_results <- clustering(
+  data = customer_data,
+  vars = c("age", "income", "spending", "satisfaction"),
   n_clusters = 3,
-  scaling_method = "standardize"
+  scaling = "standardize"
 )
 
 # View results
-view_results(clustering_results, what = "plots", scale = "original")
+print(clustering_results)
+summary(clustering_results)
+
+# Plot cluster profiles
+plot(clustering_results, type = "profile")
+plot(clustering_results, type = "heatmap")
+
+# Get cluster assignments
+assignments <- get_cluster_assignments(clustering_results)
+
+# Model comparison table
+model_comparison_table(clustering_results)
 ```
 
-### Key Features of Clustering Analysis
+### Key Features
 
-- **Multiple Model Testing**: Tests all 14 covariance models available in MoEClust
-- **Robust Error Handling**: Continues analysis even if some models fail to converge
-- **Dual Scale Outputs**: Provides results for both original and scaled data
-- **Comprehensive Visualization**: Generates profile plots and summary tables
+- **Multiple model testing**: Tests all 14 covariance models
+- **Robust error handling**: Continues if some models fail
+- **Comprehensive visualization**: Profile plots, heatmaps, bar charts
+- **Cluster stability**: Bootstrap assessment with `assess_cluster_stability()`
 
-## 2. Statistical Comparison Analysis
+## 5. Categorical Variable Analysis
 
-The `generate_comparison_plots()` function creates comprehensive comparison plots using `ggbetweenstats` to compare groups across multiple variables.
-
-### Example: Treatment Effect Analysis
-
-```{r comparison_example}
-# Generate sample treatment data
-set.seed(456)
-treatment_data <- data.frame(
-  patient_id = 1:200,
-  group = sample(c("Control", "Treatment"), 200, replace = TRUE),
-  anxiety_before = rnorm(200, mean = 5, sd = 1.5),
-  anxiety_after = rnorm(200, mean = c(4.5, 3)[factor(sample(c("Control", "Treatment"), 200, replace = TRUE))]),
-  depression_before = rnorm(200, mean = 4, sd = 1.2),
-  depression_after = rnorm(200, mean = c(3.8, 2.5)[factor(sample(c("Control", "Treatment"), 200, replace = TRUE))]),
-  stress_before = rnorm(200, mean = 6, sd = 1.8),
-  stress_after = rnorm(200, mean = c(5.5, 4)[factor(sample(c("Control", "Treatment"), 200, replace = TRUE))]),
-  study_site = sample(c("Site_A", "Site_B", "Site_C"), 200, replace = TRUE)
-)
-
-# Basic comparison analysis
-comparison_results <- generate_comparison_plots(
-  data = treatment_data,
-  category = group,
-  Vars = c("anxiety_after", "depression_after", "stress_after"),
-  plots = TRUE,
-  table = TRUE
-)
-
-# Stratified analysis by study site
-stratified_results <- generate_comparison_plots(
-  data = treatment_data,
-  category = group,
-  Vars = c("anxiety_after", "depression_after"),
-  repeat_category = study_site,
-  plots = TRUE,
-  table = TRUE,
-  min_threshold = 0.05
-)
-```
-
-### Key Features of Comparison Analysis
-
-- **Statistical Testing**: Automatically performs appropriate statistical tests
-- **Stratified Analysis**: Supports analysis by additional categorical variables
-- **Quality Control**: Automatically excludes small categories (< 5% of data)
-- **Flexible Output**: Generates both plots and summary tables
-
-## 3. Categorical Variable Analysis
-
-The `mosaic_analysis()` function performs comprehensive analysis of categorical variables using mosaic plots, chi-square tests, and effect size measures.
-
-### Example: Demographic Analysis
+The `mosaic_analysis()` function performs comprehensive analysis of categorical variables.
 
 ```{r mosaic_example}
 # Generate sample demographic data
 set.seed(789)
 demographic_data <- data.frame(
-  respondent_id = 1:500,
   gender = sample(c("Male", "Female", "Other"), 500, replace = TRUE, prob = c(0.45, 0.45, 0.1)),
   education = sample(c("High School", "Bachelor", "Master", "PhD"), 500, replace = TRUE),
-  region = sample(c("North", "South", "East", "West"), 500, replace = TRUE),
-  income_level = sample(c("Low", "Medium", "High"), 500, replace = TRUE)
+  region = sample(c("North", "South", "East", "West"), 500, replace = TRUE)
 )
 
 # Perform mosaic analysis
@@ -150,85 +214,41 @@ mosaic_results <- mosaic_analysis(
   var1 = gender,
   var2 = education,
   min_count = 10,
-  fontsize = 8,
   title = "Gender Distribution by Education Level",
-  var1_label = "Gender",
-  var2_label = "Education Level",
-  show_percentages = TRUE,
-  percentage_base = "total"
-)
-
-# Access results
-print("Chi-square test results:")
-print(mosaic_results$chi_square_test)
-
-print("Cramér's V (effect size):")
-print(mosaic_results$cramers_v)
-
-print("Summary table:")
-print(mosaic_results$summary_table)
-```
-
-### Key Features of Mosaic Analysis
-
-- **Chi-square Testing**: Performs chi-square tests for independence
-- **Effect Size Calculation**: Computes Cramér's V for effect size
-- **Quality Filtering**: Filters out categories with insufficient observations
-- **Comprehensive Summary**: Provides detailed frequency tables and residuals
-
-## Complete Workflow Example
-
-Here's a complete example demonstrating how to use all three functions together:
-
-```{r complete_workflow}
-# Generate comprehensive sample dataset
-set.seed(123)
-complete_data <- data.frame(
-  id = 1:400,
-  # Demographics
-  gender = sample(c("Male", "Female"), 400, replace = TRUE),
-  age_group = sample(c("18-30", "31-50", "51+"), 400, replace = TRUE),
-  region = sample(c("Urban", "Suburban", "Rural"), 400, replace = TRUE),
-  
-  # Behavioral variables
-  online_time = rnorm(400, mean = 3, sd = 1.5),
-  social_media_use = rnorm(400, mean = 2.5, sd = 1.2),
-  shopping_frequency = rnorm(400, mean = 4, sd = 1.8),
-  satisfaction_score = rnorm(400, mean = 7, sd = 2),
-  
-  # Treatment group
-  treatment = sample(c("Control", "Intervention"), 400, replace = TRUE)
-)
-
-# Step 1: Clustering analysis to identify customer segments
-clustering_results <- run_full_moe_analysis(
-  input_data = complete_data,
-  cluster_vars = c("online_time", "social_media_use", "shopping_frequency", "satisfaction_score"),
-  n_clusters = 3,
-  scaling_method = "standardize"
-)
-
-# Step 2: Compare treatment effects across segments
-comparison_results <- generate_comparison_plots(
-  data = complete_data,
-  category = treatment,
-  Vars = c("online_time", "social_media_use", "shopping_frequency", "satisfaction_score"),
-  plots = TRUE,
-  table = TRUE
-)
-
-# Step 3: Analyze demographic relationships
-mosaic_results <- mosaic_analysis(
-  data = complete_data,
-  var1 = gender,
-  var2 = age_group,
-  min_count = 20,
-  title = "Gender Distribution by Age Group",
   show_percentages = TRUE
 )
 
-# View clustering results
-view_results(clustering_results, what = "plots", scale = "original")
+# Access results
+print(mosaic_results$chi_square_test)
+print(mosaic_results$cramers_v)
+print(mosaic_results$summary_table)
+```
+
+## 6. Network Estimation
+
+The `estimate_single_network()` function estimates psychological networks.
+
+```{r network_example}
+# Generate sample data
+set.seed(123)
+network_data <- data.frame(
+  var1 = rnorm(200),
+  var2 = rnorm(200),
+  var3 = rnorm(200),
+  var4 = rnorm(200),
+  var5 = rnorm(200)
+)
+
+# Estimate network
+network_results <- estimate_single_network(
+  data = network_data,
+  vars = c("var1", "var2", "var3", "var4", "var5"),
+  method = "EBICglasso"
+)
+
+# View results
+print(network_results)
+summary(network_results)
 ```
 
 ## Best Practices
@@ -237,30 +257,22 @@ view_results(clustering_results, what = "plots", scale = "original")
 
 1. **Clean your data** before analysis
 2. **Check for missing values** and handle them appropriately
-3. **Verify variable types** (numeric for clustering, categorical for mosaic analysis)
+3. **Verify variable types** (numeric for clustering, categorical for mosaic)
 4. **Consider sample sizes** - larger samples provide more reliable results
 
 ### Parameter Selection
 
 1. **Clustering**: Start with 2-5 clusters and use domain knowledge
-2. **Scaling**: Use "standardize" for most cases, "none" only if variables are already comparable
+2. **Scaling**: Use "standardize" for most cases
 3. **Minimum counts**: Set appropriate thresholds based on your data size
 
 ### Interpretation
 
-1. **Clustering**: Examine both original and scaled results for interpretation
-2. **Comparisons**: Consider effect sizes, not just p-values
-3. **Mosaic plots**: Look at both statistical significance and practical significance
+1. **Effect sizes**: Consider effect sizes, not just p-values
+2. **Multiple testing**: Use p-value adjustments when appropriate
+3. **Practical significance**: Look beyond statistical significance
 
-## Troubleshooting
-
-### Common Issues
-
-1. **Convergence errors in clustering**: Try different scaling methods or reduce cluster number
-2. **Small sample sizes**: Increase minimum count thresholds
-3. **Missing data**: Handle missing values before analysis
-
-### Getting Help
+## Getting Help
 
 - Use `?function_name` for detailed documentation
 - Check the package vignettes for examples
@@ -268,6 +280,6 @@ view_results(clustering_results, what = "plots", scale = "original")
 
 ## Conclusion
 
-The Saqrmisc package provides a comprehensive toolkit for data analysis and visualization. The functions are designed to work together seamlessly while also being useful independently. The robust error handling and comprehensive documentation make it suitable for both research and practical applications.
+The Saqrmisc package provides a comprehensive toolkit for data analysis and visualization. The functions are designed to work together seamlessly while also being useful independently.
 
-For more information, visit the package documentation or GitHub repository. 
+For more information, visit the package documentation or GitHub repository.

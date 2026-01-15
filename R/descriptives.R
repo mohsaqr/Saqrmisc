@@ -5,13 +5,20 @@
 
 #' @importFrom dplyr group_by summarise across all_of mutate select bind_rows arrange n %>%
 #' @importFrom rlang sym .data
-#' @importFrom stats sd median quantile var IQR
+#' @importFrom stats sd median quantile var IQR setNames
+#' @importFrom utils modifyList
 #' @importFrom gt gt tab_header tab_spanner cols_label cols_align fmt_number tab_style cell_fill cell_text cells_column_labels cells_body tab_footnote cells_title tab_options px cell_borders
 NULL
 
 # Import pipe operator for use in functions
 #' @importFrom magrittr %>%
 NULL
+
+# Suppress R CMD check notes for tidyverse-style code
+utils::globalVariables(c("Variable", "above_threshold", "aic", "bic", "cluster",
+                        "delta_aic", "delta_bic", "delta_icl", "icl", "is_best",
+                        "is_highest", "loglik", "mean_value", "n_clusters", "pct",
+                        "percentage", "size", "value", "variable"))
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -642,22 +649,8 @@ descriptive_table <- function(data,
 #' @param combine Logical. For single variables, combine n and % in one column?
 #'   Default: `TRUE`. Shows as "n (%)".
 #'
-#' @return Depending on `format`:
-#' \describe{
-#'   \item{`"gt"`}{A gt table object}
-#'   \item{`"data.frame"`}{A data frame with frequencies and percentages}
-#' }
-#'
-#' For cross-tabulations with `chi_square = TRUE`, the table includes a footnote
-#' with test statistics (chi-square, p-value, Cramer's V).
-#'
-#' @section Effect Size Interpretation (Cramer's V):
-#' \describe{
-#'   \item{< 0.10}{Negligible}
-#'   \item{0.10 - 0.20}{Small}
-#'   \item{0.20 - 0.40}{Medium}
-#'   \item{> 0.40}{Large}
-#' }
+#' @return A gt table object (default) or data frame with frequencies and percentages.
+#' For cross-tabulations with chi_square = TRUE, includes test statistics.
 #'
 #' @examples
 #' \dontrun{

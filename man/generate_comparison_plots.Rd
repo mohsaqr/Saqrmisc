@@ -2,7 +2,7 @@
 % Please edit documentation in R/compare.R
 \name{generate_comparison_plots}
 \alias{generate_comparison_plots}
-\title{Generate ggbetweenstats comparison plots and summary statistics}
+\title{Generate Group Comparison Plots and Statistics}
 \usage{
 generate_comparison_plots(
   data,
@@ -11,92 +11,221 @@ generate_comparison_plots(
   repeat_category = NULL,
   plots = TRUE,
   table = TRUE,
+  type = "auto",
+  bayesian = FALSE,
+  equivalence = FALSE,
+  equivalence_bounds = c(-0.5, 0.5),
+  nonparametric = FALSE,
+  p_adjust_method = "none",
+  posthoc = TRUE,
+  posthoc_method = "games-howell",
+  pairwise_display = "significant",
   min_threshold = 0.05,
-  min_subcategory = 5
+  min_subcategory = 5,
+  colors = NULL,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{data}{A data frame containing the variables.}
+\item{data}{A data frame containing the variables to analyze.}
 
-\item{category}{The unquoted name of the column to be used as the
-x-axis variable (e.g., `gender`). This should be a categorical variable.}
+\item{category}{The unquoted name of the grouping variable (e.g., `gender`,
+`treatment`). This variable defines the groups to compare.}
 
-\item{Vars}{A character vector of variable names to compare against the category.
-These should be column names in the data frame (e.g., c("csu", "ta", "iv", "se", "sr")).}
+\item{Vars}{A character vector of numeric variable names to compare across
+groups. Example: `c("score1", "score2", "reaction_time")`.}
 
-\item{repeat_category}{The unquoted name of an optional column. If provided,
-separate analyses will be performed for each unique level of this column.
-Categories with less than 5% of the total data will be automatically excluded.
-(e.g., `source`). This should be a categorical variable. Defaults to `NULL`.}
+\item{repeat_category}{Optional. The unquoted name of a stratification variable.
+When provided, separate analyses are performed for each level (e.g., analyze
+gender differences separately for each country).}
 
-\item{plots}{Logical. If TRUE, generates and displays plots. Defaults to TRUE.}
+\item{plots}{Logical. Generate ggstatsplot visualizations? Default: `TRUE`.}
 
-\item{table}{Logical. If TRUE, generates and displays a summary table. Defaults to TRUE.}
+\item{table}{Logical. Generate summary statistics table? Default: `TRUE`.}
 
-\item{min_threshold}{Numeric. Minimum percentage threshold (as decimal) for including
-repeat_category groups. Defaults to 0.05 (5%). Only applies when repeat_category is specified.}
+\item{type}{Character. Type of statistical test to use. Options:
+\describe{
+  \item{`"auto"` (default)}{Automatic selection: parametric tests}
+  \item{`"parametric"`, `"p"`}{Parametric tests (t-test for 2 groups, ANOVA for 3+)}
+  \item{`"nonparametric"`, `"np"`}{Nonparametric tests (Mann-Whitney/Kruskal-Wallis)}
+  \item{`"kw"`}{Kruskal-Wallis (same as "np", for 3+ groups)}
+  \item{`"mw"`}{Mann-Whitney (same as "np", for 2 groups)}
+  \item{`"bayes"`, `"bf"`}{Bayesian tests with Bayes Factors}
+}}
 
-\item{min_subcategory}{Numeric. Minimum number of observations required for each
-subcategory within repeat_category groups. Defaults to 5. Categories with fewer
-observations will be excluded from analysis within each repeat_category group.}
+\item{bayesian}{Logical. Compute Bayesian t-tests with Bayes Factors? Default: `FALSE`.
+Requires the BayesFactor package. Can also use `type = "bayes"`.}
+
+\item{equivalence}{Logical. Perform equivalence testing (TOST)? Default: `FALSE`.
+Requires the TOSTER package.}
+
+\item{equivalence_bounds}{Numeric vector of length 2. Equivalence bounds in
+Cohen's d units for TOST. Default: `c(-0.5, 0.5)`.}
+
+\item{nonparametric}{Logical. Use nonparametric tests? Default: `FALSE`.
+When TRUE, uses Mann-Whitney U (2 groups) or Kruskal-Wallis (3+ groups).}
+
+\item{p_adjust_method}{Method for multiple comparison correction. Options:
+`"none"`, `"bonferroni"`, `"holm"`, `"hochberg"`, `"BH"`, `"BY"`, `"fdr"`.
+Default: `"none"`. Applied to both tables and post-hoc tests.}
+
+\item{posthoc}{Logical. Compute post-hoc pairwise comparisons for 3+ groups?
+Default: `TRUE`. Results include a comparison table and text report.}
+
+\item{posthoc_method}{Method for post-hoc comparisons. Options:
+\itemize{
+  \item `"games-howell"` (default): Does not assume equal variances
+  \item `"tukey"`: Tukey's HSD, assumes equal variances
+}}
+
+\item{pairwise_display}{Which pairwise comparisons to show on plots? Options:
+`"significant"` (default), `"all"`, `"none"`.}
+
+\item{min_threshold}{Numeric. Minimum proportion (0-1) of total sample required
+to include a repeat_category level. Default: `0.05` (5%).}
+
+\item{min_subcategory}{Integer. Minimum observations per group within
+repeat_category levels. Default: `5`.}
+
+\item{colors}{Character vector of colors for groups. Default: `NULL` uses
+a built-in palette.}
+
+\item{verbose}{Logical. Print progress messages? Default: `TRUE`.}
 }
 \value{
-A list containing:
-  - If no repeat_category: plots, grid_plot, summary_table, summary_data
-  - If repeat_category: named list with results for each repeat category level (above threshold)
+A list with class "comparison_results" containing:
+\itemize{
+  \item plots: Named list of ggplot objects, one per variable
+  \item grid_plot: Combined plot grid (if multiple variables)
+  \item summary_table: Formatted gt table with statistics
+  \item summary_data: Data frame with raw statistics
+}
+For stratified analysis (with repeat_category), returns a named list
+where each element corresponds to a level of repeat_category.
 }
 \description{
-This function creates a series of `ggbetweenstats` plots to compare a
-primary `category` across any set of comparison variables defined by `Vars`.
-When a `repeat_category` is provided, the function runs separate analyses
-for each unique level, automatically excluding categories that represent
-less than 5% of the total data to avoid analyzing many small categories.
+A comprehensive function for comparing groups using publication-ready
+visualizations and statistical tests. Creates `ggbetweenstats` plots from
+the ggstatsplot package with automatic test selection based on the number
+of groups:
+
+\itemize{
+  \item **2 groups**: t-test (parametric) or Mann-Whitney U (nonparametric)
+  \item **3+ groups**: ANOVA (parametric) or Kruskal-Wallis (nonparametric)
+    with post-hoc pairwise comparisons
+}
+
+The function also supports Bayesian analysis, equivalence testing (TOST),
+and stratified analyses using `repeat_category`.
 }
 \examples{
-# Create some dummy data for demonstration
-Tokens <- data.frame(
-  gender = sample(c("Male", "Female"), 100, replace = TRUE),
-  csu = rnorm(100, mean = c(5, 7)[factor(sample(c("Male", "Female"), 100, replace = TRUE))]),
-  ta = rnorm(100, mean = c(10, 12)[factor(sample(c("Male", "Female"), 100, replace = TRUE))]),
-  iv = rnorm(100, mean = c(3, 4)[factor(sample(c("Male", "Female"), 100, replace = TRUE))]),
-  se = rnorm(100, mean = c(8, 9)[factor(sample(c("Male", "Female"), 100, replace = TRUE))]),
-  sr = rnorm(100, mean = c(6, 6.5)[factor(sample(c("Male", "Female"), 100, replace = TRUE))]),
-  source = sample(c("A", "B", "C", "D", "E"), 100, replace = TRUE, prob = c(0.4, 0.3, 0.2, 0.08, 0.02))
+\dontrun{
+# ============================================================
+# EXAMPLE 1: Basic Two-Group Comparison (t-test)
+# ============================================================
+data <- data.frame(
+  gender = rep(c("Male", "Female"), each = 50),
+  score = c(rnorm(50, mean = 100, sd = 15),
+            rnorm(50, mean = 105, sd = 15))
 )
 
-# Example 1: Generate both plots and table (no repeat category)
 results <- generate_comparison_plots(
-  data = Tokens,
+  data = data,
   category = gender,
-  Vars = c("csu", "ta", "iv", "se", "sr"),
-  plots = TRUE,
-  table = TRUE
+  Vars = c("score")
 )
 
-# Example 2: Generate with repeat category (separate analysis per source)
-# Categories with < 5\% of data will be automatically excluded
-results_by_source <- generate_comparison_plots(
-  data = Tokens,
+# View the plot
+results$plots$gender_vs_score
+
+# View summary statistics
+results$summary_data
+
+# ============================================================
+# EXAMPLE 2: Three-Group Comparison (ANOVA with post-hoc)
+# ============================================================
+data <- data.frame(
+  country = rep(c("USA", "UK", "Germany"), each = 40),
+  score1 = c(rnorm(40, 75, 10), rnorm(40, 70, 11), rnorm(40, 85, 9)),
+  score2 = c(rnorm(40, 50, 8), rnorm(40, 55, 9), rnorm(40, 48, 7))
+)
+
+results <- generate_comparison_plots(
+  data = data,
+  category = country,
+  Vars = c("score1", "score2"),
+  posthoc = TRUE,
+  posthoc_method = "tukey",
+  pairwise_display = "all"
+)
+
+# View post-hoc pairwise comparisons
+results$summary_data$posthoc_results[[1]]
+
+# Print full ANOVA report
+cat(results$summary_data$anova_report[1])
+
+# ============================================================
+# EXAMPLE 3: Bayesian Analysis
+# ============================================================
+results <- generate_comparison_plots(
+  data = data,
+  category = country,
+  Vars = c("score1"),
+  bayesian = TRUE
+)
+
+# View Bayes Factors
+results$summary_data[, c("country", "mean", "bf10", "bf_interpretation")]
+
+# ============================================================
+# EXAMPLE 4: Nonparametric Tests
+# ============================================================
+results <- generate_comparison_plots(
+  data = data,
+  category = country,
+  Vars = c("score1"),
+  nonparametric = TRUE  # Uses Kruskal-Wallis + pairwise Wilcoxon
+)
+
+# ============================================================
+# EXAMPLE 5: Stratified Analysis (separate tests per subgroup)
+# ============================================================
+data <- data.frame(
+  country = rep(c("USA", "UK", "Germany"), each = 60),
+  gender = rep(c("Male", "Female"), times = 90),
+  score = rnorm(180, mean = 100, sd = 15)
+)
+
+# Compare gender WITHIN each country
+results <- generate_comparison_plots(
+  data = data,
   category = gender,
-  Vars = c("csu", "ta", "iv"),
-  repeat_category = source,
-  plots = TRUE,
-  table = TRUE
+  Vars = c("score"),
+  repeat_category = country
 )
 
-# Example 3: Different variables for psychological measures
-psych_data <- data.frame(
-  group = sample(c("Control", "Treatment"), 100, replace = TRUE),
-  anxiety = rnorm(100, mean = c(3, 2)[factor(sample(c("Control", "Treatment"), 100, replace = TRUE))]),
-  depression = rnorm(100, mean = c(2, 1.5)[factor(sample(c("Control", "Treatment"), 100, replace = TRUE))]),
-  stress = rnorm(100, mean = c(4, 3)[factor(sample(c("Control", "Treatment"), 100, replace = TRUE))])
+# Access results by country
+results$USA$summary_data
+results$UK$plots$gender_vs_score
+results$Germany$summary_table
+
+# ============================================================
+# EXAMPLE 6: Equivalence Testing (TOST)
+# ============================================================
+results <- generate_comparison_plots(
+  data = data,
+  category = gender,
+  Vars = c("score"),
+  equivalence = TRUE,
+  equivalence_bounds = c(-0.3, 0.3)  # Small effect bounds
 )
 
-results_psych <- generate_comparison_plots(
-  data = psych_data,
-  category = group,
-  Vars = c("anxiety", "depression", "stress"),
-  plots = TRUE,
-  table = TRUE
-)
+# Check equivalence conclusions
+results$summary_data[, c("gender", "mean", "equivalence_conclusion")]
+}
+
+}
+\seealso{
+\code{\link[ggstatsplot]{ggbetweenstats}} for the underlying plot function
 }

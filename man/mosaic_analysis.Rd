@@ -11,36 +11,107 @@ mosaic_analysis(
   min_count = 10,
   fontsize = 8,
   title = "",
-  var1_label = "",
+  var1_label = NULL,
   var2_label = NULL,
   show_percentages = TRUE,
-  percentage_base = "total"
+  percentage_base = "total",
+  use_fisher = FALSE,
+  verbose = TRUE,
+  save_plot = NULL
 )
 }
 \arguments{
 \item{data}{A data frame containing the variables.}
 
-\item{var1}{The unquoted name of the first categorical variable.}
+\item{var1}{The name of the first categorical variable. Can be unquoted (var1) or
+quoted ("var1").}
 
-\item{var2}{The unquoted name of the second categorical variable.}
+\item{var2}{The name of the second categorical variable. Can be unquoted (var2) or
+quoted ("var2").}
 
-\item{min_count}{The minimum number of observations required for a category to be included in the analysis. Defaults to 10.}
+\item{min_count}{The minimum number of observations required for a category to be
+included in the analysis. Defaults to 10.}
 
 \item{fontsize}{The font size for the mosaic plot labels. Defaults to 8.}
 
 \item{title}{The title for the mosaic plot. Defaults to "".}
 
-\item{var1_label}{The label for the first variable in the plot. Defaults to the variable name.}
+\item{var1_label}{The label for the first variable in the plot. If NULL, uses the
+variable name.}
 
-\item{var2_label}{The label for the second variable in the plot. Defaults to the variable name.}
+\item{var2_label}{The label for the second variable in the plot. If NULL, uses the
+variable name.}
 
-\item{show_percentages}{Logical. If TRUE, includes percentages in the summary table. Defaults to TRUE.}
+\item{show_percentages}{Logical. If TRUE, includes percentages in the summary table.
+Defaults to TRUE.}
 
-\item{percentage_base}{The base for calculating percentages ("total", "row", or "column"). Defaults to "total".}
+\item{percentage_base}{The base for calculating percentages ("total", "row", or "column").
+Defaults to "total".}
+
+\item{use_fisher}{Logical. If TRUE, uses Fisher's exact test instead of chi-square
+(recommended for small expected cell counts). Defaults to FALSE.}
+
+\item{verbose}{Logical. If TRUE, prints results to console. Defaults to TRUE.}
+
+\item{save_plot}{Optional file path to save the mosaic plot. Supports .png, .pdf, .svg.
+Defaults to NULL (no saving).}
 }
 \value{
-A list containing the mosaic plot, consolidated frequency table, standardized residuals, chi-square test results, Cramér's V, a statistical summary, the filtered data, and original vs. filtered sample sizes.
+A list of class "mosaic_analysis" containing:
+\itemize{
+  \item{\code{plot}}: The mosaic plot object
+  \item{\code{consolidated_table}}: Tibble with observed, expected counts and percentages
+  \item{\code{residuals}}: Data frame of standardized Pearson residuals
+  \item{\code{chi_test}}: Chi-square test results (or Fisher's test if use_fisher=TRUE)
+  \item{\code{cramers_v}}: Cramer's V effect size value
+  \item{\code{cramers_v_interpretation}}: Effect size interpretation (negligible/small/medium/large)
+  \item{\code{stats_summary}}: Tibble summarizing all statistical results
+  \item{\code{filtered_data}}: The filtered data used for analysis
+  \item{\code{original_n}}: Original sample size before filtering
+  \item{\code{filtered_n}}: Sample size after filtering
+  \item{\code{removed_categories}}: List of categories removed due to min_count
+}
 }
 \description{
-This function conducts a complete mosaic plot analysis for two categorical variables. It includes filtering by minimum count, chi-square testing, calculation of Cramér's V, and generation of a detailed summary table with observed/expected counts and residuals.
+This function conducts a complete mosaic plot analysis for two categorical variables.
+It includes filtering by minimum count, chi-square testing (with optional Fisher's exact test),
+calculation of Cramer's V with effect size interpretation, and generation of a detailed
+summary table with observed/expected counts and residuals.
+}
+\examples{
+# Create example data
+set.seed(123)
+example_data <- data.frame(
+  gender = sample(c("Male", "Female"), 200, replace = TRUE),
+  education = sample(c("High School", "Bachelor", "Master", "PhD"), 200,
+                     replace = TRUE, prob = c(0.3, 0.4, 0.2, 0.1))
+)
+
+# Basic usage with unquoted variable names
+results <- mosaic_analysis(example_data, gender, education)
+
+# With quoted variable names
+results <- mosaic_analysis(example_data, "gender", "education")
+
+# With row percentages and custom labels
+results <- mosaic_analysis(
+  example_data, gender, education,
+  min_count = 5,
+  var1_label = "Gender",
+  var2_label = "Education Level",
+  percentage_base = "row"
+)
+
+# Using Fisher's exact test for small samples
+results <- mosaic_analysis(
+  example_data, gender, education,
+  use_fisher = TRUE,
+  verbose = FALSE
+)
+
+# Access results
+results$cramers_v
+results$cramers_v_interpretation
+results$stats_summary
+
 }

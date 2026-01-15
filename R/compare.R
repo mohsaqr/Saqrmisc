@@ -266,42 +266,15 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #'   a built-in palette.
 #' @param verbose Logical. Print progress messages? Default: `TRUE`.
 #'
-#' @return A list with class `"comparison_results"` containing:
-#'
-#' **For single analysis (no repeat_category):**
-#' \describe{
-#'   \item{plots}{Named list of ggplot objects, one per variable}
-#'   \item{grid_plot}{Combined plot grid (if multiple variables)}
-#'   \item{summary_table}{Formatted gt table with statistics}
-#'   \item{summary_data}{Data frame with raw statistics including:
-#'     \itemize{
-#'       \item Basic: mean, sd, n, p_value, effect size
-#'       \item For 3+ groups: `posthoc_results` (pairwise comparison table),
-#'         `anova_report` (formatted text report), `anova_details` (test statistics)
-#'       \item If bayesian=TRUE: bf10, bf_interpretation
-#'       \item If equivalence=TRUE: tost_p, equivalence_conclusion
-#'     }
-#'   }
-#' }
-#'
-#' **For stratified analysis (with repeat_category):**
-#' Returns a named list where each element corresponds to a level of
-#' repeat_category and contains the above structure, plus a `metadata`
-#' element with analysis information.
-#'
-#' @section Effect Sizes:
-#' \describe{
-#'   \item{2 groups}{Cohen's d (parametric) or rank-biserial r (nonparametric)}
-#'   \item{3+ groups}{Eta-squared (parametric) or epsilon-squared (nonparametric)}
-#' }
-#'
-#' @section Post-hoc Output:
-#' For 3+ groups, access detailed results via:
+#' @return A list with class "comparison_results" containing:
 #' \itemize{
-#'   \item `results$summary_data$posthoc_results[[1]]` - Pairwise comparison table
-#'   \item `results$summary_data$anova_report[1]` - Full text report (APA style)
-#'   \item `cat(results$summary_data$anova_report[1])` - Print the report
+#'   \item plots: Named list of ggplot objects, one per variable
+#'   \item grid_plot: Combined plot grid (if multiple variables)
+#'   \item summary_table: Formatted gt table with statistics
+#'   \item summary_data: Data frame with raw statistics
 #' }
+#' For stratified analysis (with repeat_category), returns a named list
+#' where each element corresponds to a level of repeat_category.
 #'
 #' @examples
 #' \dontrun{

@@ -487,29 +487,29 @@ var1_expr <- substitute(var1)
     # Print consolidated table
     cat("CONSOLIDATED FREQUENCY TABLE\n")
     cat("===========================\n")
-    print(consolidated_table, n = Inf)
+    print(tibble::as_tibble(consolidated_table), n = Inf)
     cat("\n")
 
     # Print standardized residuals
     cat("STANDARDIZED RESIDUALS\n")
     cat("=====================\n")
     cat("(Values > |2| indicate significant deviation from expected)\n")
-    print(residuals_df, n = Inf)
+    print(tibble::as_tibble(residuals_df), n = Inf)
     cat("\n")
 
     # Print statistical summary
     cat("STATISTICAL SUMMARY\n")
     cat("==================\n")
-    print(stats_summary, n = Inf)
+    print(tibble::as_tibble(stats_summary), n = Inf)
     cat("\n")
   }
 
   # Return results as a list with class
   results <- list(
-    plot = mosaic_plot,
-    consolidated_table = consolidated_table,
+    mosaic_plot = mosaic_plot,
+    summary_table = consolidated_table,
     residuals = residuals_df,
-    test_result = stat_test,
+    chi_square_test = stat_test,
     cramers_v = cramers_v,
     cramers_v_interpretation = cramers_v_interpretation,
     stats_summary = stats_summary,
