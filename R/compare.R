@@ -1291,6 +1291,12 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
               df1_val <- var_data$df1[1]
               df2_val <- var_data$df2[1]
 
+              # Get post-hoc results if available
+              posthoc_res <- NULL
+              if (!is.null(var_data$posthoc_results) && length(var_data$posthoc_results) > 0) {
+                posthoc_res <- var_data$posthoc_results[[1]]
+              }
+
               all_stats[[length(all_stats) + 1]] <- list(
                 group = repeat_val,
                 variable = var,
@@ -1303,7 +1309,8 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
                 df2 = df2_val,
                 p_value = p_val,
                 effect_size = ef,
-                effect_type = ef_type
+                effect_type = ef_type,
+                posthoc = posthoc_res
               )
             }
           }
@@ -1493,8 +1500,42 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
         }
 
         cat(sprintf("  %s: %s\n", stat$group, stat$variable))
-        cat(sprintf("    %s, p = %s, %s = %s %s\n\n",
+        cat(sprintf("    %s, p = %s, %s = %s %s\n",
                     test_str, p_str, stat$effect_type, ef_str, sig_marker))
+
+        # Print significant post-hoc comparisons if available
+        if (!is.null(stat$posthoc) && nrow(stat$posthoc) > 0) {
+          sig_posthoc <- stat$posthoc[stat$posthoc$p_adj < 0.05, , drop = FALSE]
+          if (nrow(sig_posthoc) > 0) {
+            # Format each significant comparison
+            ph_strs <- sapply(1:nrow(sig_posthoc), function(i) {
+              comp <- sig_posthoc$comparison[i]
+              p_adj <- sig_posthoc$p_adj[i]
+              diff_val <- if ("diff" %in% names(sig_posthoc)) sig_posthoc$diff[i] else NA
+
+              # Determine direction from diff or comparison
+              if (!is.na(diff_val) && diff_val != 0) {
+                groups <- strsplit(comp, " vs ")[[1]]
+                if (length(groups) == 2) {
+                  if (diff_val > 0) {
+                    comp_str <- paste0(groups[1], " > ", groups[2])
+                  } else {
+                    comp_str <- paste0(groups[2], " > ", groups[1])
+                  }
+                } else {
+                  comp_str <- comp
+                }
+              } else {
+                comp_str <- comp
+              }
+
+              p_str_ph <- if (p_adj < 0.001) "< .001" else sprintf("%.3f", p_adj)
+              sprintf("%s (p = %s)", comp_str, p_str_ph)
+            })
+            cat(sprintf("    Post-hoc: %s\n", paste(ph_strs, collapse = ", ")))
+          }
+        }
+        cat("\n")
       }
 
       cat("  * p < .05\n")
