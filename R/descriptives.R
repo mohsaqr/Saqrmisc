@@ -162,9 +162,23 @@ calculate_stat <- function(x, stat, digits = 2) {
 #' @param transpose Logical. Transpose the table so variables are columns
 #'   and statistics are rows? Default: `FALSE`.
 #' @param format Character. Output format: `"gt"` (default) for gt table,
-#'   `"data.frame"` for raw data frame.
-#' @param theme Character. Visual theme for gt table: `"default"`, `"minimal"`,
-#'   `"dark"`, `"colorful"`. Default: `"default"`.
+#'   `"data.frame"` for raw data frame, or `"kable"` for kableExtra HTML table.
+#' @param theme Character. Visual theme for gt table. Default: `"default"`.
+#'   Options:
+#'   \itemize{
+#'     \item `"default"`: Clean scientific paper style (black/white, simple borders)
+#'     \item `"fancy"`: Blue colorful theme with striped rows
+#'     \item `"minimal"`: Minimalist with bottom border only
+#'     \item `"dark"`: Dark background theme
+#'     \item `"colorful"`: Purple accent theme
+#'   }
+#' @param compare Logical. When `group_by` is specified, run statistical tests
+#'   (t-test for 2 groups, ANOVA for 3+ groups) and report p-values and effect
+#'   sizes? Default: `FALSE`.
+#' @param bold_highest Logical. When `group_by` is specified, bold the highest
+#'   mean for each variable? Default: `TRUE` when compare is `TRUE`.
+#' @param sig_color Character. Color for significant p-values (< 0.05).
+#'   Default: `"red"`. Set to `NULL` to disable coloring.
 #'
 #' @return Depending on `format`:
 #' \describe{
@@ -267,7 +281,10 @@ descriptive_table <- function(data,
                               overall = TRUE,
                               transpose = FALSE,
                               format = "gt",
-                              theme = "default") {
+                              theme = "default",
+                              compare = FALSE,
+                              bold_highest = NULL,
+                              sig_color = "red") {
 
   # ===========================================================================
   # Input Validation
@@ -307,13 +324,18 @@ descriptive_table <- function(data,
   }
 
   # Validate format
-  if (!format %in% c("gt", "data.frame")) {
-    stop("format must be 'gt' or 'data.frame'")
+  if (!format %in% c("gt", "data.frame", "kable")) {
+    stop("format must be 'gt', 'data.frame', or 'kable'")
+  }
+
+  # Set default for bold_highest
+  if (is.null(bold_highest)) {
+    bold_highest <- compare  # Default to TRUE when compare is TRUE
   }
 
   # Validate theme
-  if (!theme %in% c("default", "minimal", "dark", "colorful")) {
-    stop("theme must be 'default', 'minimal', 'dark', or 'colorful'")
+  if (!theme %in% c("default", "fancy", "minimal", "dark", "colorful")) {
+    stop("theme must be 'default', 'fancy', 'minimal', 'dark', or 'colorful'")
   }
 
   # Handle group_by variable
@@ -389,10 +411,186 @@ descriptive_table <- function(data,
   }
 
   # ===========================================================================
+  # Statistical Comparisons (when compare = TRUE and group_by is specified)
+  # ===========================================================================
+
+  test_results <- NULL
+  if (compare && !is.null(group_by_str)) {
+    groups <- unique(data[[group_by_str]])
+    groups <- groups[!is.na(groups)]
+    n_groups <- length(groups)
+
+    if (n_groups >= 2) {
+      test_results <- data.frame(
+        Variable = character(),
+        p_value = numeric(),
+        effect_size = numeric(),
+        test_type = character(),
+        stringsAsFactors = FALSE
+      )
+
+      for (var in Vars) {
+        var_label <- if (!is.null(labels) && var %in% names(labels)) labels[var] else var
+
+        tryCatch({
+          if (n_groups == 2) {
+            # t-test for 2 groups
+            test <- t.test(data[[var]] ~ data[[group_by_str]])
+            p_val <- test$p.value
+
+            # Cohen's d effect size
+            group_means <- tapply(data[[var]], data[[group_by_str]], mean, na.rm = TRUE)
+            group_sds <- tapply(data[[var]], data[[group_by_str]], sd, na.rm = TRUE)
+            group_ns <- tapply(data[[var]], data[[group_by_str]], function(x) sum(!is.na(x)))
+            pooled_sd <- sqrt(((group_ns[1] - 1) * group_sds[1]^2 + (group_ns[2] - 1) * group_sds[2]^2) / (sum(group_ns) - 2))
+            cohens_d <- abs(diff(group_means)) / pooled_sd
+
+            test_results <- rbind(test_results, data.frame(
+              Variable = var_label,
+              p_value = p_val,
+              effect_size = as.numeric(cohens_d),
+              test_type = "t-test (Cohen's d)",
+              stringsAsFactors = FALSE
+            ))
+          } else {
+            # ANOVA for 3+ groups
+            aov_result <- aov(data[[var]] ~ data[[group_by_str]])
+            aov_summary <- summary(aov_result)
+            p_val <- aov_summary[[1]][["Pr(>F)"]][1]
+
+            # Eta-squared effect size
+            ss_between <- aov_summary[[1]][["Sum Sq"]][1]
+            ss_total <- sum(aov_summary[[1]][["Sum Sq"]])
+            eta_sq <- ss_between / ss_total
+
+            test_results <- rbind(test_results, data.frame(
+              Variable = var_label,
+              p_value = p_val,
+              effect_size = eta_sq,
+              test_type = "ANOVA (eta-squared)",
+              stringsAsFactors = FALSE
+            ))
+          }
+        }, error = function(e) {
+          warning("Could not compute test for variable: ", var, " - ", e$message)
+        })
+      }
+    }
+  }
+
+  # ===========================================================================
   # Return Data Frame if Requested
   # ===========================================================================
   if (format == "data.frame") {
+    if (!is.null(test_results) && nrow(test_results) > 0) {
+      attr(desc_data, "test_results") <- test_results
+    }
     return(desc_data)
+  }
+
+  # ===========================================================================
+  # Create kableExtra Table (HTML with bold highest & colored p-values)
+  # ===========================================================================
+
+  if (format == "kable" && !is.null(group_by_str)) {
+    # Check for kableExtra
+    if (!requireNamespace("kableExtra", quietly = TRUE)) {
+      stop("Package 'kableExtra' is required for format = 'kable'. Install with: install.packages('kableExtra')")
+    }
+
+    # Build a formatted comparison table similar to user's example
+    # Structure: Variable | Group | Mean | SD | N | Effect Size | P-value
+
+    # Get unique variables (excluding Overall rows for now)
+    var_list <- unique(desc_data$Variable)
+
+    # Build formatted table
+    formatted_rows <- list()
+
+    for (var_name in var_list) {
+      var_data <- desc_data[desc_data$Variable == var_name & desc_data$Group != "Overall", ]
+
+      if (nrow(var_data) == 0) next
+
+      # Find highest mean for this variable
+      highest_mean <- max(var_data$mean, na.rm = TRUE)
+
+      # Get test results for this variable
+      p_val <- NA
+      es_val <- NA
+      if (!is.null(test_results)) {
+        test_row <- test_results[test_results$Variable == var_name, ]
+        if (nrow(test_row) > 0) {
+          p_val <- test_row$p_value[1]
+          es_val <- test_row$effect_size[1]
+        }
+      }
+
+      for (i in seq_len(nrow(var_data))) {
+        row <- var_data[i, ]
+        is_highest <- !is.na(row$mean) && row$mean == highest_mean
+
+        # Format values with bold for highest
+        mean_fmt <- round(row$mean, digits)
+        sd_fmt <- round(row$sd, digits)
+        n_fmt <- row$n
+        group_fmt <- row$Group
+
+        if (bold_highest && is_highest) {
+          mean_fmt <- paste0("<b>", mean_fmt, "</b>")
+          sd_fmt <- paste0("<b>", sd_fmt, "</b>")
+          n_fmt <- paste0("<b>", n_fmt, "</b>")
+          group_fmt <- paste0("<b>", group_fmt, "</b>")
+        }
+
+        # Format p-value (only show on first row of each variable)
+        p_fmt <- ""
+        es_fmt <- ""
+        if (i == 1 && !is.na(p_val)) {
+          p_fmt <- if (p_val < 0.001) "< 0.001" else as.character(round(p_val, 3))
+          es_fmt <- if (!is.na(es_val)) as.character(round(es_val, 3)) else ""
+        }
+
+        formatted_rows[[length(formatted_rows) + 1]] <- data.frame(
+          Variable = if (i == 1) var_name else "",
+          Group = group_fmt,
+          Mean = mean_fmt,
+          SD = sd_fmt,
+          N = n_fmt,
+          ES = es_fmt,
+          `P-value` = p_fmt,
+          stringsAsFactors = FALSE,
+          check.names = FALSE
+        )
+      }
+    }
+
+    kable_df <- do.call(rbind, formatted_rows)
+
+    # Create color vector for p-values
+    p_colors <- sapply(kable_df$`P-value`, function(x) {
+      if (is.null(sig_color) || is.na(x) || x == "") {
+        return("black")
+      }
+      if (x == "< 0.001") {
+        return(sig_color)
+      }
+      tryCatch({
+        if (as.numeric(x) < 0.05) sig_color else "black"
+      }, error = function(e) "black")
+    })
+
+    # Create kable table
+    kable_table <- kableExtra::kable(kable_df, format = "html", escape = FALSE,
+                                     align = "c", caption = title) %>%
+      kableExtra::kable_styling(
+        bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+        full_width = FALSE
+      ) %>%
+      kableExtra::column_spec(1, bold = TRUE) %>%
+      kableExtra::column_spec(ncol(kable_df), color = p_colors)
+
+    return(kable_table)
   }
 
   # ===========================================================================
@@ -426,6 +624,38 @@ descriptive_table <- function(data,
     desc_data <- desc_data[, col_order]
   }
 
+  # Add test results columns when compare = TRUE
+  if (compare && !is.null(test_results) && nrow(test_results) > 0 && !is.null(group_by_str)) {
+    # Merge test results with desc_data
+    desc_data <- merge(desc_data, test_results[, c("Variable", "p_value", "effect_size")],
+                       by = "Variable", all.x = TRUE)
+
+    # Only show p-value and ES on first row of each variable
+    for (var in unique(desc_data$Variable)) {
+      var_rows <- which(desc_data$Variable == var)
+      if (length(var_rows) > 1) {
+        desc_data$p_value[var_rows[-1]] <- NA
+        desc_data$effect_size[var_rows[-1]] <- NA
+      }
+    }
+  }
+
+  # Identify rows with highest mean for bold styling
+  highest_mean_rows <- c()
+  if (bold_highest && !is.null(group_by_str) && "mean" %in% stats) {
+    for (var in unique(desc_data$Variable)) {
+      var_data <- desc_data[desc_data$Variable == var & desc_data$Group != "Overall", ]
+      if (nrow(var_data) > 0) {
+        max_mean <- max(var_data$mean, na.rm = TRUE)
+        max_rows <- which(desc_data$Variable == var &
+                         desc_data$Group != "Overall" &
+                         !is.na(desc_data$mean) &
+                         desc_data$mean == max_mean)
+        highest_mean_rows <- c(highest_mean_rows, max_rows)
+      }
+    }
+  }
+
   # Create gt table
   gt_table <- gt::gt(desc_data)
 
@@ -449,6 +679,14 @@ descriptive_table <- function(data,
     rename_list$Group <- group_by_str
   }
   rename_list$Variable <- "Variable"
+
+  # Add test result column labels if present
+  if ("p_value" %in% names(desc_data)) {
+    rename_list$p_value <- "P-value"
+  }
+  if ("effect_size" %in% names(desc_data)) {
+    rename_list$effect_size <- "Effect Size"
+  }
 
   gt_table <- gt_table %>%
     gt::cols_label(.list = rename_list)
@@ -483,11 +721,72 @@ descriptive_table <- function(data,
       gt::cols_align(align = "center", columns = "Group")
   }
 
+  # Format p_value and effect_size columns if present
+  if ("p_value" %in% names(desc_data)) {
+    gt_table <- gt_table %>%
+      gt::fmt_number(columns = "p_value", decimals = 3) %>%
+      gt::cols_align(align = "center", columns = "p_value") %>%
+      gt::sub_small_vals(columns = "p_value", threshold = 0.001)
+  }
+
+  if ("effect_size" %in% names(desc_data)) {
+    gt_table <- gt_table %>%
+      gt::fmt_number(columns = "effect_size", decimals = 3) %>%
+      gt::cols_align(align = "center", columns = "effect_size")
+  }
+
+  # Bold styling for highest mean rows
+  if (length(highest_mean_rows) > 0) {
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_body(rows = highest_mean_rows)
+      )
+  }
+
+  # Red color for significant p-values
+  if (!is.null(sig_color) && "p_value" %in% names(desc_data)) {
+    sig_rows <- which(!is.na(desc_data$p_value) & desc_data$p_value < 0.05)
+    if (length(sig_rows) > 0) {
+      gt_table <- gt_table %>%
+        gt::tab_style(
+          style = gt::cell_text(color = sig_color),
+          locations = gt::cells_body(columns = "p_value", rows = sig_rows)
+        )
+    }
+  }
+
   # ===========================================================================
   # Apply Theme
   # ===========================================================================
 
   if (theme == "default") {
+    # Clean scientific paper style - black/white, simple borders
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = list(
+          gt::cell_text(weight = "bold"),
+          gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+          gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+        ),
+        locations = gt::cells_column_labels()
+      ) %>%
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_title(groups = "title")
+      ) %>%
+      gt::tab_options(
+        table.border.top.width = gt::px(2),
+        table.border.top.color = "black",
+        table.border.bottom.width = gt::px(2),
+        table.border.bottom.color = "black",
+        heading.align = "left",
+        column_labels.border.bottom.color = "black",
+        table_body.border.bottom.color = "black"
+      )
+
+  } else if (theme == "fancy") {
+    # Blue colorful theme
     gt_table <- gt_table %>%
       gt::tab_style(
         style = list(
@@ -790,8 +1089,8 @@ categorical_table <- function(data,
     stop("format must be 'gt' or 'data.frame'")
   }
 
-  if (!theme %in% c("default", "minimal", "dark", "colorful")) {
-    stop("theme must be 'default', 'minimal', 'dark', or 'colorful'")
+  if (!theme %in% c("default", "fancy", "minimal", "dark", "colorful")) {
+    stop("theme must be 'default', 'fancy', 'minimal', 'dark', or 'colorful'")
   }
 
   if (!sort_by %in% c("none", "frequency", "alphabetical")) {
@@ -1098,6 +1397,42 @@ categorical_table <- function(data,
 
   # Apply theme
   if (theme == "default") {
+    # Clean scientific paper style
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = list(
+          gt::cell_text(weight = "bold"),
+          gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+          gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+        ),
+        locations = gt::cells_column_labels()
+      ) %>%
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_title(groups = "title")
+      ) %>%
+      gt::tab_options(
+        table.border.top.width = gt::px(2),
+        table.border.top.color = "black",
+        table.border.bottom.width = gt::px(2),
+        table.border.bottom.color = "black",
+        heading.align = "left",
+        column_labels.border.bottom.color = "black",
+        table_body.border.bottom.color = "black"
+      )
+
+    # Highlight Total row
+    if (show_total) {
+      n_rows <- nrow(result_df)
+      gt_table <- gt_table %>%
+        gt::tab_style(
+          style = gt::cell_text(weight = "bold"),
+          locations = gt::cells_body(rows = n_rows)
+        )
+    }
+
+  } else if (theme == "fancy") {
+    # Blue colorful theme
     gt_table <- gt_table %>%
       gt::tab_style(
         style = list(
@@ -1431,6 +1766,30 @@ auto_describe <- function(data,
 
       # Apply theme
       if (theme == "default") {
+        # Clean scientific paper style
+        gt_cat <- gt_cat %>%
+          gt::tab_style(
+            style = list(
+              gt::cell_text(weight = "bold"),
+              gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+              gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+            ),
+            locations = gt::cells_column_labels()
+          ) %>%
+          gt::tab_style(
+            style = gt::cell_text(weight = "bold"),
+            locations = gt::cells_title(groups = "title")
+          ) %>%
+          gt::tab_options(
+            table.border.top.width = gt::px(2),
+            table.border.top.color = "black",
+            table.border.bottom.width = gt::px(2),
+            table.border.bottom.color = "black",
+            column_labels.border.bottom.color = "black",
+            table_body.border.bottom.color = "black"
+          )
+      } else if (theme == "fancy") {
+        # Blue colorful theme
         gt_cat <- gt_cat %>%
           gt::tab_style(
             style = list(
