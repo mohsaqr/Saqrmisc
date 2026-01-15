@@ -52,5 +52,6 @@ Suggests:
     devtools,
     roxygen2,
     ggstatsplot,
+    kableExtra,
     TOSTER
 VignetteBuilder: knitr

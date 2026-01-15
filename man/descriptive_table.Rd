@@ -16,7 +16,10 @@ descriptive_table(
   overall = TRUE,
   transpose = FALSE,
   format = "gt",
-  theme = "default"
+  theme = "default",
+  compare = FALSE,
+  bold_highest = NULL,
+  sig_color = "red"
 )
 }
 \arguments{
@@ -71,10 +74,27 @@ overall (ungrouped) statistics? Default: `TRUE`.}
 and statistics are rows? Default: `FALSE`.}
 
 \item{format}{Character. Output format: `"gt"` (default) for gt table,
-`"data.frame"` for raw data frame.}
+`"data.frame"` for raw data frame, or `"kable"` for kableExtra HTML table.}
 
-\item{theme}{Character. Visual theme for gt table: `"default"`, `"minimal"`,
-`"dark"`, `"colorful"`. Default: `"default"`.}
+\item{theme}{Character. Visual theme for gt table. Default: `"default"`.
+Options:
+\itemize{
+  \item `"default"`: Clean scientific paper style (black/white, simple borders)
+  \item `"fancy"`: Blue colorful theme with striped rows
+  \item `"minimal"`: Minimalist with bottom border only
+  \item `"dark"`: Dark background theme
+  \item `"colorful"`: Purple accent theme
+}}
+
+\item{compare}{Logical. When `group_by` is specified, run statistical tests
+(t-test for 2 groups, ANOVA for 3+ groups) and report p-values and effect
+sizes? Default: `FALSE`.}
+
+\item{bold_highest}{Logical. When `group_by` is specified, bold the highest
+mean for each variable? Default: `TRUE` when compare is `TRUE`.}
+
+\item{sig_color}{Character. Color for significant p-values (< 0.05).
+Default: `"red"`. Set to `NULL` to disable coloring.}
 }
 \value{
 Depending on `format`:
