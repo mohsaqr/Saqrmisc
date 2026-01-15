@@ -1368,30 +1368,113 @@ auto_describe <- function(data,
     if (print) cat("No numeric variables found.\n\n")
   }
 
-  # Generate categorical descriptives
+  # Generate categorical descriptives - combined into one table
   if (length(categorical_vars) > 0) {
     if (print) cat("=== Categorical Variables ===\n")
 
-    for (cat_var in categorical_vars) {
-      if (print) cat("\n--- ", cat_var, " ---\n")
+    # Build combined categorical data frame
+    all_cat_data <- data.frame()
 
-      # Build the call dynamically
-      cat_call <- substitute(
-        categorical_table(
-          data = data,
-          var = VAR,
-          title = TITLE,
-          theme = theme,
-          format = format
-        ),
-        list(VAR = as.name(cat_var), TITLE = paste(title_categorical, "-", cat_var))
+    for (cat_var in categorical_vars) {
+      # Calculate frequencies for this variable
+      var_data <- data[[cat_var]]
+      freq_table <- table(var_data, useNA = "no")
+      total_n <- sum(freq_table)
+
+      # Find the mode (most frequent category)
+      mode_category <- names(freq_table)[which.max(freq_table)]
+
+      # Create data frame for this variable
+      var_df <- data.frame(
+        Variable = c(cat_var, rep("", length(freq_table) - 1)),
+        Category = names(freq_table),
+        n = as.integer(freq_table),
+        pct = round(as.numeric(freq_table) / total_n * 100, 1),
+        stringsAsFactors = FALSE
       )
 
-      cat_table <- eval(cat_call)
-      results$categorical[[cat_var]] <- cat_table
+      # Mark the mode (most frequent)
+      var_df$is_mode <- var_df$Category == mode_category
 
-      if (print && format == "gt") {
-        print(cat_table)
+      all_cat_data <- rbind(all_cat_data, var_df)
+    }
+
+    # Store raw data
+    results$categorical <- all_cat_data
+
+    if (format == "data.frame") {
+      if (print) {
+        print(all_cat_data[, c("Variable", "Category", "n", "pct")])
+      }
+    } else {
+      # Create gt table
+      display_data <- all_cat_data
+      display_data$`n (%)` <- paste0(display_data$n, " (", display_data$pct, "%)")
+
+      gt_cat <- gt::gt(display_data[, c("Variable", "Category", "n (%)")]) %>%
+        gt::tab_header(
+          title = title_categorical
+        ) %>%
+        gt::cols_align(align = "left", columns = "Variable") %>%
+        gt::cols_align(align = "left", columns = "Category") %>%
+        gt::cols_align(align = "center", columns = "n (%)")
+
+      # Bold the mode (most frequent) rows
+      mode_rows <- which(all_cat_data$is_mode)
+      if (length(mode_rows) > 0) {
+        gt_cat <- gt_cat %>%
+          gt::tab_style(
+            style = gt::cell_text(weight = "bold"),
+            locations = gt::cells_body(rows = mode_rows)
+          )
+      }
+
+      # Apply theme
+      if (theme == "default") {
+        gt_cat <- gt_cat %>%
+          gt::tab_style(
+            style = list(
+              gt::cell_fill(color = "#4472C4"),
+              gt::cell_text(color = "white", weight = "bold")
+            ),
+            locations = gt::cells_column_labels()
+          ) %>%
+          gt::tab_style(
+            style = gt::cell_text(weight = "bold"),
+            locations = gt::cells_title(groups = "title")
+          ) %>%
+          gt::tab_options(
+            table.border.top.width = gt::px(2),
+            table.border.top.color = "#4472C4",
+            table.border.bottom.width = gt::px(2),
+            table.border.bottom.color = "#4472C4"
+          )
+      } else if (theme == "colorful") {
+        gt_cat <- gt_cat %>%
+          gt::tab_style(
+            style = list(
+              gt::cell_fill(color = "#6C63FF"),
+              gt::cell_text(color = "white", weight = "bold")
+            ),
+            locations = gt::cells_column_labels()
+          ) %>%
+          gt::tab_style(
+            style = gt::cell_text(color = "#6C63FF", weight = "bold"),
+            locations = gt::cells_title(groups = "title")
+          )
+      }
+
+      # Add footnote about bold
+      gt_cat <- gt_cat %>%
+        gt::tab_footnote(
+          footnote = "Bold = most frequent category (mode)",
+          locations = gt::cells_title(groups = "title")
+        )
+
+      results$categorical_table <- gt_cat
+
+      if (print) {
+        print(gt_cat)
       }
     }
   } else {
