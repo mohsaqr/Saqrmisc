@@ -680,6 +680,12 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
           p_value <- NA
           efsz <- NA
           ef_type <- NA
+          t_statistic <- NA
+          t_df <- NA
+          f_statistic <- NA
+          df1 <- NA
+          df2 <- NA
+          test_type <- NA
           bf10 <- NA
           bf_interpretation <- NA
           tost_p <- NA
@@ -705,6 +711,8 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
                 tryCatch({
                   test_result <- stats::wilcox.test(group1_data, group2_data)
                   p_value <- test_result$p.value
+                  t_statistic <- as.numeric(test_result$statistic)  # W statistic
+                  test_type <- "Mann-Whitney U"
 
                   # Rank-biserial correlation as effect size
                   n1 <- length(group1_data)
@@ -719,6 +727,9 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
                 tryCatch({
                   test_result <- stats::t.test(group1_data, group2_data)
                   p_value <- test_result$p.value
+                  t_statistic <- as.numeric(test_result$statistic)
+                  t_df <- as.numeric(test_result$parameter)
+                  test_type <- "t-test"
                   efsz <- effsize::cohen.d(group1_data, group2_data)$estimate
                   ef_type <- "Cohen's d"
                 }, error = function(e) {
@@ -792,9 +803,12 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
                   data_subset[[comp_cat_name]] ~ data_subset[[category_name_str]]
                 )
                 p_value <- test_result$p.value
+                test_type <- "Kruskal-Wallis"
 
                 # Epsilon squared effect size
                 H <- test_result$statistic
+                f_statistic <- as.numeric(H)  # H statistic
+                df1 <- n_groups - 1
                 n <- nrow(data_subset)
                 efsz <- H / (n - 1)  # Epsilon squared
                 ef_type <- "epsilon_sq"
@@ -832,9 +846,10 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
                 aov_summary <- summary(aov_result)[[1]]
 
                 p_value <- aov_summary[["Pr(>F)"]][1]
-                f_value <- aov_summary[["F value"]][1]
+                f_statistic <- aov_summary[["F value"]][1]
                 df1 <- aov_summary[["Df"]][1]
                 df2 <- aov_summary[["Df"]][2]
+                test_type <- "ANOVA"
 
                 # Extract eta squared properly
                 es_result <- effectsize::eta_squared(aov_result)
@@ -847,7 +862,7 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
                 # Store ANOVA details
                 anova_details <- list(
                   test = "One-way ANOVA",
-                  statistic = f_value,
+                  statistic = f_statistic,
                   df1 = df1,
                   df2 = df2,
                   p_value = p_value,
@@ -939,6 +954,12 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
           summary_stats$p_value <- p_value
           summary_stats$efsz <- efsz
           summary_stats$ef_type <- ef_type
+          summary_stats$test_type <- test_type
+          summary_stats$t_statistic <- t_statistic
+          summary_stats$t_df <- t_df
+          summary_stats$f_statistic <- f_statistic
+          summary_stats$df1 <- df1
+          summary_stats$df2 <- df2
           summary_stats$bf10 <- bf10
           summary_stats$bf_interpretation <- bf_interpretation
           summary_stats$tost_p <- tost_p
@@ -1263,11 +1284,23 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
               ef <- var_data$efsz[1]
               ef_type <- var_data$ef_type[1]
               n_total <- sum(var_data$n)
+              ttype <- var_data$test_type[1]
+              t_stat <- var_data$t_statistic[1]
+              t_df_val <- var_data$t_df[1]
+              f_stat <- var_data$f_statistic[1]
+              df1_val <- var_data$df1[1]
+              df2_val <- var_data$df2[1]
 
               all_stats[[length(all_stats) + 1]] <- list(
                 group = repeat_val,
                 variable = var,
                 n = n_total,
+                test_type = ttype,
+                t_statistic = t_stat,
+                t_df = t_df_val,
+                f_statistic = f_stat,
+                df1 = df1_val,
+                df2 = df2_val,
                 p_value = p_val,
                 effect_size = ef,
                 effect_type = ef_type
@@ -1437,23 +1470,35 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
       cat("Test:", if (nonparametric) "Nonparametric (Mann-Whitney/Kruskal-Wallis)" else "Parametric (t-test/ANOVA)", "\n\n")
 
       # Print statistical results
-      cat(paste(rep("-", 60), collapse = ""), "\n")
+      cat(paste(rep("-", 70), collapse = ""), "\n")
       cat("  STATISTICAL RESULTS\n")
-      cat(paste(rep("-", 60), collapse = ""), "\n\n")
+      cat(paste(rep("-", 70), collapse = ""), "\n\n")
 
       for (stat in all_stats) {
         sig_marker <- if (!is.na(stat$p_value) && stat$p_value < 0.05) "*" else ""
         p_str <- if (is.na(stat$p_value)) "NA" else if (stat$p_value < 0.001) "< .001" else sprintf("%.3f", stat$p_value)
-        ef_str <- if (is.na(stat$effect_size)) "NA" else sprintf("%.2f", stat$effect_size)
-        ef_label <- if (!is.na(stat$effect_type)) paste0(" (", stat$effect_type, ")") else ""
+        ef_str <- if (is.na(stat$effect_size)) "NA" else sprintf("%.3f", stat$effect_size)
 
-        cat(sprintf("  %-15s | %-25s | n = %4d | p = %-7s | ES = %s%s %s\n",
-                    stat$group, stat$variable, stat$n, p_str, ef_str, ef_label, sig_marker))
+        # Format test statistic based on test type
+        if (!is.na(stat$test_type) && stat$test_type == "t-test") {
+          test_str <- sprintf("t(%.1f) = %.2f", stat$t_df, stat$t_statistic)
+        } else if (!is.na(stat$test_type) && stat$test_type == "Mann-Whitney U") {
+          test_str <- sprintf("W = %.0f", stat$t_statistic)
+        } else if (!is.na(stat$test_type) && stat$test_type == "ANOVA") {
+          test_str <- sprintf("F(%d, %d) = %.2f", as.integer(stat$df1), as.integer(stat$df2), stat$f_statistic)
+        } else if (!is.na(stat$test_type) && stat$test_type == "Kruskal-Wallis") {
+          test_str <- sprintf("H(%d) = %.2f", as.integer(stat$df1), stat$f_statistic)
+        } else {
+          test_str <- "NA"
+        }
+
+        cat(sprintf("  %s: %s\n", stat$group, stat$variable))
+        cat(sprintf("    %s, p = %s, %s = %s %s\n\n",
+                    test_str, p_str, stat$effect_type, ef_str, sig_marker))
       }
 
-      cat("\n")
       cat("  * p < .05\n")
-      cat(paste(rep("=", 60), collapse = ""), "\n\n")
+      cat(paste(rep("=", 70), collapse = ""), "\n\n")
 
       # Print combined table
       if (!is.null(results_by_group$combined_table)) {
