@@ -13,6 +13,8 @@
 | Function | Purpose |
 |----------|---------|
 | `generate_comparison_plots()` | Group comparisons with t-tests, ANOVA, post-hoc tests, Bayesian analysis |
+| `descriptive_table()` | Publication-ready descriptive statistics with gt formatting |
+| `categorical_table()` | Frequency tables with cross-tabulation and chi-square tests |
 | `clustering()` | Model-based clustering with MoEClust (14 covariance models) |
 | `Mosaic()` | Categorical variable analysis with mosaic plots and chi-square tests |
 | `estimate_and_plot_network()` | Network estimation and visualization |
@@ -251,7 +253,165 @@ results$summary_data[, c("gender", "mean", "equivalence_conclusion")]
 
 ---
 
-## 2. Model-Based Clustering (`clustering`)
+## 2. Descriptive Statistics (`descriptive_table`)
+
+Generate publication-ready descriptive statistics tables with flexible statistics selection and beautiful gt formatting.
+
+### Basic Usage
+
+```r
+# Default statistics (n, mean, sd, median, min, max)
+descriptive_table(
+  data = mydata,
+  Vars = c("age", "score", "income")
+)
+```
+
+### Extended Statistics
+
+```r
+descriptive_table(
+  data = mydata,
+  Vars = c("age", "score"),
+  stats = c("n", "missing", "mean", "sd", "se", "median", "iqr", "skewness", "kurtosis")
+)
+```
+
+### Stratified by Group
+
+```r
+descriptive_table(
+  data = mydata,
+  Vars = c("age", "score"),
+  group_by = gender,
+  overall = TRUE  # Include overall row
+)
+```
+
+### Custom Labels and Themes
+
+```r
+descriptive_table(
+  data = mydata,
+  Vars = c("age", "score", "income"),
+  labels = c(
+    age = "Age (years)",
+    score = "Test Score",
+    income = "Annual Income ($)"
+  ),
+  title = "Sample Characteristics",
+  subtitle = "N = 100 participants",
+  theme = "colorful"  # Options: default, minimal, dark, colorful
+)
+```
+
+### Available Statistics
+
+| Statistic | Description |
+|-----------|-------------|
+| `n` | Sample size (non-missing) |
+| `missing` | Count of missing values |
+| `missing_pct` | Percentage missing |
+| `mean` | Arithmetic mean |
+| `sd` | Standard deviation |
+| `se` | Standard error |
+| `var` | Variance |
+| `median` | Median (50th percentile) |
+| `min`, `max` | Minimum, maximum |
+| `range` | Range (max - min) |
+| `iqr` | Interquartile range |
+| `q1`, `q3` | 25th, 75th percentiles |
+| `skewness` | Skewness coefficient |
+| `kurtosis` | Excess kurtosis |
+| `cv` | Coefficient of variation (%) |
+
+### Export Options
+
+```r
+# Get as data frame
+df <- descriptive_table(data, Vars, format = "data.frame")
+
+# Export gt table
+table <- descriptive_table(data, Vars)
+gtsave(table, "descriptives.html")  # or .docx, .pdf, .png
+```
+
+---
+
+## 3. Categorical Frequency Tables (`categorical_table`)
+
+Generate publication-ready frequency tables for categorical variables with cross-tabulation, chi-square tests, and Cramer's V effect size.
+
+### Single Variable Frequency Table
+
+```r
+# Basic frequency table
+categorical_table(data, var = gender)
+
+# Sorted by frequency
+categorical_table(data, var = education, sort_by = "frequency")
+```
+
+**Output:**
+```
+| gender | n (%)      | Cumulative % |
+|--------|------------|--------------|
+| Male   | 93 (46.5%) | 46.5         |
+| Female | 81 (40.5%) | 87.0         |
+| Other  | 26 (13.0%) | 100.0        |
+| Total  | 200 (100%) | 100.0        |
+```
+
+### Cross-Tabulation with Chi-Square Test
+
+```r
+categorical_table(
+  data = data,
+  var = gender,
+  by = education,
+  chi_square = TRUE,
+  cramers_v = TRUE
+)
+```
+
+The table includes a footnote with test results:
+> Chi-square(6) = 2.88, p = 0.824; Cramer's V = 0.085 (negligible effect)
+
+### Custom Labels and Themes
+
+```r
+categorical_table(
+  data = data,
+  var = education,
+  labels = c(
+    "High School" = "Secondary",
+    "Bachelor" = "BSc",
+    "Master" = "MSc",
+    "PhD" = "Doctorate"
+  ),
+  title = "Educational Attainment",
+  theme = "colorful"  # Options: default, minimal, dark, colorful
+)
+```
+
+### Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `var` | Primary categorical variable (unquoted) | Required |
+| `by` | Second variable for cross-tabulation | `NULL` |
+| `percentages` | `"col"`, `"row"`, `"total"` | auto |
+| `show_total` | Include totals row/column | `TRUE` |
+| `show_missing` | Include missing as category | `FALSE` |
+| `chi_square` | Compute chi-square test | `TRUE` |
+| `cramers_v` | Compute effect size | `TRUE` |
+| `sort_by` | `"none"`, `"frequency"`, `"alphabetical"` | `"none"` |
+| `combine` | Show as "n (%)" format | `TRUE` |
+| `theme` | Visual theme | `"default"` |
+
+---
+
+## 4. Model-Based Clustering (`clustering`)
 
 Perform model-based clustering using Gaussian Mixture Models via MoEClust. Tests 14 different covariance structures to find the optimal solution.
 
@@ -379,7 +539,7 @@ The function tests 14 different covariance structures:
 
 ---
 
-## 3. Categorical Analysis (`Mosaic`)
+## 5. Categorical Analysis (`Mosaic`)
 
 Analyze relationships between categorical variables with mosaic plots, chi-square tests, Fisher's exact test, and Cramer's V effect size.
 
@@ -420,7 +580,7 @@ plot(results)
 
 ---
 
-## 4. Network Analysis (`estimate_and_plot_network`)
+## 6. Network Analysis (`estimate_and_plot_network`)
 
 Estimate and visualize psychological networks using bootnet, mgm, and qgraph.
 
