@@ -28,7 +28,7 @@ descriptive_table(
 \item{Vars}{A character vector of numeric variable names to describe.
 Example: `c("age", "score1", "score2")`.}
 
-\item{group_by}{Optional. The unquoted name of a grouping variable for
+\item{group_by}{Optional character. Name of a grouping variable for
 stratified statistics. When provided, statistics are calculated separately
 for each group level.}
 

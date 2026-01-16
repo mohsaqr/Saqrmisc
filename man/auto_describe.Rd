@@ -21,7 +21,7 @@ auto_describe(
 \arguments{
 \item{data}{A data frame to describe.}
 
-\item{group_by}{Optional. Unquoted name of a grouping variable for
+\item{group_by}{Optional character. Name of a grouping variable for
 stratified statistics.}
 
 \item{numeric_stats}{Character vector of statistics for numeric variables.
@@ -73,7 +73,7 @@ data <- data.frame(
 results <- auto_describe(data)
 
 # With grouping
-results <- auto_describe(data, group_by = gender)
+results <- auto_describe(data, group_by = "gender")
 
 # Access individual tables
 results$numeric

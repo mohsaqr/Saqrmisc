@@ -25,7 +25,7 @@ Default c(0, 1). Use c(1, 10) for 1-10 scaling.}
 
 \item{suffix}{Character. Suffix for new column names. Default "_s".}
 
-\item{group_by}{Unquoted variable name for group-wise scaling. Optional.}
+\item{group_by}{Character. Name of grouping variable for group-wise scaling. Optional.}
 }
 \value{
 Data frame with scaled variables added.
@@ -46,7 +46,7 @@ df <- scale_vars(mtcars, Vars = "mpg", method = "range")
 df <- scale_vars(mtcars, Vars = "mpg", method = "range", range = c(1, 10))
 
 # Group-wise scaling
-df <- scale_vars(mtcars, Vars = "mpg", method = "sd", group_by = cyl)
+df <- scale_vars(mtcars, Vars = "mpg", method = "sd", group_by = "cyl")
 }
 
 }

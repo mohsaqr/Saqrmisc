@@ -29,12 +29,12 @@ categorical_table(
 \arguments{
 \item{data}{A data frame containing the variables to summarize.}
 
-\item{var}{The unquoted name of the primary categorical variable.}
+\item{var}{Character. Name of the primary categorical variable.}
 
-\item{by}{Optional. The unquoted name of a second categorical variable for
+\item{by}{Optional character. Name of a second categorical variable for
 cross-tabulation. When provided, creates a contingency table.}
 
-\item{group_by}{Optional. The unquoted name of a stratification variable.
+\item{group_by}{Optional character. Name of a stratification variable.
 Creates separate tables for each level of this variable.}
 
 \item{percentages}{Character vector specifying which percentages to include.
@@ -98,18 +98,18 @@ data <- data.frame(
 )
 
 # Basic frequency table
-categorical_table(data, var = gender)
+categorical_table(data, var = "gender")
 
 # With sorting by frequency
-categorical_table(data, var = education, sort_by = "frequency")
+categorical_table(data, var = "education", sort_by = "frequency")
 
 # ============================================================
 # EXAMPLE 2: Cross-Tabulation (Two Variables)
 # ============================================================
 categorical_table(
   data = data,
-  var = gender,
-  by = education,
+  var = "gender",
+  by = "education",
   chi_square = TRUE,
   cramers_v = TRUE
 )
@@ -119,9 +119,9 @@ categorical_table(
 # ============================================================
 categorical_table(
   data = data,
-  var = gender,
-  by = education,
-  group_by = country
+  var = "gender",
+  by = "education",
+  group_by = "country"
 )
 
 # ============================================================

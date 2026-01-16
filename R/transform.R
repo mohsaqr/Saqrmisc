@@ -7,7 +7,7 @@
 #' @param data A data frame (or vector if used in mutate).
 #' @param Vars Character vector of numeric variable names to center. Not needed if used in mutate.
 #' @param suffix Character. Suffix for new column names. Default "_c".
-#' @param group_by Unquoted variable name for group-wise centering. Optional.
+#' @param group_by Character. Name of grouping variable for group-wise centering. Optional.
 #'
 #' @return Data frame with centered variables added, or vector if input is vector.
 #'
@@ -17,7 +17,7 @@
 #' df <- center(mtcars, Vars = c("mpg", "hp"))
 #'
 #' # Group-mean centering
-#' df <- center(mtcars, Vars = "mpg", group_by = cyl)
+#' df <- center(mtcars, Vars = "mpg", group_by = "cyl")
 #'
 #' # With dplyr
 #' library(dplyr)
@@ -53,11 +53,13 @@ center <- function(data,
     stop("All variables must be numeric: ", paste(non_numeric, collapse = ", "))
   }
 
-  # Capture group_by
- group_var <- NULL
-  if (!is.null(substitute(group_by))) {
-    group_var <- deparse(substitute(group_by))
-    if (group_var == "NULL") group_var <- NULL
+  # Validate group_by (expects quoted string)
+  group_var <- NULL
+  if (!is.null(group_by)) {
+    if (!is.character(group_by) || length(group_by) != 1) {
+      stop("'group_by' must be a character string (variable name)")
+    }
+    group_var <- group_by
   }
 
   result <- data
@@ -146,7 +148,7 @@ center_vec <- function(x, na.rm = TRUE) {
 #' @param range Numeric vector of length 2 specifying target range for "range" method.
 #'   Default c(0, 1). Use c(1, 10) for 1-10 scaling.
 #' @param suffix Character. Suffix for new column names. Default "_s".
-#' @param group_by Unquoted variable name for group-wise scaling. Optional.
+#' @param group_by Character. Name of grouping variable for group-wise scaling. Optional.
 #'
 #' @return Data frame with scaled variables added.
 #'
@@ -162,7 +164,7 @@ center_vec <- function(x, na.rm = TRUE) {
 #' df <- scale_vars(mtcars, Vars = "mpg", method = "range", range = c(1, 10))
 #'
 #' # Group-wise scaling
-#' df <- scale_vars(mtcars, Vars = "mpg", method = "sd", group_by = cyl)
+#' df <- scale_vars(mtcars, Vars = "mpg", method = "sd", group_by = "cyl")
 #' }
 #'
 #' @importFrom stats sd
@@ -205,11 +207,13 @@ scale_vars <- function(data,
     }
   }
 
-  # Capture group_by
+  # Validate group_by (expects quoted string)
   group_var <- NULL
-  if (!is.null(substitute(group_by))) {
-    group_var <- deparse(substitute(group_by))
-    if (group_var == "NULL") group_var <- NULL
+  if (!is.null(group_by)) {
+    if (!is.character(group_by) || length(group_by) != 1) {
+      stop("'group_by' must be a character string (variable name)")
+    }
+    group_var <- group_by
   }
 
   result <- data
@@ -348,7 +352,7 @@ scale_vec <- function(x, method = c("sd", "range"), range = c(0, 1), na.rm = TRU
 #' @param data A data frame.
 #' @param Vars Character vector of numeric variable names to standardize.
 #' @param suffix Character. Suffix for new column names. Default "_z".
-#' @param group_by Unquoted variable name for group-wise standardization. Optional.
+#' @param group_by Character. Name of grouping variable for group-wise standardization. Optional.
 #'
 #' @return Data frame with standardized variables added.
 #'
@@ -358,7 +362,7 @@ scale_vec <- function(x, method = c("sd", "range"), range = c(0, 1), na.rm = TRU
 #' df <- standardize(mtcars, Vars = c("mpg", "hp"))
 #'
 #' # Group-wise standardization
-#' df <- standardize(mtcars, Vars = "mpg", group_by = cyl)
+#' df <- standardize(mtcars, Vars = "mpg", group_by = "cyl")
 #' }
 #'
 #' @importFrom stats sd
@@ -387,11 +391,13 @@ standardize <- function(data,
     stop("All variables must be numeric: ", paste(non_numeric, collapse = ", "))
   }
 
-  # Capture group_by
+  # Validate group_by (expects quoted string)
   group_var <- NULL
-  if (!is.null(substitute(group_by))) {
-    group_var <- deparse(substitute(group_by))
-    if (group_var == "NULL") group_var <- NULL
+  if (!is.null(group_by)) {
+    if (!is.character(group_by) || length(group_by) != 1) {
+      stop("'group_by' must be a character string (variable name)")
+    }
+    group_var <- group_by
   }
 
   result <- data

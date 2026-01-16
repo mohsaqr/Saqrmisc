@@ -37,16 +37,33 @@ library(Saqrmisc)
 
 ## Package Overview
 
-The Saqrmisc package includes eight main functional areas:
+The Saqrmisc package includes ten main functional areas:
 
 1. **Group Comparisons** (`compare_groups`)
 2. **Correlation Matrix** (`correlation_matrix`)
 3. **Full Correlation Tables** (`correlations`)
 4. **Descriptive Statistics** (`descriptive_table`)
 5. **Categorical Frequency Tables** (`categorical_table`)
-6. **Model-Based Clustering** (`clustering`)
-7. **Categorical Variable Analysis** (`mosaic_analysis`)
-8. **Network Estimation** (`estimate_single_network`)
+6. **Data Transformation** (`center`, `scale_vars`, `standardize`, `reverse_code`)
+7. **Missing Data Analysis** (`missing_analysis`, `replace_missing`)
+8. **Model-Based Clustering** (`clustering`)
+9. **Categorical Variable Analysis** (`mosaic_analysis`)
+10. **Network Estimation** (`estimate_single_network`)
+
+## API Design
+
+All functions use a **consistent quoted-string API** for variable names:
+
+```{r api_design}
+# Variable names as quoted strings
+compare_groups(data, category = "gender", Vars = c("score1", "score2"))
+correlations(data, Vars = c("x", "y", "z"), group_by = "group")
+center(data, Vars = "score", group_by = "cluster")
+
+# NULL for auto-selection of all numeric variables
+correlations(data)  # Correlates all numeric variables
+correlation_matrix(data)  # Matrix of all numeric variables
+```
 
 ## 1. Group Comparisons
 
@@ -70,7 +87,7 @@ treatment_data <- data.frame(
 # Basic comparison analysis
 comparison_results <- compare_groups(
   data = treatment_data,
-  category = group,
+  category = "group",
   Vars = c("anxiety", "depression", "stress"),
   plots = TRUE,
   table = TRUE
@@ -83,9 +100,9 @@ comparison_results$summary_table
 # Stratified analysis by study site
 stratified_results <- compare_groups(
   data = treatment_data,
-  category = group,
+  category = "group",
   Vars = c("anxiety", "depression"),
-  repeat_category = study_site,
+  repeat_category = "study_site",
   plots = TRUE,
   table = TRUE
 )
@@ -101,9 +118,9 @@ Stratify by multiple variables simultaneously using `c()`:
 # Stratify by both study_site AND gender
 multi_stratified <- compare_groups(
   data = treatment_data,
-  category = group,
+  category = "group",
   Vars = c("anxiety", "depression"),
-  repeat_category = c(study_site, gender),
+  repeat_category = c("study_site", "gender"),
   table = TRUE
 )
 
@@ -118,9 +135,9 @@ Use `repeat_levels` to analyze only specific subgroups:
 # Analyze only Site_A and Site_B
 filtered_results <- compare_groups(
   data = treatment_data,
-  category = group,
+  category = "group",
   Vars = c("anxiety", "stress"),
-  repeat_category = study_site,
+  repeat_category = "study_site",
   repeat_levels = c("Site_A", "Site_B"),
   table = TRUE
 )
@@ -142,7 +159,7 @@ multi_group_data <- data.frame(
 # Get post-hoc comparison table
 posthoc_results <- compare_groups(
   data = multi_group_data,
-  category = condition,
+  category = "condition",
   Vars = c("score", "performance"),
   posthoc = TRUE,
   posthoc_table = TRUE,
@@ -161,7 +178,7 @@ Use type shortcuts for different test types:
 # Mann-Whitney U test (2 groups)
 mw_results <- compare_groups(
   data = treatment_data,
-  category = group,
+  category = "group",
   Vars = c("anxiety", "depression"),
   type = "np",  # nonparametric
   table = TRUE
@@ -170,7 +187,7 @@ mw_results <- compare_groups(
 # Kruskal-Wallis test (3+ groups)
 kw_results <- compare_groups(
   data = multi_group_data,
-  category = condition,
+  category = "condition",
   Vars = c("score", "performance"),
   type = "np",
   table = TRUE
@@ -182,7 +199,7 @@ kw_results <- compare_groups(
 - **Automatic test selection**: t-test (2 groups) or ANOVA (3+ groups)
 - **Post-hoc tests**: Tukey HSD or Games-Howell for multiple comparisons
 - **Effect sizes**: Cohen's d, eta-squared, epsilon-squared, rank-biserial
-- **Multiple stratification**: Use `repeat_category = c(var1, var2)` for combined grouping
+- **Multiple stratification**: Use `repeat_category = c("var1", "var2")` for combined grouping
 - **Level filtering**: Use `repeat_levels` to select specific subgroups
 - **Post-hoc table**: Use `posthoc_table = TRUE` for formatted pairwise comparisons
 - **Type shortcuts**: `type = "np"` for nonparametric (Mann-Whitney/Kruskal-Wallis)
@@ -192,7 +209,10 @@ kw_results <- compare_groups(
 The `correlation_matrix()` function creates publication-ready correlation tables with significance stars and optional heatmap visualization. Supports bivariate, partial, and semi-partial correlations.
 
 ```{r correlation_example}
-# Basic correlation matrix (bivariate/zero-order)
+# Basic correlation matrix (all numeric variables)
+correlation_matrix(mtcars)
+
+# Specific variables with title
 correlation_matrix(
   data = mtcars,
   Vars = c("mpg", "cyl", "disp", "hp", "wt"),
@@ -212,14 +232,6 @@ correlation_matrix(
   Vars = c("mpg", "cyl", "disp", "hp"),
   type = "partial",
   title = "Partial Correlations"
-)
-
-# Semi-partial correlations
-correlation_matrix(
-  data = mtcars,
-  Vars = c("mpg", "cyl", "disp", "hp"),
-  type = "semi-partial",
-  title = "Semi-partial Correlations"
 )
 
 # Spearman correlations with Bonferroni correction
@@ -242,16 +254,6 @@ result <- correlation_matrix(
 result$heatmap
 ```
 
-### Key Features
-
-- **Correlation types**: Bivariate (zero-order), partial, semi-partial
-- **Multiple methods**: Pearson, Spearman, Kendall
-- **Triangle options**: Lower (default), upper, or full matrix
-- **Significance stars**: Automatic with adjustable threshold
-- **P-value adjustment**: Bonferroni, Holm, FDR correction
-- **Confidence intervals**: Optional 95% CIs (bivariate Pearson only)
-- **Heatmap**: Color-coded visualization
-
 ## 3. Full Correlation Tables
 
 The `correlations()` function creates comprehensive long-format correlation tables with full statistics for each variable pair. This is ideal for detailed reporting and when you need complete statistics (r, CI, t, df, p, n) for each correlation.
@@ -259,7 +261,10 @@ The `correlations()` function creates comprehensive long-format correlation tabl
 ### Basic Usage
 
 ```{r correlations_basic}
-# Full correlation table with all statistics
+# Full correlation table - all numeric variables
+correlations(mtcars)
+
+# Specify variables
 correlations(
   data = mtcars,
   Vars = c("mpg", "cyl", "disp", "hp", "wt")
@@ -274,7 +279,7 @@ correlations(
 
 # Only show significant correlations
 correlations(
- data = mtcars,
+  data = mtcars,
   Vars = c("mpg", "cyl", "disp", "hp", "wt", "qsec"),
   sig_only = TRUE
 )
@@ -296,14 +301,14 @@ Compute correlations separately for each group level, with results combined into
 correlations(
   data = mtcars,
   Vars = c("mpg", "hp", "wt"),
-  group_by = cyl
+  group_by = "cyl"
 )
 
 # Correlations by transmission type, only significant
 correlations(
   data = mtcars,
   Vars = c("mpg", "hp", "wt", "disp"),
-  group_by = am,
+  group_by = "am",
   sig_only = TRUE
 )
 ```
@@ -331,7 +336,7 @@ correlations(
   data = longitudinal_data,
   Vars = c("anxiety", "depression", "stress"),
   multilevel = TRUE,
-  id = participant_id
+  id = "participant_id"
 )
 
 # Include between-person correlations
@@ -339,42 +344,79 @@ correlations(
   data = longitudinal_data,
   Vars = c("anxiety", "depression"),
   multilevel = TRUE,
-  id = participant_id,
+  id = "participant_id",
   between = TRUE
 )
 ```
 
-### Partial and Semi-partial Correlations
+## 4. Data Transformation
 
-```{r correlations_partial}
-# Partial correlations (controlling for other variables)
-correlations(
-  data = mtcars,
-  Vars = c("mpg", "cyl", "disp", "hp"),
-  type = "partial"
-)
+The package provides consistent transformation functions with group-wise support.
 
-# Semi-partial correlations
-correlations(
-  data = mtcars,
-  Vars = c("mpg", "cyl", "disp", "hp"),
-  type = "semi-partial"
-)
+### Mean Centering
+
+```{r centering}
+# Grand-mean centering
+mtcars_c <- center(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Group-mean centering
+mtcars_c <- center(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
+
+# With dplyr (vectorized version)
+library(dplyr)
+mtcars %>% mutate(mpg_c = center_vec(mpg))
+mtcars %>% group_by(cyl) %>% mutate(mpg_c = center_vec(mpg))
 ```
 
-### Key Features
+### Z-Score Standardization
 
-- **Full statistics**: r, 95% CI, t-statistic, df, p-value, n for each pair
-- **Correlation types**: Bivariate, partial, semi-partial
-- **Filtering**: Show only strong (`min_r`) or significant (`sig_only`) correlations
-- **P-value adjustment**: Bonferroni, Holm, FDR correction
-- **Group-by**: Compute correlations separately per group level
-- **Multilevel**: Within-cluster correlations for nested/repeated measures data
-- **Between correlations**: Optional between-cluster correlations
-- **Color highlighting**: Strong positive (blue), strong negative (red), significant (green)
-- **Sorted output**: Results sorted by absolute correlation strength
+```{r standardization}
+# Grand standardization
+mtcars_z <- standardize(mtcars, Vars = c("mpg", "hp", "wt"))
 
-## 4. Descriptive Statistics
+# Group-wise standardization
+mtcars_z <- standardize(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
+
+# With dplyr
+mtcars %>% mutate(mpg_z = standardize_vec(mpg))
+```
+
+### Scaling
+
+```{r scaling}
+# Scale by SD
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg", "hp"), method = "sd")
+
+# Min-max scaling (0-1)
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg", "hp"), method = "range")
+
+# Scale to custom range (1-10)
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg"), method = "range", range = c(1, 10))
+```
+
+### Reverse Coding
+
+For Likert scales and similar measures:
+
+```{r reverse_coding}
+# Create sample data
+df <- data.frame(
+  item1 = c(1, 2, 3, 4, 5),
+  item2 = c(5, 4, 3, 2, 1),  # reverse-worded
+  item3 = c(2, 3, 4, 3, 2)
+)
+
+# Reverse code with auto-detected scale
+df <- reverse_code(df, Vars = "item2")
+
+# Explicit 1-5 Likert scale
+df <- reverse_code(df, Vars = c("item2", "item3"), min = 1, max = 5)
+
+# With dplyr
+df %>% mutate(item2_r = reverse_code_vec(item2, min = 1, max = 5))
+```
+
+## 5. Descriptive Statistics
 
 The `descriptive_table()` function creates publication-ready descriptive statistics tables.
 
@@ -397,14 +439,14 @@ descriptive_table(
 descriptive_table(
   data = data,
   Vars = c("age", "score"),
-  group_by = gender,
+  group_by = "gender",
   stats = c("n", "mean", "sd", "median", "iqr", "skewness"),
   title = "Sample Characteristics",
   theme = "colorful"
 )
 ```
 
-## 5. Categorical Frequency Tables
+## 6. Categorical Frequency Tables
 
 The `categorical_table()` function creates frequency tables with chi-square tests.
 
@@ -416,19 +458,52 @@ data <- data.frame(
 )
 
 # Single variable frequency table
-categorical_table(data, var = gender)
+categorical_table(data, var = "gender")
 
 # Cross-tabulation with chi-square test
 categorical_table(
   data = data,
-  var = gender,
-  by = education,
+  var = "gender",
+  by = "education",
   chi_square = TRUE,
   cramers_v = TRUE
 )
 ```
 
-## 6. Model-Based Clustering
+## 7. Missing Data Analysis
+
+### Comprehensive Analysis
+
+```{r missing_analysis}
+# Add some missing values
+df <- mtcars
+df$mpg[c(1, 5, 10)] <- NA
+df$hp[c(2, 5, 15)] <- NA
+
+# Run missing data analysis
+results <- missing_analysis(df)
+
+# Components
+results$summary      # gt table with per-variable missing counts
+results$patterns     # Missing data patterns
+results$mcar         # Little's MCAR test results
+results$plot         # Missing pattern visualization
+```
+
+### Imputation
+
+```{r imputation}
+# Replace with mean
+df_imp <- replace_missing(df, Vars = "mpg", method = "mean")
+
+# Replace with median
+df_imp <- replace_missing(df, Vars = "mpg", method = "median")
+
+# Group-wise imputation
+df_imp <- replace_missing(df, Vars = "mpg", method = "mean", group_by = "cyl")
+```
+
+## 8. Model-Based Clustering
 
 The `clustering()` function performs comprehensive model-based clustering using MoEClust.
 
@@ -466,14 +541,7 @@ assignments <- get_cluster_assignments(clustering_results)
 model_comparison_table(clustering_results)
 ```
 
-### Key Features
-
-- **Multiple model testing**: Tests all 14 covariance models
-- **Robust error handling**: Continues if some models fail
-- **Comprehensive visualization**: Profile plots, heatmaps, bar charts
-- **Cluster stability**: Bootstrap assessment with `assess_cluster_stability()`
-
-## 7. Categorical Variable Analysis
+## 9. Categorical Variable Analysis
 
 The `mosaic_analysis()` function performs comprehensive analysis of categorical variables.
 
@@ -489,20 +557,20 @@ demographic_data <- data.frame(
 # Perform mosaic analysis
 mosaic_results <- mosaic_analysis(
   data = demographic_data,
-  var1 = gender,
-  var2 = education,
+  var1 = "gender",
+  var2 = "education",
   min_count = 10,
   title = "Gender Distribution by Education Level",
   show_percentages = TRUE
 )
 
 # Access results
-print(mosaic_results$chi_square_test)
+print(mosaic_results$chi_test)
 print(mosaic_results$cramers_v)
-print(mosaic_results$summary_table)
+print(mosaic_results$consolidated_table)
 ```
 
-## 8. Network Estimation
+## 10. Network Estimation
 
 The `estimate_single_network()` function estimates psychological networks.
 

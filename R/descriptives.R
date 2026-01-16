@@ -124,7 +124,7 @@ calculate_stat <- function(x, stat, digits = 2) {
 #' @param data A data frame containing the variables to summarize.
 #' @param Vars A character vector of numeric variable names to describe.
 #'   Example: `c("age", "score1", "score2")`.
-#' @param group_by Optional. The unquoted name of a grouping variable for
+#' @param group_by Optional character. Name of a grouping variable for
 #'   stratified statistics. When provided, statistics are calculated separately
 #'   for each group level.
 #' @param stats Character vector specifying which statistics to compute.
@@ -338,10 +338,13 @@ descriptive_table <- function(data,
     stop("theme must be 'default', 'fancy', 'minimal', 'dark', or 'colorful'")
   }
 
-  # Handle group_by variable
+  # Handle group_by variable (expects quoted string)
   group_by_str <- NULL
-  if (!missing(group_by) && !is.null(substitute(group_by))) {
-    group_by_str <- deparse(substitute(group_by))
+  if (!is.null(group_by)) {
+    if (!is.character(group_by) || length(group_by) != 1) {
+      stop("'group_by' must be a character string (variable name)")
+    }
+    group_by_str <- group_by
     if (!group_by_str %in% names(data)) {
       stop("group_by variable '", group_by_str, "' not found in data")
     }
@@ -919,10 +922,10 @@ descriptive_table <- function(data,
 #' associations and outputs beautifully formatted gt tables.
 #'
 #' @param data A data frame containing the variables to summarize.
-#' @param var The unquoted name of the primary categorical variable.
-#' @param by Optional. The unquoted name of a second categorical variable for
+#' @param var Character. Name of the primary categorical variable.
+#' @param by Optional character. Name of a second categorical variable for
 #'   cross-tabulation. When provided, creates a contingency table.
-#' @param group_by Optional. The unquoted name of a stratification variable.
+#' @param group_by Optional character. Name of a stratification variable.
 #'   Creates separate tables for each level of this variable.
 #' @param percentages Character vector specifying which percentages to include.
 #'   Options: `"col"` (column), `"row"`, `"total"`, `"none"`.
@@ -965,18 +968,18 @@ descriptive_table <- function(data,
 #' )
 #'
 #' # Basic frequency table
-#' categorical_table(data, var = gender)
+#' categorical_table(data, var = "gender")
 #'
 #' # With sorting by frequency
-#' categorical_table(data, var = education, sort_by = "frequency")
+#' categorical_table(data, var = "education", sort_by = "frequency")
 #'
 #' # ============================================================
 #' # EXAMPLE 2: Cross-Tabulation (Two Variables)
 #' # ============================================================
 #' categorical_table(
 #'   data = data,
-#'   var = gender,
-#'   by = education,
+#'   var = "gender",
+#'   by = "education",
 #'   chi_square = TRUE,
 #'   cramers_v = TRUE
 #' )
@@ -986,9 +989,9 @@ descriptive_table <- function(data,
 #' # ============================================================
 #' categorical_table(
 #'   data = data,
-#'   var = gender,
-#'   by = education,
-#'   group_by = country
+#'   var = "gender",
+#'   by = "education",
+#'   group_by = "country"
 #' )
 #'
 #' # ============================================================
@@ -1056,24 +1059,35 @@ categorical_table <- function(data,
     stop("data must be a data frame")
   }
 
-  # Handle variable names
-
-  var_str <- deparse(substitute(var))
+  # Handle variable names (expects quoted strings)
+  if (missing(var) || is.null(var)) {
+    stop("'var' must be specified as a character string")
+  }
+  if (!is.character(var) || length(var) != 1) {
+    stop("'var' must be a single character string (variable name)")
+  }
+  var_str <- var
   if (!var_str %in% names(data)) {
     stop("Variable '", var_str, "' not found in data")
   }
 
   by_str <- NULL
-  if (!missing(by) && !is.null(substitute(by))) {
-    by_str <- deparse(substitute(by))
+  if (!is.null(by)) {
+    if (!is.character(by) || length(by) != 1) {
+      stop("'by' must be a character string (variable name)")
+    }
+    by_str <- by
     if (!by_str %in% names(data)) {
       stop("Variable '", by_str, "' not found in data")
     }
   }
 
   group_by_str <- NULL
-  if (!missing(group_by) && !is.null(substitute(group_by))) {
-    group_by_str <- deparse(substitute(group_by))
+  if (!is.null(group_by)) {
+    if (!is.character(group_by) || length(group_by) != 1) {
+      stop("'group_by' must be a character string (variable name)")
+    }
+    group_by_str <- group_by
     if (!group_by_str %in% names(data)) {
       stop("Variable '", group_by_str, "' not found in data")
     }
@@ -1557,7 +1571,7 @@ categorical_table <- function(data,
 #' variables get frequency tables.
 #'
 #' @param data A data frame to describe.
-#' @param group_by Optional. Unquoted name of a grouping variable for
+#' @param group_by Optional character. Name of a grouping variable for
 #'   stratified statistics.
 #' @param numeric_stats Character vector of statistics for numeric variables.
 #'   Default: `c("n", "mean", "sd", "median", "min", "max")`.
@@ -1593,7 +1607,7 @@ categorical_table <- function(data,
 #' results <- auto_describe(data)
 #'
 #' # With grouping
-#' results <- auto_describe(data, group_by = gender)
+#' results <- auto_describe(data, group_by = "gender")
 #'
 #' # Access individual tables
 #' results$numeric
@@ -1618,10 +1632,13 @@ auto_describe <- function(data,
     stop("data must be a data frame")
   }
 
-  # Handle group_by
+  # Handle group_by (expects quoted string)
   group_by_str <- NULL
-  if (!missing(group_by) && !is.null(substitute(group_by))) {
-    group_by_str <- deparse(substitute(group_by))
+  if (!is.null(group_by)) {
+    if (!is.character(group_by) || length(group_by) != 1) {
+      stop("'group_by' must be a character string (variable name)")
+    }
+    group_by_str <- group_by
     if (!group_by_str %in% names(data)) {
       stop("group_by variable '", group_by_str, "' not found in data")
     }

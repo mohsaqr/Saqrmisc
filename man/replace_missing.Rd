@@ -22,7 +22,7 @@ replace_missing(
 
 \item{value}{Custom value to use when method = "value".}
 
-\item{group_by}{Unquoted variable name for group-wise imputation. Optional.}
+\item{group_by}{Character. Name of grouping variable for group-wise imputation. Optional.}
 
 \item{suffix}{Character. Suffix for new columns. If NULL (default), replaces in place.}
 }
@@ -45,7 +45,7 @@ df_imputed <- replace_missing(df, Vars = "mpg", method = "mean")
 df_imputed <- replace_missing(df, Vars = "mpg", method = "median", suffix = "_imp")
 
 # Group-wise mean imputation
-df_imputed <- replace_missing(df, Vars = "mpg", method = "mean", group_by = cyl)
+df_imputed <- replace_missing(df, Vars = "mpg", method = "mean", group_by = "cyl")
 }
 
 }

@@ -13,7 +13,7 @@ center(data, Vars, suffix = "_c", group_by = NULL)
 
 \item{suffix}{Character. Suffix for new column names. Default "_c".}
 
-\item{group_by}{Unquoted variable name for group-wise centering. Optional.}
+\item{group_by}{Character. Name of grouping variable for group-wise centering. Optional.}
 }
 \value{
 Data frame with centered variables added, or vector if input is vector.
@@ -28,7 +28,7 @@ centering for multilevel/nested data. Works with dplyr mutate/across.
 df <- center(mtcars, Vars = c("mpg", "hp"))
 
 # Group-mean centering
-df <- center(mtcars, Vars = "mpg", group_by = cyl)
+df <- center(mtcars, Vars = "mpg", group_by = "cyl")
 
 # With dplyr
 library(dplyr)

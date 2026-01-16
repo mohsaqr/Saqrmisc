@@ -6,7 +6,7 @@
 \usage{
 correlation_matrix(
   data,
-  Vars,
+  Vars = NULL,
   type = c("bivariate", "partial", "semi-partial"),
   method = c("pearson", "spearman", "kendall"),
   triangle = c("lower", "upper", "full"),
@@ -25,7 +25,8 @@ correlation_matrix(
 \arguments{
 \item{data}{A data frame containing the variables to correlate.}
 
-\item{Vars}{Character vector of variable names to include in the correlation matrix.}
+\item{Vars}{Character vector of variable names to include in the correlation matrix.
+If NULL (default), all numeric variables in the data frame are used.}
 
 \item{type}{Type of correlation: "bivariate" (default, zero-order), "partial", or "semi-partial".
 For partial/semi-partial, each pair is controlled for all other variables in Vars.}

@@ -158,10 +158,8 @@ interpret_cramers_v <- function(v, df) {
 #' summary table with observed/expected counts and residuals.
 #'
 #' @param data A data frame containing the variables.
-#' @param var1 The name of the first categorical variable. Can be unquoted (var1) or
-#'   quoted ("var1").
-#' @param var2 The name of the second categorical variable. Can be unquoted (var2) or
-#'   quoted ("var2").
+#' @param var1 Character. Name of the first categorical variable.
+#' @param var2 Character. Name of the second categorical variable.
 #' @param min_count The minimum number of observations required for a category to be
 #'   included in the analysis. Defaults to 10.
 #' @param fontsize The font size for the mosaic plot labels. Defaults to 8.
@@ -256,22 +254,22 @@ if (!is.data.frame(data)) {
     stop("'percentage_base' must be one of: 'total', 'row', 'column'")
   }
 
-  # Handle both quoted and unquoted variable names
-var1_expr <- substitute(var1)
-  var2_expr <- substitute(var2)
-
-  # Check if the expression is a character string or a symbol
-  if (is.character(var1_expr)) {
-    var1_name <- var1
-  } else {
-    var1_name <- deparse(var1_expr)
+  # Handle variable names (expects quoted strings)
+  if (missing(var1) || is.null(var1)) {
+    stop("'var1' must be specified as a character string")
   }
-
-  if (is.character(var2_expr)) {
-    var2_name <- var2
-  } else {
-    var2_name <- deparse(var2_expr)
+  if (!is.character(var1) || length(var1) != 1) {
+    stop("'var1' must be a single character string (variable name)")
   }
+  var1_name <- var1
+
+  if (missing(var2) || is.null(var2)) {
+    stop("'var2' must be specified as a character string")
+  }
+  if (!is.character(var2) || length(var2) != 1) {
+    stop("'var2' must be a single character string (variable name)")
+  }
+  var2_name <- var2
 
   # Validate variable names exist in data
   if (!var1_name %in% names(data)) {

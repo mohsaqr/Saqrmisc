@@ -6,7 +6,7 @@
 \usage{
 correlations(
   data,
-  Vars,
+  Vars = NULL,
   type = c("bivariate", "partial", "semi-partial"),
   method = c("pearson", "spearman", "kendall"),
   p_adjust = c("none", "bonferroni", "holm", "fdr"),
@@ -24,7 +24,8 @@ correlations(
 \arguments{
 \item{data}{A data frame containing the variables to correlate.}
 
-\item{Vars}{Character vector of variable names to include.}
+\item{Vars}{Character vector of variable names to include. If NULL (default),
+all numeric variables in the data frame are used.}
 
 \item{type}{Type of correlation: "bivariate" (default), "partial", or "semi-partial".}
 
@@ -41,13 +42,13 @@ correlations(
 \item{multilevel}{Logical. Calculate multilevel (within-cluster) correlations? Default FALSE.
 When TRUE, removes between-cluster variance to estimate within-cluster associations.}
 
-\item{id}{Unquoted name of the clustering/ID variable for multilevel correlations.
+\item{id}{Character. Name of the clustering/ID variable for multilevel correlations.
 Required when multilevel = TRUE.}
 
 \item{between}{Logical. Also report between-cluster correlations? Default FALSE.
 Only used when multilevel = TRUE.}
 
-\item{group_by}{Unquoted name of grouping variable to compute correlations separately per group.
+\item{group_by}{Character. Name of grouping variable to compute correlations separately per group.
 Results are combined into one table with a "Group" column.}
 
 \item{digits}{Number of decimal places. Default 3.}
@@ -81,7 +82,10 @@ df = n_observations - n_clusters - 1
 }
 \examples{
 \dontrun{
-# Full correlation table
+# Correlate all numeric variables in data frame
+correlations(mtcars)
+
+# Full correlation table with specific variables
 correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"))
 
 # Only strong correlations
@@ -96,20 +100,19 @@ correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"),
              sig_only = TRUE)
 
 # Multilevel correlations (within-person)
-# For repeated measures data with multiple observations per participant
 correlations(longitudinal_data, Vars = c("anxiety", "depression", "stress"),
-             multilevel = TRUE, id = participant_id)
+             multilevel = TRUE, id = "participant_id")
 
 # Multilevel with between-cluster correlations
 correlations(longitudinal_data, Vars = c("anxiety", "depression"),
-             multilevel = TRUE, id = participant_id, between = TRUE)
+             multilevel = TRUE, id = "participant_id", between = TRUE)
 
 # Correlations by group (stratified)
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = cyl)
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = "cyl")
 
 # Correlations by group with significance filter
 correlations(mtcars, Vars = c("mpg", "hp", "wt", "disp"),
-             group_by = am, sig_only = TRUE)
+             group_by = "am", sig_only = TRUE)
 }
 
 }

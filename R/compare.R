@@ -220,11 +220,11 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' and stratified analyses using `repeat_category`.
 #'
 #' @param data A data frame containing the variables to analyze.
-#' @param category The unquoted name of the grouping variable (e.g., `gender`,
-#'   `treatment`). This variable defines the groups to compare.
+#' @param category Character. Name of the grouping variable (e.g., `"gender"`,
+#'   `"treatment"`). This variable defines the groups to compare.
 #' @param Vars A character vector of numeric variable names to compare across
 #'   groups. Example: `c("score1", "score2", "reaction_time")`.
-#' @param repeat_category Optional. The unquoted name of a stratification variable.
+#' @param repeat_category Optional character. Name of a stratification variable.
 #'   When provided, separate analyses are performed for each level (e.g., analyze
 #'   gender differences separately for each country).
 #' @param plots Logical. Generate ggstatsplot visualizations? Default: `TRUE`.
@@ -293,7 +293,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #'
 #' results <- compare_groups(
 #'   data = data,
-#'   category = gender,
+#'   category = "gender",
 #'   Vars = c("score")
 #' )
 #'
@@ -314,7 +314,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #'
 #' results <- compare_groups(
 #'   data = data,
-#'   category = country,
+#'   category = "country",
 #'   Vars = c("score1", "score2"),
 #'   posthoc = TRUE,
 #'   posthoc_method = "tukey",
@@ -332,7 +332,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' # ============================================================
 #' results <- compare_groups(
 #'   data = data,
-#'   category = country,
+#'   category = "country",
 #'   Vars = c("score1"),
 #'   bayesian = TRUE
 #' )
@@ -345,7 +345,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' # ============================================================
 #' results <- compare_groups(
 #'   data = data,
-#'   category = country,
+#'   category = "country",
 #'   Vars = c("score1"),
 #'   nonparametric = TRUE  # Uses Kruskal-Wallis + pairwise Wilcoxon
 #' )
@@ -362,9 +362,9 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' # Compare gender WITHIN each country
 #' results <- compare_groups(
 #'   data = data,
-#'   category = gender,
+#'   category = "gender",
 #'   Vars = c("score"),
-#'   repeat_category = country
+#'   repeat_category = "country"
 #' )
 #'
 #' # Access results by country
@@ -377,7 +377,7 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' # ============================================================
 #' results <- compare_groups(
 #'   data = data,
-#'   category = gender,
+#'   category = "gender",
 #'   Vars = c("score"),
 #'   equivalence = TRUE,
 #'   equivalence_bounds = c(-0.3, 0.3)  # Small effect bounds
@@ -508,34 +508,27 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
     stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
   }
 
-  # Handle category variable
-  category_name_str <- deparse(substitute(category))
+  # Handle category variable (expects quoted string)
+  if (missing(category) || is.null(category)) {
+    stop("'category' must be specified as a character string")
+  }
+  if (!is.character(category) || length(category) != 1) {
+    stop("'category' must be a single character string (variable name)")
+  }
+  category_name_str <- category
   category_sym <- rlang::sym(category_name_str)
 
   if (!category_name_str %in% names(data)) {
     stop("Category variable '", category_name_str, "' not found in data")
   }
 
-  # Handle repeat_category variable(s)
-  # Can be single unquoted name OR character vector for multiple variables
+  # Handle repeat_category variable(s) (expects character string or vector)
   repeat_category_vars <- NULL
-  if (!is.null(substitute(repeat_category))) {
-    rc_expr <- substitute(repeat_category)
-
-    # Check if it's a c() call (multiple variables)
-    if (is.call(rc_expr) && as.character(rc_expr[[1]]) == "c") {
-      # Multiple variables passed as c("var1", "var2") or c(var1, var2)
-      repeat_category_vars <- sapply(as.list(rc_expr)[-1], function(x) {
-        if (is.character(x)) x else deparse(x)
-      })
-    } else {
-      # Single variable
-      rc <- deparse(rc_expr)
-      if (rc != "NULL") {
-        # Remove quotes if passed as string
-        repeat_category_vars <- gsub('^"|"$', '', rc)
-      }
+  if (!is.null(repeat_category)) {
+    if (!is.character(repeat_category)) {
+      stop("'repeat_category' must be a character string or vector of variable names")
     }
+    repeat_category_vars <- repeat_category
   }
 
   # Validate all repeat_category variables exist

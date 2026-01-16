@@ -23,11 +23,9 @@ mosaic_analysis(
 \arguments{
 \item{data}{A data frame containing the variables.}
 
-\item{var1}{The name of the first categorical variable. Can be unquoted (var1) or
-quoted ("var1").}
+\item{var1}{Character. Name of the first categorical variable.}
 
-\item{var2}{The name of the second categorical variable. Can be unquoted (var2) or
-quoted ("var2").}
+\item{var2}{Character. Name of the second categorical variable.}
 
 \item{min_count}{The minimum number of observations required for a category to be
 included in the analysis. Defaults to 10.}

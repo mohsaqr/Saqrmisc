@@ -343,7 +343,7 @@ little_mcar_test <- function(data) {
 #' @param Vars Character vector of variable names to impute.
 #' @param method Imputation method: "mean", "median", "mode", "zero", "min", "max", or "value".
 #' @param value Custom value to use when method = "value".
-#' @param group_by Unquoted variable name for group-wise imputation. Optional.
+#' @param group_by Character. Name of grouping variable for group-wise imputation. Optional.
 #' @param suffix Character. Suffix for new columns. If NULL (default), replaces in place.
 #'
 #' @return Data frame with imputed values.
@@ -360,7 +360,7 @@ little_mcar_test <- function(data) {
 #' df_imputed <- replace_missing(df, Vars = "mpg", method = "median", suffix = "_imp")
 #'
 #' # Group-wise mean imputation
-#' df_imputed <- replace_missing(df, Vars = "mpg", method = "mean", group_by = cyl)
+#' df_imputed <- replace_missing(df, Vars = "mpg", method = "mean", group_by = "cyl")
 #' }
 #'
 #' @export
@@ -392,11 +392,13 @@ replace_missing <- function(data,
     stop("'value' must be specified when method = 'value'")
   }
 
-  # Capture group_by
+  # Validate group_by (expects quoted string)
   group_var <- NULL
-  if (!is.null(substitute(group_by))) {
-    group_var <- deparse(substitute(group_by))
-    if (group_var == "NULL") group_var <- NULL
+  if (!is.null(group_by)) {
+    if (!is.character(group_by) || length(group_by) != 1) {
+      stop("'group_by' must be a character string (variable name)")
+    }
+    group_var <- group_by
   }
 
   # Helper function to get imputation value

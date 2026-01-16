@@ -7,6 +7,7 @@
 #'
 #' @param data A data frame containing the variables to correlate.
 #' @param Vars Character vector of variable names to include in the correlation matrix.
+#'   If NULL (default), all numeric variables in the data frame are used.
 #' @param type Type of correlation: "bivariate" (default, zero-order), "partial", or "semi-partial".
 #'   For partial/semi-partial, each pair is controlled for all other variables in Vars.
 #' @param method Correlation method: "pearson" (default), "spearman", or "kendall".
@@ -78,7 +79,7 @@
 #' @importFrom ggplot2 ggplot aes geom_tile geom_text scale_fill_gradient2 theme_minimal theme labs element_blank element_text
 #' @export
 correlation_matrix <- function(data,
-                                Vars,
+                                Vars = NULL,
                                 type = c("bivariate", "partial", "semi-partial"),
                                 method = c("pearson", "spearman", "kendall"),
                                 triangle = c("lower", "upper", "full"),
@@ -107,12 +108,21 @@ correlation_matrix <- function(data,
     stop("'data' must be a data frame")
   }
 
-  if (missing(Vars) || length(Vars) < 2) {
+  # If Vars is NULL, use all numeric variables
+  if (is.null(Vars)) {
+    Vars <- names(data)[sapply(data, is.numeric)]
+    if (length(Vars) < 2) {
+      stop("Data must contain at least 2 numeric variables")
+    }
+    cat(sprintf("Using all %d numeric variables: %s\n\n",
+                length(Vars), paste(Vars, collapse = ", ")))
+  }
+
+  if (length(Vars) < 2) {
     stop("'Vars' must contain at least 2 variable names")
   }
 
   # Partial/semi-partial require at least 3 variables
-
   if (type %in% c("partial", "semi-partial") && length(Vars) < 3) {
     stop("Partial and semi-partial correlations require at least 3 variables")
   }
@@ -548,7 +558,8 @@ correlation_matrix <- function(data,
 #' multilevel/repeated measures correlations for nested data.
 #'
 #' @param data A data frame containing the variables to correlate.
-#' @param Vars Character vector of variable names to include.
+#' @param Vars Character vector of variable names to include. If NULL (default),
+#'   all numeric variables in the data frame are used.
 #' @param type Type of correlation: "bivariate" (default), "partial", or "semi-partial".
 #' @param method Correlation method: "pearson" (default), "spearman", or "kendall".
 #' @param p_adjust Method for p-value adjustment: "none" (default), "bonferroni", "holm", "fdr".
@@ -557,11 +568,11 @@ correlation_matrix <- function(data,
 #' @param sig_only Logical. Only show significant correlations (p < .05)? Default FALSE.
 #' @param multilevel Logical. Calculate multilevel (within-cluster) correlations? Default FALSE.
 #'   When TRUE, removes between-cluster variance to estimate within-cluster associations.
-#' @param id Unquoted name of the clustering/ID variable for multilevel correlations.
+#' @param id Character. Name of the clustering/ID variable for multilevel correlations.
 #'   Required when multilevel = TRUE.
 #' @param between Logical. Also report between-cluster correlations? Default FALSE.
 #'   Only used when multilevel = TRUE.
-#' @param group_by Unquoted name of grouping variable to compute correlations separately per group.
+#' @param group_by Character. Name of grouping variable to compute correlations separately per group.
 #'   Results are combined into one table with a "Group" column.
 #' @param digits Number of decimal places. Default 3.
 #' @param title Optional title for the table.
@@ -586,7 +597,10 @@ correlation_matrix <- function(data,
 #'
 #' @examples
 #' \dontrun{
-#' # Full correlation table
+#' # Correlate all numeric variables in data frame
+#' correlations(mtcars)
+#'
+#' # Full correlation table with specific variables
 #' correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"))
 #'
 #' # Only strong correlations
@@ -601,27 +615,26 @@ correlation_matrix <- function(data,
 #'              sig_only = TRUE)
 #'
 #' # Multilevel correlations (within-person)
-#' # For repeated measures data with multiple observations per participant
 #' correlations(longitudinal_data, Vars = c("anxiety", "depression", "stress"),
-#'              multilevel = TRUE, id = participant_id)
+#'              multilevel = TRUE, id = "participant_id")
 #'
 #' # Multilevel with between-cluster correlations
 #' correlations(longitudinal_data, Vars = c("anxiety", "depression"),
-#'              multilevel = TRUE, id = participant_id, between = TRUE)
+#'              multilevel = TRUE, id = "participant_id", between = TRUE)
 #'
 #' # Correlations by group (stratified)
-#' correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = cyl)
+#' correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = "cyl")
 #'
 #' # Correlations by group with significance filter
 #' correlations(mtcars, Vars = c("mpg", "hp", "wt", "disp"),
-#'              group_by = am, sig_only = TRUE)
+#'              group_by = "am", sig_only = TRUE)
 #' }
 #'
 #' @importFrom stats cor.test p.adjust complete.cases qt pt qnorm lm residuals ave
 #' @importFrom gt gt tab_header tab_source_note cols_align tab_style cell_text cells_body tab_row_group
 #' @export
 correlations <- function(data,
-                         Vars,
+                         Vars = NULL,
                          type = c("bivariate", "partial", "semi-partial"),
                          method = c("pearson", "spearman", "kendall"),
                          p_adjust = c("none", "bonferroni", "holm", "fdr"),
@@ -645,7 +658,17 @@ correlations <- function(data,
     stop("'data' must be a data frame")
   }
 
-  if (missing(Vars) || length(Vars) < 2) {
+  # If Vars is NULL, use all numeric variables
+  if (is.null(Vars)) {
+    Vars <- names(data)[sapply(data, is.numeric)]
+    if (length(Vars) < 2) {
+      stop("Data must contain at least 2 numeric variables")
+    }
+    cat(sprintf("Using all %d numeric variables: %s\n\n",
+                length(Vars), paste(Vars, collapse = ", ")))
+  }
+
+  if (length(Vars) < 2) {
     stop("'Vars' must contain at least 2 variable names")
   }
 
@@ -653,19 +676,19 @@ correlations <- function(data,
     stop("Partial and semi-partial correlations require at least 3 variables")
   }
 
-  # Capture group_by variable
-  group_var <- NULL
-  group_expr <- substitute(group_by)
-  if (!is.null(group_expr) && !identical(group_expr, quote(NULL))) {
-    group_var <- deparse(group_expr)
-    if (!group_var %in% names(data)) {
-      stop("Group variable '", group_var, "' not found in data")
+  # Validate group_by (now expects quoted string)
+  if (!is.null(group_by)) {
+    if (!is.character(group_by) || length(group_by) != 1) {
+      stop("'group_by' must be a character string (variable name)")
+    }
+    if (!group_by %in% names(data)) {
+      stop("Group variable '", group_by, "' not found in data")
     }
   }
 
  # Handle group_by: compute correlations for each group and combine
-  if (!is.null(group_var)) {
-    group_levels <- unique(data[[group_var]])
+  if (!is.null(group_by)) {
+    group_levels <- unique(data[[group_by]])
     group_levels <- group_levels[!is.na(group_levels)]
 
     cat(sprintf("Computing correlations for %d groups: %s\n\n",
@@ -675,7 +698,7 @@ correlations <- function(data,
     all_display <- list()
 
     for (g in group_levels) {
-      group_data <- data[data[[group_var]] == g & !is.na(data[[group_var]]), ]
+      group_data <- data[data[[group_by]] == g & !is.na(data[[group_by]]), ]
 
       if (nrow(group_data) < 3) {
         warning("Group '", g, "' has fewer than 3 observations, skipping")
@@ -695,7 +718,7 @@ correlations <- function(data,
             min_r = min_r,
             sig_only = sig_only,
             multilevel = multilevel,
-            id = if (multilevel) eval(substitute(id), group_data) else NULL,
+            id = if (multilevel) id else NULL,
             between = between,
             group_by = NULL,  # Don't recurse further
             digits = digits,
@@ -755,7 +778,7 @@ correlations <- function(data,
                            "spearman" = "Spearman",
                            "kendall" = "Kendall")
 
-    default_title <- paste0(type_label, method_label, " Correlations by ", group_var)
+    default_title <- paste0(type_label, method_label, " Correlations by ", group_by)
     subtitle <- paste0(length(group_levels), " groups, ", n_significant, " significant (p < .05)")
 
     gt_table <- gt_table |>
@@ -810,21 +833,23 @@ correlations <- function(data,
       n_pairs = nrow(results_df),
       n_significant = n_significant,
       n_groups = length(group_levels),
-      group_var = group_var,
+      group_by = group_by,
       type = type,
       method = method,
       p_adjust = p_adjust
     )))
   }
 
-  # Capture id variable for multilevel
+  # Validate id variable for multilevel (expects quoted string)
   id_var <- NULL
   if (multilevel) {
-    id_expr <- substitute(id)
-    if (is.null(id_expr) || identical(id_expr, quote(NULL))) {
+    if (is.null(id)) {
       stop("'id' must be specified when multilevel = TRUE")
     }
-    id_var <- deparse(id_expr)
+    if (!is.character(id) || length(id) != 1) {
+      stop("'id' must be a character string (variable name)")
+    }
+    id_var <- id
 
     if (!id_var %in% names(data)) {
       stop("ID variable '", id_var, "' not found in data")

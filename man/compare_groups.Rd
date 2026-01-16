@@ -32,13 +32,13 @@ compare_groups(
 \arguments{
 \item{data}{A data frame containing the variables to analyze.}
 
-\item{category}{The unquoted name of the grouping variable (e.g., `gender`,
-`treatment`). This variable defines the groups to compare.}
+\item{category}{Character. Name of the grouping variable (e.g., `"gender"`,
+`"treatment"`). This variable defines the groups to compare.}
 
 \item{Vars}{A character vector of numeric variable names to compare across
 groups. Example: `c("score1", "score2", "reaction_time")`.}
 
-\item{repeat_category}{Optional. The unquoted name of a stratification variable.
+\item{repeat_category}{Optional character. Name of a stratification variable.
 When provided, separate analyses are performed for each level (e.g., analyze
 gender differences separately for each country).}
 
@@ -139,7 +139,7 @@ data <- data.frame(
 
 results <- compare_groups(
   data = data,
-  category = gender,
+  category = "gender",
   Vars = c("score")
 )
 
@@ -160,7 +160,7 @@ data <- data.frame(
 
 results <- compare_groups(
   data = data,
-  category = country,
+  category = "country",
   Vars = c("score1", "score2"),
   posthoc = TRUE,
   posthoc_method = "tukey",
@@ -178,7 +178,7 @@ cat(results$summary_data$anova_report[1])
 # ============================================================
 results <- compare_groups(
   data = data,
-  category = country,
+  category = "country",
   Vars = c("score1"),
   bayesian = TRUE
 )
@@ -191,7 +191,7 @@ results$summary_data[, c("country", "mean", "bf10", "bf_interpretation")]
 # ============================================================
 results <- compare_groups(
   data = data,
-  category = country,
+  category = "country",
   Vars = c("score1"),
   nonparametric = TRUE  # Uses Kruskal-Wallis + pairwise Wilcoxon
 )
@@ -208,9 +208,9 @@ data <- data.frame(
 # Compare gender WITHIN each country
 results <- compare_groups(
   data = data,
-  category = gender,
+  category = "gender",
   Vars = c("score"),
-  repeat_category = country
+  repeat_category = "country"
 )
 
 # Access results by country
@@ -223,7 +223,7 @@ results$Germany$summary_table
 # ============================================================
 results <- compare_groups(
   data = data,
-  category = gender,
+  category = "gender",
   Vars = c("score"),
   equivalence = TRUE,
   equivalence_bounds = c(-0.3, 0.3)  # Small effect bounds

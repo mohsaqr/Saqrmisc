@@ -1,23 +1,21 @@
-# Saqrmisc: Comprehensive Data Analysis and Visualization R Package
+# Saqrmisc: Comprehensive Data Analysis and Visualization for R
 
+<!-- badges: start -->
 [![R-CMD-check](https://github.com/mohsaqr/Saqrmisc/workflows/R-CMD-check/badge.svg)](https://github.com/mohsaqr/Saqrmisc/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![R](https://img.shields.io/badge/R-4.0.0+-blue.svg)](https://www.r-project.org/)
+[![R](https://img.shields.io/badge/R-4.1.0+-blue.svg)](https://www.r-project.org/)
+<!-- badges: end -->
 
 ## Overview
 
-**Saqrmisc** is a comprehensive R package providing powerful functions for statistical analysis, visualization, and reporting. Designed for exploratory data analysis with robust error handling and publication-ready outputs.
+**Saqrmisc** is a comprehensive R package for statistical analysis, data transformation, and visualization. It provides a consistent, user-friendly API for common data analysis tasks with publication-ready outputs.
 
 ### Key Features
 
-| Function | Purpose |
-|----------|---------|
-| `compare_groups()` | Group comparisons with t-tests, ANOVA, post-hoc tests, Bayesian analysis |
-| `descriptive_table()` | Publication-ready descriptive statistics with gt formatting |
-| `categorical_table()` | Frequency tables with cross-tabulation and chi-square tests |
-| `clustering()` | Model-based clustering with MoEClust (14 covariance models) |
-| `Mosaic()` | Categorical variable analysis with mosaic plots and chi-square tests |
-| `estimate_and_plot_network()` | Network estimation and visualization |
+- **Consistent API**: All functions use quoted strings for variable names
+- **Publication-Ready Output**: Beautiful gt tables and ggplot2 visualizations
+- **Comprehensive Statistics**: From descriptives to advanced clustering and networks
+- **Robust Error Handling**: Clear error messages and input validation
 
 ## Installation
 
@@ -33,706 +31,565 @@ library(Saqrmisc)
 
 ```r
 install.packages(c(
-  "dplyr", "ggplot2", "ggstatsplot", "gt", "gridExtra",
-  "MoEClust", "effectsize", "effsize",
-  "bootnet", "qgraph", "mgm",
-  "BayesFactor", "TOSTER"
+ "dplyr", "ggplot2", "gt", "tibble", "tidyr", "rlang",
+ "MoEClust", "mclust", "vcd", "gridExtra",
+ "bootnet", "qgraph", "mgm",
+ "BayesFactor", "effectsize", "effsize"
 ))
+
+# Optional (for full functionality)
+install.packages(c("ggstatsplot", "TOSTER", "kableExtra"))
 ```
 
 ---
 
-# Function Reference
+## Function Overview
 
-## 1. Group Comparisons (`compare_groups`)
+| Category | Functions | Description |
+|----------|-----------|-------------|
+| **Correlations** | `correlations()`, `correlation_matrix()` | Full correlation tables, matrices with CIs |
+| **Comparisons** | `compare_groups()` | t-tests, ANOVA, post-hoc, Bayesian, TOST |
+| **Descriptives** | `descriptive_table()`, `categorical_table()`, `auto_describe()` | Summary statistics, frequency tables |
+| **Transformation** | `center()`, `scale_vars()`, `standardize()`, `reverse_code()` | Data transformations with group support |
+| **Missing Data** | `missing_analysis()`, `replace_missing()` | Missing patterns, MCAR test, imputation |
+| **Outliers** | `outlier_check()`, `replace_outliers()` | Detection and treatment |
+| **Clustering** | `clustering()`, `assess_cluster_stability()` | Model-based clustering with 14 models |
+| **Networks** | `estimate_single_network()`, `compare_networks()` | Psychological network analysis |
+| **Categorical** | `mosaic_analysis()` | Mosaic plots, chi-square, Cramer's V |
 
-Compare groups using publication-ready visualizations powered by `ggstatsplot`. **Automatic test selection** based on the number of groups:
+---
 
-| Groups | Parametric | Nonparametric | Effect Size |
-|--------|------------|---------------|-------------|
-| 2 | t-test | Mann-Whitney U | Cohen's d / rank-biserial r |
-| 3+ | ANOVA | Kruskal-Wallis | Eta-squared / epsilon-squared |
-
-### Basic Usage
+## Quick Start
 
 ```r
-# Two-group comparison (t-test)
+library(Saqrmisc)
+
+# Use mtcars for examples
+data(mtcars)
+
+# Correlation matrix (auto-selects all numeric variables)
+correlation_matrix(mtcars)
+
+# Full correlation table with statistics
+correlations(mtcars, Vars = c("mpg", "hp", "wt", "qsec"))
+
+# Descriptive statistics
+descriptive_table(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Group comparisons
+compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"))
+
+# Clustering
+results <- clustering(mtcars, vars = c("mpg", "hp", "wt"), n_clusters = 2:4)
+```
+
+---
+
+# Detailed Function Reference
+
+## 1. Correlation Analysis
+
+### `correlations()` - Full Correlation Table
+
+Generates a comprehensive pairwise correlation table with complete statistics including correlation coefficients, confidence intervals, t-statistics, degrees of freedom, p-values, and sample sizes.
+
+```r
+# Basic usage - correlate all numeric variables
+correlations(mtcars)
+
+# Specify variables
+correlations(mtcars, Vars = c("mpg", "hp", "wt", "qsec"))
+
+# Partial correlations (controlling for other variables)
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), type = "partial")
+
+# Spearman correlations
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), method = "spearman")
+
+# Filter by significance or minimum correlation
+correlations(mtcars, sig_only = TRUE)
+correlations(mtcars, min_r = 0.5)
+
+# Group-wise correlations
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = "cyl")
+
+# Multilevel (within-cluster) correlations
+correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+            multilevel = TRUE, id = "cyl")
+```
+
+**Output includes:**
+- Correlation coefficient (r)
+- 95% confidence interval
+- t-statistic and degrees of freedom
+- p-value with significance stars
+- Sample size (n)
+
+### `correlation_matrix()` - Correlation Matrix
+
+Creates a publication-ready correlation matrix with significance stars and optional heatmap.
+
+```r
+# Basic matrix (auto-selects all numeric variables)
+correlation_matrix(mtcars)
+
+# Specify variables
+correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt", "qsec", "drat"))
+
+# Include confidence intervals
+correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), show_ci = TRUE)
+
+# Partial correlations
+correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt", "qsec"), type = "partial")
+
+# Custom formatting
+correlation_matrix(mtcars,
+                  Vars = c("mpg", "hp", "wt"),
+                  title = "Motor Trend Car Variables",
+                  digits = 2,
+                  theme = "colorful")
+```
+
+---
+
+## 2. Group Comparisons
+
+### `compare_groups()` - Statistical Group Comparisons
+
+Compare groups using t-tests, ANOVA, or nonparametric alternatives with publication-ready visualizations.
+
+```r
+# Two-group comparison (automatic t-test)
 results <- compare_groups(
-  data = mydata,
-  category = gender,
-  Vars = c("score1", "score2")
+ data = mtcars,
+ category = "am",
+ Vars = c("mpg", "hp", "wt")
 )
 
-# View plot
-results$plots$gender_vs_score1
-
-# View summary table
+# View results
+results$plots$am_vs_mpg
 results$summary_table
-```
+results$summary_data
 
-### ANOVA with Post-hoc Tests (3+ groups)
-
-```r
-# Sample data
-set.seed(42)
-data <- data.frame(
-  country = rep(c("USA", "UK", "Germany"), each = 40),
-  score = c(rnorm(40, 75, 10), rnorm(40, 70, 11), rnorm(40, 85, 9))
-)
-
-# Run analysis with post-hoc comparisons
+# Three+ groups (automatic ANOVA with post-hoc)
 results <- compare_groups(
-  data = data,
-  category = country,
-  Vars = c("score"),
-  posthoc = TRUE,
-  posthoc_method = "tukey",      # or "games-howell" (default)
-  pairwise_display = "all"       # Show all comparisons on plot
+ data = mtcars,
+ category = "cyl",
+ Vars = c("mpg", "hp"),
+ posthoc = TRUE,
+ posthoc_method = "tukey"
 )
 
-# View post-hoc pairwise comparison table
+# View post-hoc comparisons
 results$summary_data$posthoc_results[[1]]
-```
 
-**Post-hoc Output:**
-```
-  variable  comparison       diff   ci_lower  ci_upper   p_adj significance
-1    score  UK-Germany    -14.56     -20.10     -9.02  <0.001          ***
-2    score USA-Germany    -10.83     -16.37     -5.29  <0.001          ***
-3    score      USA-UK      3.73      -1.81      9.27   0.251
-```
-
-### Full ANOVA Text Report (APA Style)
-
-```r
-# Print the complete ANOVA report
+# Full ANOVA text report (APA style)
 cat(results$summary_data$anova_report[1])
-```
 
-**Output:**
-```
-======================================================================
-ANOVA RESULTS: score by country
-======================================================================
-
-DESCRIPTIVE STATISTICS:
-  Germany:        M =  85.44, SD =  8.71, n = 40
-  UK:             M =  70.88, SD = 10.08, n = 40
-  USA:            M =  74.60, SD = 12.22, n = 40
-
-OMNIBUS TEST:
-  F(2, 117) = 21.00, p < .001, eta-sq = 0.264 (large effect)
-
-  A one-way ANOVA revealed a statistically significant difference in score
-  between country groups, F(2, 117) = 21.00, p < .001, eta-sq = 0.264.
-
-POST-HOC COMPARISONS (Tukey HSD):
-  UK-Germany:               diff = -14.56, p < .001 ***
-  USA-Germany:              diff = -10.83, p < .001 ***
-  USA-UK:                   diff =   3.73, p = 0.251
-
-CONCLUSION:
-  Significant pairwise differences were found between:
-  - UK-Germany (p < .001)
-  - USA-Germany (p < .001)
-======================================================================
-```
-
-### Stratified Analysis (Separate Tests per Subgroup)
-
-```r
-# Compare gender WITHIN each country
-data <- data.frame(
-  country = rep(c("USA", "UK", "Germany"), each = 60),
-  gender = rep(c("Male", "Female"), times = 90),
-  score = c(
-    rnorm(30, 80, 8), rnorm(30, 65, 8),   # USA: Males higher
-    rnorm(30, 72, 10), rnorm(30, 70, 10), # UK: No difference
-    rnorm(30, 68, 9), rnorm(30, 78, 9)    # Germany: Females higher
-  )
-)
-
+# Nonparametric tests
 results <- compare_groups(
-  data = data,
-  category = gender,
-  Vars = c("score"),
-  repeat_category = country
+ data = mtcars,
+ category = "cyl",
+ Vars = c("mpg"),
+ type = "np"  # Kruskal-Wallis
 )
 
-# Access results by country
-results$USA$summary_data
-results$UK$plots$gender_vs_score
-results$Germany$summary_table
-results$metadata  # Analysis information
+# Bayesian analysis
+results <- compare_groups(
+ data = mtcars,
+ category = "am",
+ Vars = c("mpg"),
+ bayesian = TRUE
+)
+
+# Equivalence testing (TOST)
+results <- compare_groups(
+ data = mtcars,
+ category = "am",
+ Vars = c("mpg"),
+ equivalence = TRUE,
+ equivalence_bounds = c(-0.5, 0.5)
+)
+
+# Stratified analysis
+results <- compare_groups(
+ data = mtcars,
+ category = "am",
+ Vars = c("mpg", "hp"),
+ repeat_category = "cyl"
+)
+
+# Access stratified results
+results$`4`$summary_data
+results$`6`$plots$am_vs_mpg
 ```
 
-### Bayesian Analysis
-
-```r
-results <- compare_groups(
-  data = data,
-  category = group,
-  Vars = c("score"),
-  bayesian = TRUE
-)
-
-# View Bayes Factors
-results$summary_data[, c("group", "mean", "bf10", "bf_interpretation")]
-#>     group  mean    bf10        bf_interpretation
-#> 1 Control  5.07  407.70  Extreme evidence for H1
-#> 2   Treat  6.38  407.70  Extreme evidence for H1
-```
-
-### Nonparametric Tests
-
-Use the `type` parameter for easy test selection:
-
-```r
-# Using type parameter (recommended)
-results <- compare_groups(
-  data = data,
-  category = country,
-  Vars = c("score"),
-  type = "kw"  # Kruskal-Wallis for 3+ groups
-)
-
-# Shorthand options:
-type = "p"      # Parametric (t-test/ANOVA)
-type = "np"     # Nonparametric (Mann-Whitney/Kruskal-Wallis)
-type = "kw"     # Kruskal-Wallis (3+ groups)
-type = "mw"     # Mann-Whitney (2 groups)
-type = "bayes"  # Bayesian tests
-
-# Or use the nonparametric parameter
-results <- compare_groups(
-  data = data,
-  category = group,
-  Vars = c("score"),
-  nonparametric = TRUE
-)
-```
-
-### Equivalence Testing (TOST)
-
-```r
-results <- compare_groups(
-  data = data,
-  category = gender,
-  Vars = c("score"),
-  equivalence = TRUE,
-  equivalence_bounds = c(-0.3, 0.3)  # Small effect bounds
-)
-
-# Check equivalence conclusions
-results$summary_data[, c("gender", "mean", "equivalence_conclusion")]
-```
-
-### All Parameters
+**Parameters:**
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `data` | Data frame | Required |
-| `category` | Grouping variable (unquoted) | Required |
-| `Vars` | Character vector of numeric variables | Required |
-| `repeat_category` | Stratification variable (unquoted) | `NULL` |
-| `plots` | Generate plots? | `TRUE` |
-| `table` | Generate summary table? | `TRUE` |
-| `type` | Test type: `"auto"`, `"p"`, `"np"`, `"kw"`, `"mw"`, `"bayes"` | `"auto"` |
+| `category` | Grouping variable (quoted string) | Required |
+| `Vars` | Numeric variables to compare | Required |
+| `repeat_category` | Stratification variable | `NULL` |
+| `type` | `"auto"`, `"p"`, `"np"`, `"bayes"` | `"auto"` |
+| `posthoc` | Compute post-hoc tests? | `TRUE` |
+| `posthoc_method` | `"games-howell"` or `"tukey"` | `"games-howell"` |
 | `bayesian` | Compute Bayes Factors? | `FALSE` |
 | `equivalence` | Perform TOST? | `FALSE` |
-| `equivalence_bounds` | TOST bounds (Cohen's d) | `c(-0.5, 0.5)` |
-| `nonparametric` | Use nonparametric tests? | `FALSE` |
-| `p_adjust_method` | P-value adjustment method | `"none"` |
-| `posthoc` | Compute post-hoc tests? (3+ groups) | `TRUE` |
-| `posthoc_method` | `"games-howell"` or `"tukey"` | `"games-howell"` |
-| `pairwise_display` | `"significant"`, `"all"`, `"none"` | `"significant"` |
-| `min_threshold` | Min proportion for repeat_category | `0.05` |
-| `min_subcategory` | Min observations per subgroup | `5` |
-| `colors` | Custom color palette | `NULL` |
-| `verbose` | Print progress? | `TRUE` |
 
 ---
 
-## 2. Descriptive Statistics (`descriptive_table`)
+## 3. Descriptive Statistics
 
-Generate publication-ready descriptive statistics tables with flexible statistics selection and beautiful gt formatting.
+### `descriptive_table()` - Summary Statistics
 
-### Basic Usage
+Generate publication-ready descriptive statistics with flexible statistics selection.
 
 ```r
 # Default statistics (n, mean, sd, median, min, max)
+descriptive_table(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Extended statistics
 descriptive_table(
-  data = mydata,
-  Vars = c("age", "score", "income")
+ mtcars,
+ Vars = c("mpg", "hp", "wt"),
+ stats = c("n", "mean", "sd", "se", "median", "iqr", "skewness", "kurtosis")
+)
+
+# Stratified by group
+descriptive_table(
+ mtcars,
+ Vars = c("mpg", "hp"),
+ group_by = "cyl",
+ overall = TRUE
+)
+
+# Custom labels and themes
+descriptive_table(
+ mtcars,
+ Vars = c("mpg", "hp", "wt"),
+ labels = c(mpg = "Miles per Gallon", hp = "Horsepower", wt = "Weight (1000 lbs)"),
+ title = "Motor Trend Car Data",
+ theme = "colorful"
 )
 ```
 
-### Extended Statistics
+**Available Statistics:**
+`n`, `missing`, `missing_pct`, `mean`, `sd`, `se`, `var`, `median`, `min`, `max`, `range`, `iqr`, `q1`, `q3`, `skewness`, `kurtosis`, `cv`
+
+### `categorical_table()` - Frequency Tables
 
 ```r
-descriptive_table(
-  data = mydata,
-  Vars = c("age", "score"),
-  stats = c("n", "missing", "mean", "sd", "se", "median", "iqr", "skewness", "kurtosis")
+# Single variable frequency table
+categorical_table(mtcars, var = "cyl")
+
+# Cross-tabulation with chi-square
+categorical_table(
+ mtcars,
+ var = "cyl",
+ by = "am",
+ chi_square = TRUE,
+ cramers_v = TRUE
+)
+
+# Stratified analysis
+categorical_table(
+ mtcars,
+ var = "am",
+ by = "gear",
+ group_by = "cyl"
 )
 ```
 
-### Stratified by Group
+### `auto_describe()` - Automatic Description
+
+Automatically detects and describes all variables in a data frame.
 
 ```r
-descriptive_table(
-  data = mydata,
-  Vars = c("age", "score"),
-  group_by = gender,
-  overall = TRUE  # Include overall row
-)
-```
+# Describe all variables
+results <- auto_describe(mtcars)
 
-### Custom Labels and Themes
+# With grouping
+results <- auto_describe(mtcars, group_by = "am")
 
-```r
-descriptive_table(
-  data = mydata,
-  Vars = c("age", "score", "income"),
-  labels = c(
-    age = "Age (years)",
-    score = "Test Score",
-    income = "Annual Income ($)"
-  ),
-  title = "Sample Characteristics",
-  subtitle = "N = 100 participants",
-  theme = "colorful"  # Options: default, minimal, dark, colorful
-)
-```
-
-### Available Statistics
-
-| Statistic | Description |
-|-----------|-------------|
-| `n` | Sample size (non-missing) |
-| `missing` | Count of missing values |
-| `missing_pct` | Percentage missing |
-| `mean` | Arithmetic mean |
-| `sd` | Standard deviation |
-| `se` | Standard error |
-| `var` | Variance |
-| `median` | Median (50th percentile) |
-| `min`, `max` | Minimum, maximum |
-| `range` | Range (max - min) |
-| `iqr` | Interquartile range |
-| `q1`, `q3` | 25th, 75th percentiles |
-| `skewness` | Skewness coefficient |
-| `kurtosis` | Excess kurtosis |
-| `cv` | Coefficient of variation (%) |
-
-### Export Options
-
-```r
-# Get as data frame
-df <- descriptive_table(data, Vars, format = "data.frame")
-
-# Export gt table
-table <- descriptive_table(data, Vars)
-gtsave(table, "descriptives.html")  # or .docx, .pdf, .png
+# Access results
+results$numeric      # Numeric variables table
+results$categorical  # List of categorical tables
+results$variable_types
 ```
 
 ---
 
-## 3. Categorical Frequency Tables (`categorical_table`)
+## 4. Data Transformation
 
-Generate publication-ready frequency tables for categorical variables with cross-tabulation, chi-square tests, and Cramer's V effect size.
+All transformation functions support group-wise operations for multilevel data.
 
-### Single Variable Frequency Table
-
-```r
-# Basic frequency table
-categorical_table(data, var = gender)
-
-# Sorted by frequency
-categorical_table(data, var = education, sort_by = "frequency")
-```
-
-**Output:**
-```
-| gender | n (%)      | Cumulative % |
-|--------|------------|--------------|
-| Male   | 93 (46.5%) | 46.5         |
-| Female | 81 (40.5%) | 87.0         |
-| Other  | 26 (13.0%) | 100.0        |
-| Total  | 200 (100%) | 100.0        |
-```
-
-### Cross-Tabulation with Chi-Square Test
+### `center()` - Mean Centering
 
 ```r
-categorical_table(
-  data = data,
-  var = gender,
-  by = education,
-  chi_square = TRUE,
-  cramers_v = TRUE
+# Grand-mean centering
+mtcars_c <- center(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Group-mean centering
+mtcars_c <- center(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
+
+# With dplyr (vectorized version)
+library(dplyr)
+mtcars %>% mutate(mpg_c = center_vec(mpg))
+mtcars %>% group_by(cyl) %>% mutate(mpg_c = center_vec(mpg))
+```
+
+### `standardize()` - Z-Score Standardization
+
+```r
+# Grand standardization
+mtcars_z <- standardize(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Group-wise standardization
+mtcars_z <- standardize(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
+
+# With dplyr
+mtcars %>% mutate(mpg_z = standardize_vec(mpg))
+```
+
+### `scale_vars()` - Scaling
+
+```r
+# Scale by SD
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg", "hp"), method = "sd")
+
+# Min-max scaling (0-1)
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg", "hp"), method = "range")
+
+# Scale to custom range (1-10)
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg"), method = "range", range = c(1, 10))
+
+# Group-wise scaling
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg"), method = "sd", group_by = "cyl")
+```
+
+### `reverse_code()` - Reverse Coding
+
+For Likert scales and similar measures.
+
+```r
+# Create sample data
+df <- data.frame(
+ item1 = c(1, 2, 3, 4, 5),
+ item2 = c(5, 4, 3, 2, 1),  # reverse-worded
+ item3 = c(2, 3, 4, 3, 2)
 )
+
+# Reverse code with auto-detected scale
+df <- reverse_code(df, Vars = "item2")
+
+# Explicit 1-5 Likert scale
+df <- reverse_code(df, Vars = c("item2", "item3"), min = 1, max = 5)
+
+# With dplyr
+df %>% mutate(item2_r = reverse_code_vec(item2, min = 1, max = 5))
 ```
-
-The table includes a footnote with test results:
-> Chi-square(6) = 2.88, p = 0.824; Cramer's V = 0.085 (negligible effect)
-
-### Custom Labels and Themes
-
-```r
-categorical_table(
-  data = data,
-  var = education,
-  labels = c(
-    "High School" = "Secondary",
-    "Bachelor" = "BSc",
-    "Master" = "MSc",
-    "PhD" = "Doctorate"
-  ),
-  title = "Educational Attainment",
-  theme = "colorful"  # Options: default, minimal, dark, colorful
-)
-```
-
-### Parameters
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `var` | Primary categorical variable (unquoted) | Required |
-| `by` | Second variable for cross-tabulation | `NULL` |
-| `percentages` | `"col"`, `"row"`, `"total"` | auto |
-| `show_total` | Include totals row/column | `TRUE` |
-| `show_missing` | Include missing as category | `FALSE` |
-| `chi_square` | Compute chi-square test | `TRUE` |
-| `cramers_v` | Compute effect size | `TRUE` |
-| `sort_by` | `"none"`, `"frequency"`, `"alphabetical"` | `"none"` |
-| `combine` | Show as "n (%)" format | `TRUE` |
-| `theme` | Visual theme | `"default"` |
 
 ---
 
-## 4. Model-Based Clustering (`clustering`)
+## 5. Missing Data Analysis
 
-Perform model-based clustering using Gaussian Mixture Models via MoEClust. Tests 14 different covariance structures to find the optimal solution.
+### `missing_analysis()` - Comprehensive Missing Data Analysis
 
-### Basic Usage
+```r
+# Add some missing values
+df <- mtcars
+df$mpg[c(1, 5, 10)] <- NA
+df$hp[c(2, 5, 15)] <- NA
+
+# Run analysis
+results <- missing_analysis(df)
+
+# Components
+results$summary      # gt table with per-variable missing counts
+results$patterns     # Missing data patterns
+results$mcar         # Little's MCAR test results
+results$plot         # Missing pattern visualization
+```
+
+### `replace_missing()` - Imputation
+
+```r
+# Replace with mean
+df_imp <- replace_missing(df, Vars = "mpg", method = "mean")
+
+# Replace with median
+df_imp <- replace_missing(df, Vars = "mpg", method = "median")
+
+# Group-wise imputation
+df_imp <- replace_missing(df, Vars = "mpg", method = "mean", group_by = "cyl")
+
+# Keep original and add new column
+df_imp <- replace_missing(df, Vars = "mpg", method = "mean", suffix = "_imp")
+```
+
+---
+
+## 6. Outlier Analysis
+
+### `outlier_check()` - Detection
+
+```r
+# IQR method (default)
+results <- outlier_check(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Z-score method
+results <- outlier_check(mtcars, Vars = c("mpg", "hp"), method = "zscore", threshold = 3)
+
+# Mahalanobis distance (multivariate)
+results <- outlier_check(mtcars, Vars = c("mpg", "hp", "wt"), method = "mahalanobis")
+
+# Components
+results$summary      # Outlier counts per variable
+results$outliers     # Data frame of outlier rows
+results$plot         # Box plot visualization
+```
+
+### `replace_outliers()` - Treatment
+
+```r
+# Winsorize outliers
+mtcars_w <- replace_outliers(mtcars, Vars = c("mpg", "hp"), method = "winsorize")
+
+# Replace with NA
+mtcars_na <- replace_outliers(mtcars, Vars = c("mpg", "hp"), method = "na")
+
+# Replace with median
+mtcars_med <- replace_outliers(mtcars, Vars = c("mpg", "hp"), method = "median")
+```
+
+---
+
+## 7. Normality Testing
+
+### `normality_check()` - Normality Assessment
+
+```r
+# Check normality
+results <- normality_check(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Components
+results$summary      # Test results (Shapiro-Wilk, skewness, kurtosis)
+results$plots        # Q-Q plots and histograms
+results$overall      # Overall assessment
+```
+
+---
+
+## 8. Model-Based Clustering
+
+### `clustering()` - Gaussian Mixture Models
 
 ```r
 # Run clustering analysis
 results <- clustering(
-  data = mydata,
-  vars = c("var1", "var2", "var3"),
-  n_clusters = 2:5,
-  scaling = "standardize"
-)
-
-# Print summary
-print(results)
-
-# Plot results
-plot(results)                      # Profile plot (default)
-plot(results, type = "heatmap")    # Cluster means heatmap
-plot(results, type = "barchart")   # Grouped bar chart
-plot(results, type = "sizes")      # Cluster size distribution
-plot(results, type = "comparison") # Model comparison (BIC)
-plot(results, type = "all")        # All plot types
-```
-
-### Get Cluster Assignments
-
-```r
-# Add cluster assignments to original data
-data_with_clusters <- get_cluster_assignments(results)
-
-# Include membership probabilities
-data_with_clusters <- get_cluster_assignments(
-  results,
-  include_probabilities = TRUE
-)
-
-# Specify a particular model
-data_with_clusters <- get_cluster_assignments(
-  results,
-  model_name = "VVV"
-)
-```
-
-### Model Comparison Table
-
-```r
-# View all models ranked by BIC (formatted gt table)
-model_comparison_table(results)
-
-# Sort by different criteria
-model_comparison_table(results, sort_by = "aic", top_n = 5)
-model_comparison_table(results, sort_by = "icl")
-```
-
-### Assess Cluster Stability (Bootstrap)
-
-```r
-# Bootstrap stability assessment
-stability <- assess_cluster_stability(
-  results,
-  model_name = "VVV",  # Optional: defaults to best model
-  n_boot = 100,
-  seed = 123
-)
-
-print(stability)
-#> Cluster Stability Assessment
-#> Model: VVV (3 clusters)
-#> Bootstrap iterations: 100
-#> Overall stability (ARI): 0.847
-#> 95% CI: [0.792, 0.901]
-#> Interpretation: Good stability
-
-# View per-observation stability
-hist(stability$observation_stability, main = "Observation Stability")
-```
-
-### Generate Cluster Reports
-
-```r
-# Print to console
-generate_cluster_report(results)
-
-# Get as gt tables
-tables <- generate_cluster_report(results, output_format = "gt")
-
-# Get as markdown
-md <- generate_cluster_report(results, output_format = "markdown")
-```
-
-### Covariance Models
-
-The function tests 14 different covariance structures:
-
-| Model | Volume | Shape | Orientation | Description |
-|-------|--------|-------|-------------|-------------|
-| EII | Equal | Equal | - | Spherical, equal volume |
-| VII | Variable | Equal | - | Spherical, variable volume |
-| EEI | Equal | Equal | Axis-aligned | Diagonal, equal volume & shape |
-| VEI | Variable | Equal | Axis-aligned | Diagonal, variable volume |
-| EVI | Equal | Variable | Axis-aligned | Diagonal, equal volume |
-| VVI | Variable | Variable | Axis-aligned | Diagonal, variable volume & shape |
-| EEE | Equal | Equal | Equal | Ellipsoidal, equal all |
-| VEE | Variable | Equal | Equal | Ellipsoidal, variable volume |
-| EVE | Equal | Variable | Equal | Ellipsoidal, variable shape |
-| VVE | Variable | Variable | Equal | Ellipsoidal, equal orientation |
-| EEV | Equal | Equal | Variable | Ellipsoidal, variable orientation |
-| VEV | Variable | Equal | Variable | Ellipsoidal, equal shape |
-| EVV | Equal | Variable | Variable | Ellipsoidal, equal volume |
-| VVV | Variable | Variable | Variable | Unconstrained |
-
-### Parameters
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `data` | Data frame | Required |
-| `vars` | Character vector of clustering variables | Required |
-| `n_clusters` | Number(s) of clusters to test | Required |
-| `scaling` | `"standardize"`, `"center"`, `"minmax"`, `"none"` | `"standardize"` |
-| `models` | Covariance models to test (or `"all"`) | `"all"` |
-| `verbose` | Print progress? | `TRUE` |
-| `na_action` | How to handle NAs: `"omit"` or `"impute"` | `"omit"` |
-
----
-
-## 5. Categorical Analysis (`Mosaic`)
-
-Analyze relationships between categorical variables with mosaic plots, chi-square tests, Fisher's exact test, and Cramer's V effect size.
-
-### Basic Usage
-
-```r
-# Analyze categorical relationship
-results <- Mosaic(
-  data = mydata,
-  var1 = gender,
-  var2 = preference
-)
-
-# S3 methods
-print(results)
-summary(results)
-plot(results)
-```
-
-### Output
-
-- Chi-square test statistic and p-value
-- Fisher's exact test (for small expected frequencies)
-- Cramer's V effect size with interpretation
-- Contingency table with percentages
-- Publication-ready mosaic plot
-
-### Parameters
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `data` | Data frame | Required |
-| `var1` | First categorical variable (unquoted) | Required |
-| `var2` | Second categorical variable (unquoted) | Required |
-| `verbose` | Print results? | `TRUE` |
-| `save_plot` | Save plot to file? | `FALSE` |
-| `plot_path` | Path for saved plot | `NULL` |
-
----
-
-## 6. Network Analysis (`estimate_and_plot_network`)
-
-Estimate and visualize psychological networks using bootnet, mgm, and qgraph.
-
-### Basic Usage
-
-```r
-# Estimate network
-results <- estimate_and_plot_network(
-  data = mydata,
-  variables = c("var1", "var2", "var3", "var4", "var5")
-)
-
-# View network plot
-results$plot
-
-# View centrality measures
-results$centrality
-
-# View edge weights
-results$edges
-```
-
-### Network Comparison
-
-```r
-# Compare networks between two groups
-comparison <- compare_networks(
-  data = mydata,
-  group_var = "condition",
-  variables = c("var1", "var2", "var3")
-)
-
-comparison$plot_group1
-comparison$plot_group2
-comparison$comparison_stats
-```
-
-### Parameters
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `data` | Data frame | Required |
-| `variables` | Character vector of variables | Required |
-| `estimation` | `"EBICglasso"`, `"pcor"`, `"mgm"` | `"EBICglasso"` |
-| `layout` | `"spring"`, `"circle"` | `"spring"` |
-| `threshold` | Edge weight threshold | `0` |
-
----
-
-## Complete Workflow Example
-
-```r
-library(Saqrmisc)
-library(dplyr)
-
-# Generate sample data
-set.seed(123)
-data <- data.frame(
-  id = 1:200,
-  treatment = rep(c("Control", "Treatment"), each = 100),
-  site = sample(c("Site_A", "Site_B", "Site_C"), 200, replace = TRUE),
-  var1 = rnorm(200, mean = c(50, 60)[factor(rep(c("Control", "Treatment"), each = 100))], sd = 10),
-  var2 = rnorm(200, mean = c(30, 35)[factor(rep(c("Control", "Treatment"), each = 100))], sd = 8),
-  var3 = rnorm(200, mean = 100, sd = 15),
-  category = sample(c("A", "B", "C"), 200, replace = TRUE)
-)
-
-# =====================================================
-# 1. GROUP COMPARISONS
-# =====================================================
-
-# Basic comparison with ANOVA text report
-comparison <- compare_groups(
-  data = data,
-  category = treatment,
-  Vars = c("var1", "var2", "var3"),
-  posthoc = TRUE,
-  bayesian = TRUE,
-  verbose = FALSE
+ data = mtcars,
+ vars = c("mpg", "hp", "wt"),
+ n_clusters = 2:5,
+ scaling = "standardize"
 )
 
 # View results
-comparison$summary_table
-cat(comparison$summary_data$anova_report[1])
+print(results)
+plot(results)                      # Profile plot
+plot(results, type = "heatmap")    # Cluster means heatmap
+plot(results, type = "comparison") # Model comparison (BIC)
 
-# Stratified analysis by site
-stratified <- compare_groups(
-  data = data,
-  category = treatment,
-  Vars = c("var1", "var2"),
-  repeat_category = site,
-  verbose = FALSE
-)
+# Model comparison table
+model_comparison_table(results)
 
-# =====================================================
-# 2. CLUSTERING
-# =====================================================
+# Get cluster assignments
+mtcars_clustered <- get_cluster_assignments(results)
+mtcars_clustered <- get_cluster_assignments(results, include_probabilities = TRUE)
 
-# Find optimal clusters
-clusters <- clustering(
-  data = data,
-  vars = c("var1", "var2", "var3"),
-  n_clusters = 2:4,
-  scaling = "standardize"
-)
-
-# View model comparison
-model_comparison_table(clusters)
-
-# Add cluster assignments
-data <- get_cluster_assignments(clusters)
-
-# Assess stability
-stability <- assess_cluster_stability(clusters, n_boot = 50)
+# Assess cluster stability
+stability <- assess_cluster_stability(results, n_boot = 100)
 print(stability)
 
 # Generate report
-generate_cluster_report(clusters)
+generate_cluster_report(results)
+```
 
-# =====================================================
-# 3. COMPARE CLUSTERS
-# =====================================================
+**Covariance Models:**
+The function tests 14 different covariance structures (EII, VII, EEI, VEI, EVI, VVI, EEE, VEE, EVE, VVE, EEV, VEV, EVV, VVV) representing different assumptions about volume, shape, and orientation of clusters.
 
-# Now compare the identified clusters on outcomes
-cluster_comparison <- compare_groups(
-  data = data,
-  category = cluster,
-  Vars = c("var1", "var2", "var3"),
-  posthoc = TRUE
+---
+
+## 9. Network Analysis
+
+### `estimate_single_network()` - Network Estimation
+
+```r
+# Estimate network
+results <- estimate_single_network(
+ data = mtcars,
+ variables = c("mpg", "hp", "wt", "qsec", "drat")
 )
 
-cat(cluster_comparison$summary_data$anova_report[1])
+# Components
+results$plot         # Network visualization
+results$centrality   # Centrality measures
+results$edges        # Edge weights
+```
 
-# =====================================================
-# 4. CATEGORICAL ANALYSIS
-# =====================================================
+### `compare_networks()` - Network Comparison
 
-# Analyze treatment x category relationship
-mosaic_result <- Mosaic(
-  data = data,
-  var1 = treatment,
-  var2 = category
+```r
+# Compare networks between groups
+mtcars$am_factor <- factor(mtcars$am, labels = c("Automatic", "Manual"))
+
+comparison <- compare_networks(
+ data = mtcars,
+ group_var = "am_factor",
+ variables = c("mpg", "hp", "wt", "qsec")
+)
+```
+
+---
+
+## 10. Categorical Analysis
+
+### `mosaic_analysis()` - Mosaic Plots
+
+```r
+# Analyze categorical relationship
+mtcars$cyl_f <- factor(mtcars$cyl)
+mtcars$am_f <- factor(mtcars$am, labels = c("Auto", "Manual"))
+
+results <- mosaic_analysis(
+ data = mtcars,
+ var1 = "cyl_f",
+ var2 = "am_f"
 )
 
-# =====================================================
-# 5. NETWORK ANALYSIS
-# =====================================================
+# Components
+print(results)       # Summary statistics
+summary(results)     # Detailed summary
+results$plot         # Mosaic plot
+results$chi_test     # Chi-square test results
+results$cramers_v    # Effect size
+```
 
-network <- estimate_and_plot_network(
-  data = data,
-  variables = c("var1", "var2", "var3")
-)
+---
+
+## API Design
+
+All functions use a **consistent quoted-string API**:
+
+```r
+# Variable names as quoted strings
+compare_groups(data, category = "gender", Vars = c("score1", "score2"))
+correlations(data, Vars = c("x", "y", "z"), group_by = "group")
+center(data, Vars = "score", group_by = "cluster")
+
+# NULL for auto-selection of all numeric variables
+correlations(data)  # Correlates all numeric variables
+correlation_matrix(data)  # Matrix of all numeric variables
 ```
 
 ---
@@ -746,9 +603,11 @@ citation("Saqrmisc")
 ```
 
 ```
-Saqr, M. (2024). Saqrmisc: Comprehensive Data Analysis and Visualization Tools for R.
+Saqr, M. (2025). Saqrmisc: Comprehensive Data Analysis and Visualization Tools for R.
 GitHub: https://github.com/mohsaqr/Saqrmisc
 ```
+
+---
 
 ## License
 
@@ -763,7 +622,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Links
 
 - **GitHub Repository**: https://github.com/mohsaqr/Saqrmisc
-- **Issues**: https://github.com/mohsaqr/Saqrmisc/issues
+- **Bug Reports**: https://github.com/mohsaqr/Saqrmisc/issues
 
 ---
 

@@ -13,7 +13,7 @@ standardize(data, Vars, suffix = "_z", group_by = NULL)
 
 \item{suffix}{Character. Suffix for new column names. Default "_z".}
 
-\item{group_by}{Unquoted variable name for group-wise standardization. Optional.}
+\item{group_by}{Character. Name of grouping variable for group-wise standardization. Optional.}
 }
 \value{
 Data frame with standardized variables added.
@@ -28,7 +28,7 @@ Supports group-wise standardization for multilevel/nested data.
 df <- standardize(mtcars, Vars = c("mpg", "hp"))
 
 # Group-wise standardization
-df <- standardize(mtcars, Vars = "mpg", group_by = cyl)
+df <- standardize(mtcars, Vars = "mpg", group_by = "cyl")
 }
 
 }
