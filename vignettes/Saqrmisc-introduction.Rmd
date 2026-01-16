@@ -61,7 +61,8 @@ treatment_data <- data.frame(
   anxiety = rnorm(200, mean = 5, sd = 1.5),
   depression = rnorm(200, mean = 4, sd = 1.2),
   stress = rnorm(200, mean = 6, sd = 1.8),
-  study_site = sample(c("Site_A", "Site_B", "Site_C"), 200, replace = TRUE)
+  study_site = sample(c("Site_A", "Site_B", "Site_C"), 200, replace = TRUE),
+  gender = sample(c("Male", "Female"), 200, replace = TRUE)
 )
 
 # Basic comparison analysis
@@ -88,13 +89,101 @@ stratified_results <- compare_groups(
 )
 ```
 
+### Advanced Features
+
+#### Multiple Stratification Variables
+
+Stratify by multiple variables simultaneously using `c()`:
+
+```{r multi_repeat}
+# Stratify by both study_site AND gender
+multi_stratified <- compare_groups(
+  data = treatment_data,
+  category = group,
+  Vars = c("anxiety", "depression"),
+  repeat_category = c(study_site, gender),
+  table = TRUE
+)
+
+# Results are organized by combined groups (e.g., "Site_A | Male")
+```
+
+#### Filtering Specific Levels
+
+Use `repeat_levels` to analyze only specific subgroups:
+
+```{r repeat_levels}
+# Analyze only Site_A and Site_B
+filtered_results <- compare_groups(
+  data = treatment_data,
+  category = group,
+  Vars = c("anxiety", "stress"),
+  repeat_category = study_site,
+  repeat_levels = c("Site_A", "Site_B"),
+  table = TRUE
+)
+```
+
+#### Post-hoc Comparison Table
+
+Generate a formatted table of all pairwise comparisons:
+
+```{r posthoc_table}
+# Generate sample data with 3+ groups
+set.seed(123)
+multi_group_data <- data.frame(
+  condition = sample(c("A", "B", "C"), 150, replace = TRUE),
+  score = rnorm(150, mean = 50, sd = 10),
+  performance = rnorm(150, mean = 75, sd = 15)
+)
+
+# Get post-hoc comparison table
+posthoc_results <- compare_groups(
+  data = multi_group_data,
+  category = condition,
+  Vars = c("score", "performance"),
+  posthoc = TRUE,
+  posthoc_table = TRUE,
+  table = TRUE
+)
+
+# Access the formatted post-hoc table
+posthoc_results$posthoc_table
+```
+
+#### Nonparametric Tests
+
+Use type shortcuts for different test types:
+
+```{r nonparametric}
+# Mann-Whitney U test (2 groups)
+mw_results <- compare_groups(
+  data = treatment_data,
+  category = group,
+  Vars = c("anxiety", "depression"),
+  type = "np",  # nonparametric
+  table = TRUE
+)
+
+# Kruskal-Wallis test (3+ groups)
+kw_results <- compare_groups(
+  data = multi_group_data,
+  category = condition,
+  Vars = c("score", "performance"),
+  type = "np",
+  table = TRUE
+)
+```
+
 ### Key Features
 
 - **Automatic test selection**: t-test (2 groups) or ANOVA (3+ groups)
 - **Post-hoc tests**: Tukey HSD or Games-Howell for multiple comparisons
-- **Effect sizes**: Cohen's d, eta-squared, epsilon-squared
-- **Bayesian analysis**: Optional Bayes Factor computation
-- **Type shortcuts**: `type = "np"` for nonparametric, `type = "kw"` for Kruskal-Wallis
+- **Effect sizes**: Cohen's d, eta-squared, epsilon-squared, rank-biserial
+- **Multiple stratification**: Use `repeat_category = c(var1, var2)` for combined grouping
+- **Level filtering**: Use `repeat_levels` to select specific subgroups
+- **Post-hoc table**: Use `posthoc_table = TRUE` for formatted pairwise comparisons
+- **Type shortcuts**: `type = "np"` for nonparametric (Mann-Whitney/Kruskal-Wallis)
 
 ## 2. Descriptive Statistics
 
