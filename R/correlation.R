@@ -537,3 +537,394 @@ correlation_matrix <- function(data,
 
   invisible(result)
 }
+
+
+#' Full Pairwise Correlation Table
+#'
+#' @description
+#' Creates a comprehensive long-format correlation table showing all pairwise
+#' correlations with full statistics including r, confidence intervals, test
+#' statistics, degrees of freedom, p-values, and sample sizes.
+#'
+#' @param data A data frame containing the variables to correlate.
+#' @param Vars Character vector of variable names to include.
+#' @param type Type of correlation: "bivariate" (default), "partial", or "semi-partial".
+#' @param method Correlation method: "pearson" (default), "spearman", or "kendall".
+#' @param p_adjust Method for p-value adjustment: "none" (default), "bonferroni", "holm", "fdr".
+#' @param ci_level Confidence level for intervals. Default 0.95.
+#' @param min_r Numeric. Only show correlations with |r| >= this value. Default NULL (show all).
+#' @param sig_only Logical. Only show significant correlations (p < .05)? Default FALSE.
+#' @param digits Number of decimal places. Default 3.
+#' @param title Optional title for the table.
+#'
+#' @return A list containing:
+#' \itemize{
+#'   \item \code{table}: A gt table with full correlation statistics
+#'   \item \code{data}: Data frame with all statistics
+#'   \item \code{n_pairs}: Number of variable pairs
+#'   \item \code{n_significant}: Number of significant correlations
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Full correlation table
+#' correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"))
+#'
+#' # Only strong correlations
+#' correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp"), min_r = 0.5)
+#'
+#' # Partial correlations with Bonferroni correction
+#' correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp"),
+#'              type = "partial", p_adjust = "bonferroni")
+#'
+#' # Only significant correlations
+#' correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"),
+#'              sig_only = TRUE)
+#' }
+#'
+#' @importFrom stats cor.test p.adjust complete.cases qt pt qnorm lm residuals
+#' @importFrom gt gt tab_header tab_source_note cols_align tab_style cell_text cells_body
+#' @export
+correlations <- function(data,
+                         Vars,
+                         type = c("bivariate", "partial", "semi-partial"),
+                         method = c("pearson", "spearman", "kendall"),
+                         p_adjust = c("none", "bonferroni", "holm", "fdr"),
+                         ci_level = 0.95,
+                         min_r = NULL,
+                         sig_only = FALSE,
+                         digits = 3,
+                         title = NULL) {
+
+  # Match arguments
+  type <- match.arg(type)
+  method <- match.arg(method)
+  p_adjust <- match.arg(p_adjust)
+
+  # Validate inputs
+  if (!is.data.frame(data)) {
+    stop("'data' must be a data frame")
+  }
+
+  if (missing(Vars) || length(Vars) < 2) {
+    stop("'Vars' must contain at least 2 variable names")
+  }
+
+  if (type %in% c("partial", "semi-partial") && length(Vars) < 3) {
+    stop("Partial and semi-partial correlations require at least 3 variables")
+  }
+
+  # Check that all variables exist
+  missing_vars <- setdiff(Vars, names(data))
+  if (length(missing_vars) > 0) {
+    stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
+  }
+
+  # Subset data
+  data_subset <- data[, Vars, drop = FALSE]
+
+  # Check numeric
+  non_numeric <- names(data_subset)[!sapply(data_subset, is.numeric)]
+  if (length(non_numeric) > 0) {
+    stop("All variables must be numeric. Non-numeric: ", paste(non_numeric, collapse = ", "))
+  }
+
+  # For partial/semi-partial, use complete cases
+  if (type %in% c("partial", "semi-partial")) {
+    data_subset <- data_subset[complete.cases(data_subset), ]
+    if (nrow(data_subset) < 3) {
+      stop("Fewer than 3 complete cases available")
+    }
+  }
+
+  n_vars <- length(Vars)
+  n_total <- nrow(data_subset)
+
+  # Generate all unique pairs
+  pairs <- combn(Vars, 2)
+  n_pairs <- ncol(pairs)
+
+  # Initialize results storage
+  results <- vector("list", n_pairs)
+
+  # Calculate correlations for each pair
+  for (k in 1:n_pairs) {
+    var1 <- pairs[1, k]
+    var2 <- pairs[2, k]
+
+    if (type == "bivariate") {
+      # Bivariate correlation
+      x <- data_subset[[var1]]
+      y <- data_subset[[var2]]
+      complete_mask <- complete.cases(x, y)
+      n <- sum(complete_mask)
+
+      if (n >= 3) {
+        test_result <- tryCatch({
+          cor.test(x, y, method = method, conf.level = ci_level)
+        }, error = function(e) NULL)
+
+        if (!is.null(test_result)) {
+          r <- as.numeric(test_result$estimate)
+          p <- test_result$p.value
+          stat <- as.numeric(test_result$statistic)
+          df <- if (!is.null(test_result$parameter)) as.numeric(test_result$parameter) else n - 2
+
+          # CI for Pearson
+          if (method == "pearson" && n >= 4) {
+            if (!is.null(test_result$conf.int)) {
+              ci_low <- test_result$conf.int[1]
+              ci_high <- test_result$conf.int[2]
+            } else {
+              # Fisher's z
+              z <- atanh(r)
+              se <- 1 / sqrt(n - 3)
+              z_crit <- qnorm(1 - (1 - ci_level) / 2)
+              ci_low <- tanh(z - z_crit * se)
+              ci_high <- tanh(z + z_crit * se)
+            }
+          } else {
+            ci_low <- NA
+            ci_high <- NA
+          }
+
+          results[[k]] <- data.frame(
+            Variable1 = var1,
+            Variable2 = var2,
+            r = r,
+            CI_low = ci_low,
+            CI_high = ci_high,
+            statistic = stat,
+            df = df,
+            p = p,
+            n = n,
+            stringsAsFactors = FALSE
+          )
+        }
+      }
+    } else {
+      # Partial or semi-partial correlation
+      control_vars <- setdiff(Vars, c(var1, var2))
+      z_data <- data_subset[, control_vars, drop = FALSE]
+
+      x <- data_subset[[var1]]
+      y <- data_subset[[var2]]
+      n <- n_total
+
+      tryCatch({
+        if (type == "partial") {
+          # Regress both on controls
+          x_resid <- residuals(lm(x ~ ., data = z_data))
+          y_resid <- residuals(lm(y ~ ., data = z_data))
+          r <- cor(x_resid, y_resid, method = method)
+        } else {
+          # Semi-partial: only regress y on controls
+          y_resid <- residuals(lm(y ~ ., data = z_data))
+          r <- cor(x, y_resid, method = method)
+        }
+
+        # Calculate test statistic and p-value
+        k_control <- length(control_vars)
+        df <- n - k_control - 2
+
+        if (df > 0 && !is.na(r) && abs(r) < 1) {
+          t_stat <- r * sqrt(df / (1 - r^2))
+          p <- 2 * pt(-abs(t_stat), df = df)
+
+          # CI using Fisher's z
+          if (method == "pearson" && n >= 4) {
+            z <- atanh(r)
+            se <- 1 / sqrt(df)
+            z_crit <- qnorm(1 - (1 - ci_level) / 2)
+            ci_low <- tanh(z - z_crit * se)
+            ci_high <- tanh(z + z_crit * se)
+          } else {
+            ci_low <- NA
+            ci_high <- NA
+          }
+
+          results[[k]] <- data.frame(
+            Variable1 = var1,
+            Variable2 = var2,
+            r = r,
+            CI_low = ci_low,
+            CI_high = ci_high,
+            statistic = t_stat,
+            df = df,
+            p = p,
+            n = n,
+            stringsAsFactors = FALSE
+          )
+        }
+      }, error = function(e) {
+        warning("Could not calculate correlation for ", var1, " and ", var2, ": ", e$message)
+      })
+    }
+  }
+
+  # Combine results
+  results_df <- do.call(rbind, results[!sapply(results, is.null)])
+
+  if (is.null(results_df) || nrow(results_df) == 0) {
+    stop("Could not calculate any correlations")
+  }
+
+  # Adjust p-values
+  if (p_adjust != "none") {
+    results_df$p_original <- results_df$p
+    results_df$p <- p.adjust(results_df$p, method = p_adjust)
+  }
+
+  # Add significance stars
+  results_df$sig <- ifelse(results_df$p < 0.001, "***",
+                           ifelse(results_df$p < 0.01, "**",
+                                  ifelse(results_df$p < 0.05, "*", "")))
+
+  # Filter by min_r
+  if (!is.null(min_r)) {
+    results_df <- results_df[abs(results_df$r) >= min_r, ]
+  }
+
+  # Filter by significance
+  if (sig_only) {
+    results_df <- results_df[results_df$p < 0.05, ]
+  }
+
+  if (nrow(results_df) == 0) {
+    cat("No correlations match the specified criteria.\n")
+    return(invisible(list(table = NULL, data = results_df, n_pairs = 0, n_significant = 0)))
+  }
+
+  # Sort by absolute r (descending)
+  results_df <- results_df[order(-abs(results_df$r)), ]
+
+  # Count significant
+  n_significant <- sum(results_df$p < 0.05)
+
+  # Format for display
+  display_df <- data.frame(
+    Variable1 = results_df$Variable1,
+    Variable2 = results_df$Variable2,
+    stringsAsFactors = FALSE
+  )
+
+  # Format r
+  display_df$r <- sapply(results_df$r, function(r) {
+    fmt <- formatC(r, format = "f", digits = digits)
+    sub("^0\\.", ".", sub("^-0\\.", "-.", fmt))
+  })
+
+  # Format CI
+  if (method == "pearson") {
+    display_df$`95% CI` <- mapply(function(low, high) {
+      if (is.na(low) || is.na(high)) return("—")
+      low_fmt <- sub("^0\\.", ".", sub("^-0\\.", "-.", formatC(low, format = "f", digits = digits)))
+      high_fmt <- sub("^0\\.", ".", sub("^-0\\.", "-.", formatC(high, format = "f", digits = digits)))
+      paste0("[", low_fmt, ", ", high_fmt, "]")
+    }, results_df$CI_low, results_df$CI_high)
+  }
+
+  # Format statistic
+  stat_name <- switch(method,
+                      "pearson" = "t",
+                      "spearman" = "S",
+                      "kendall" = "z")
+  display_df[[stat_name]] <- formatC(results_df$statistic, format = "f", digits = 2)
+
+  # Format df
+  display_df$df <- as.integer(results_df$df)
+
+  # Format p
+  display_df$p <- sapply(results_df$p, function(p) {
+    if (is.na(p)) return("—")
+    if (p < 0.001) return("< .001")
+    sub("^0\\.", ".", formatC(p, format = "f", digits = 3))
+  })
+
+  # Add n and sig
+  display_df$n <- results_df$n
+  display_df$Sig <- results_df$sig
+
+  # Create gt table
+  gt_table <- gt::gt(display_df) |>
+    gt::cols_align(align = "left", columns = c("Variable1", "Variable2")) |>
+    gt::cols_align(align = "center", columns = -c(1, 2)) |>
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_body(columns = c("Variable1", "Variable2"))
+    )
+
+  # Title
+  type_label <- switch(type,
+                       "bivariate" = "",
+                       "partial" = "Partial ",
+                       "semi-partial" = "Semi-partial ")
+  method_label <- switch(method,
+                         "pearson" = "Pearson",
+                         "spearman" = "Spearman",
+                         "kendall" = "Kendall")
+
+  default_title <- paste0(type_label, method_label, " Correlations")
+  subtitle <- paste0(nrow(results_df), " pairs, ", n_significant, " significant (p < .05)")
+
+  gt_table <- gt_table |>
+    gt::tab_header(
+      title = if (!is.null(title)) title else default_title,
+      subtitle = subtitle
+    )
+
+  # Footnotes
+  footnote <- "* p < .05, ** p < .01, *** p < .001"
+  if (p_adjust != "none") {
+    footnote <- paste0(footnote, " (", p_adjust, " adjusted)")
+  }
+  gt_table <- gt_table |>
+    gt::tab_source_note(source_note = footnote)
+
+  if (type != "bivariate") {
+    gt_table <- gt_table |>
+      gt::tab_source_note(source_note = "Controlling for other variables in Vars")
+  }
+
+  # Color significant rows
+  sig_rows <- which(results_df$p < 0.05)
+  if (length(sig_rows) > 0) {
+    gt_table <- gt_table |>
+      gt::tab_style(
+        style = gt::cell_text(color = "#27AE60"),
+        locations = gt::cells_body(columns = "Sig", rows = sig_rows)
+      )
+  }
+
+  # Highlight strong correlations
+  strong_pos <- which(results_df$r >= 0.5)
+  strong_neg <- which(results_df$r <= -0.5)
+
+  if (length(strong_pos) > 0) {
+    gt_table <- gt_table |>
+      gt::tab_style(
+        style = gt::cell_text(color = "#2980B9", weight = "bold"),
+        locations = gt::cells_body(columns = "r", rows = strong_pos)
+      )
+  }
+  if (length(strong_neg) > 0) {
+    gt_table <- gt_table |>
+      gt::tab_style(
+        style = gt::cell_text(color = "#C0392B", weight = "bold"),
+        locations = gt::cells_body(columns = "r", rows = strong_neg)
+      )
+  }
+
+  print(gt_table)
+
+  invisible(list(
+    table = gt_table,
+    data = results_df,
+    display = display_df,
+    n_pairs = nrow(results_df),
+    n_significant = n_significant,
+    type = type,
+    method = method,
+    p_adjust = p_adjust
+  ))
+}
