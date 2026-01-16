@@ -188,10 +188,10 @@ kw_results <- compare_groups(
 
 ## 2. Correlation Matrix
 
-The `correlation_matrix()` function creates publication-ready correlation tables with significance stars and optional heatmap visualization.
+The `correlation_matrix()` function creates publication-ready correlation tables with significance stars and optional heatmap visualization. Supports bivariate, partial, and semi-partial correlations.
 
 ```{r correlation_example}
-# Basic correlation matrix
+# Basic correlation matrix (bivariate/zero-order)
 correlation_matrix(
   data = mtcars,
   Vars = c("mpg", "cyl", "disp", "hp", "wt"),
@@ -203,6 +203,22 @@ correlation_matrix(
   data = mtcars,
   Vars = c("mpg", "hp", "wt"),
   show_ci = TRUE
+)
+
+# Partial correlations (controlling for other variables)
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  type = "partial",
+  title = "Partial Correlations"
+)
+
+# Semi-partial correlations
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  type = "semi-partial",
+  title = "Semi-partial Correlations"
 )
 
 # Spearman correlations with Bonferroni correction
@@ -227,11 +243,12 @@ result$heatmap
 
 ### Key Features
 
+- **Correlation types**: Bivariate (zero-order), partial, semi-partial
 - **Multiple methods**: Pearson, Spearman, Kendall
 - **Triangle options**: Lower (default), upper, or full matrix
 - **Significance stars**: Automatic with adjustable threshold
 - **P-value adjustment**: Bonferroni, Holm, FDR correction
-- **Confidence intervals**: Optional 95% CIs (Pearson only)
+- **Confidence intervals**: Optional 95% CIs (bivariate Pearson only)
 - **Heatmap**: Color-coded visualization
 
 ## 3. Descriptive Statistics
