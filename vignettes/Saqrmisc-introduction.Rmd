@@ -37,14 +37,15 @@ library(Saqrmisc)
 
 ## Package Overview
 
-The Saqrmisc package includes six main functional areas:
+The Saqrmisc package includes seven main functional areas:
 
 1. **Group Comparisons** (`compare_groups`)
-2. **Descriptive Statistics** (`descriptive_table`)
-3. **Categorical Frequency Tables** (`categorical_table`)
-4. **Model-Based Clustering** (`clustering`)
-5. **Categorical Variable Analysis** (`mosaic_analysis`)
-6. **Network Estimation** (`estimate_single_network`)
+2. **Correlation Matrix** (`correlation_matrix`)
+3. **Descriptive Statistics** (`descriptive_table`)
+4. **Categorical Frequency Tables** (`categorical_table`)
+5. **Model-Based Clustering** (`clustering`)
+6. **Categorical Variable Analysis** (`mosaic_analysis`)
+7. **Network Estimation** (`estimate_single_network`)
 
 ## 1. Group Comparisons
 
@@ -185,7 +186,55 @@ kw_results <- compare_groups(
 - **Post-hoc table**: Use `posthoc_table = TRUE` for formatted pairwise comparisons
 - **Type shortcuts**: `type = "np"` for nonparametric (Mann-Whitney/Kruskal-Wallis)
 
-## 2. Descriptive Statistics
+## 2. Correlation Matrix
+
+The `correlation_matrix()` function creates publication-ready correlation tables with significance stars and optional heatmap visualization.
+
+```{r correlation_example}
+# Basic correlation matrix
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp", "wt"),
+  title = "Motor Trend Car Correlations"
+)
+
+# With confidence intervals
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "hp", "wt"),
+  show_ci = TRUE
+)
+
+# Spearman correlations with Bonferroni correction
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp"),
+  method = "spearman",
+  p_adjust = "bonferroni"
+)
+
+# Full matrix with heatmap
+result <- correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  triangle = "full",
+  heatmap = TRUE
+)
+
+# Access the heatmap plot
+result$heatmap
+```
+
+### Key Features
+
+- **Multiple methods**: Pearson, Spearman, Kendall
+- **Triangle options**: Lower (default), upper, or full matrix
+- **Significance stars**: Automatic with adjustable threshold
+- **P-value adjustment**: Bonferroni, Holm, FDR correction
+- **Confidence intervals**: Optional 95% CIs (Pearson only)
+- **Heatmap**: Color-coded visualization
+
+## 3. Descriptive Statistics
 
 The `descriptive_table()` function creates publication-ready descriptive statistics tables.
 
@@ -215,7 +264,7 @@ descriptive_table(
 )
 ```
 
-## 3. Categorical Frequency Tables
+## 4. Categorical Frequency Tables
 
 The `categorical_table()` function creates frequency tables with chi-square tests.
 
@@ -239,7 +288,7 @@ categorical_table(
 )
 ```
 
-## 4. Model-Based Clustering
+## 5. Model-Based Clustering
 
 The `clustering()` function performs comprehensive model-based clustering using MoEClust.
 
@@ -284,7 +333,7 @@ model_comparison_table(clustering_results)
 - **Comprehensive visualization**: Profile plots, heatmaps, bar charts
 - **Cluster stability**: Bootstrap assessment with `assess_cluster_stability()`
 
-## 5. Categorical Variable Analysis
+## 6. Categorical Variable Analysis
 
 The `mosaic_analysis()` function performs comprehensive analysis of categorical variables.
 
@@ -313,7 +362,7 @@ print(mosaic_results$cramers_v)
 print(mosaic_results$summary_table)
 ```
 
-## 6. Network Estimation
+## 7. Network Estimation
 
 The `estimate_single_network()` function estimates psychological networks.
 
