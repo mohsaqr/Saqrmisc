@@ -17,6 +17,9 @@ correlations(
   id = NULL,
   between = FALSE,
   group_by = NULL,
+  include = NULL,
+  exclude = NULL,
+  auto_consolidate = TRUE,
   digits = 3,
   title = NULL
 )
@@ -51,6 +54,17 @@ Only used when multilevel = TRUE.}
 \item{group_by}{Character. Name of grouping variable to compute correlations separately per group.
 Results are combined into one table with a "Group" column.}
 
+\item{include}{Character vector. Statistics to include in the table.
+Options: "r", "ci", "stat" (t/S/z), "df", "p", "n", "sig".
+Default NULL includes all. Use this OR exclude, not both.}
+
+\item{exclude}{Character vector. Statistics to exclude from the table.
+Options: "r", "ci", "stat" (t/S/z), "df", "p", "n", "sig".
+Default NULL excludes none. Use this OR include, not both.}
+
+\item{auto_consolidate}{Logical. If TRUE (default), when df or n are constant
+across all pairs, they are moved to the subtitle instead of shown as columns.}
+
 \item{digits}{Number of decimal places. Default 3.}
 
 \item{title}{Optional title for the table.}
@@ -60,8 +74,10 @@ A list containing:
 \itemize{
   \item \code{table}: A gt table with full correlation statistics
   \item \code{data}: Data frame with all statistics
+  \item \code{display}: Data frame as displayed (after include/exclude filtering)
   \item \code{n_pairs}: Number of variable pairs
   \item \code{n_significant}: Number of significant correlations
+  \item \code{consolidated}: List of values moved to subtitle (df, n if constant)
   \item \code{between_data}: Between-cluster correlations (if multilevel & between = TRUE)
 }
 }
@@ -113,6 +129,18 @@ correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = "cyl")
 # Correlations by group with significance filter
 correlations(mtcars, Vars = c("mpg", "hp", "wt", "disp"),
              group_by = "am", sig_only = TRUE)
+
+# Include only specific statistics
+correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+             include = c("r", "ci", "p", "sig"))
+
+# Exclude statistics you don't need
+correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+             exclude = c("stat", "df"))
+
+# Disable auto-consolidation (always show df and n columns)
+correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+             auto_consolidate = FALSE)
 }
 
 }

@@ -574,6 +574,14 @@ correlation_matrix <- function(data,
 #'   Only used when multilevel = TRUE.
 #' @param group_by Character. Name of grouping variable to compute correlations separately per group.
 #'   Results are combined into one table with a "Group" column.
+#' @param include Character vector. Statistics to include in the table.
+#'   Options: "r", "ci", "stat" (t/S/z), "df", "p", "n", "sig".
+#'   Default NULL includes all. Use this OR exclude, not both.
+#' @param exclude Character vector. Statistics to exclude from the table.
+#'   Options: "r", "ci", "stat" (t/S/z), "df", "p", "n", "sig".
+#'   Default NULL excludes none. Use this OR include, not both.
+#' @param auto_consolidate Logical. If TRUE (default), when df or n are constant
+#'   across all pairs, they are moved to the subtitle instead of shown as columns.
 #' @param digits Number of decimal places. Default 3.
 #' @param title Optional title for the table.
 #'
@@ -581,8 +589,10 @@ correlation_matrix <- function(data,
 #' \itemize{
 #'   \item \code{table}: A gt table with full correlation statistics
 #'   \item \code{data}: Data frame with all statistics
+#'   \item \code{display}: Data frame as displayed (after include/exclude filtering)
 #'   \item \code{n_pairs}: Number of variable pairs
 #'   \item \code{n_significant}: Number of significant correlations
+#'   \item \code{consolidated}: List of values moved to subtitle (df, n if constant)
 #'   \item \code{between_data}: Between-cluster correlations (if multilevel & between = TRUE)
 #' }
 #'
@@ -628,6 +638,18 @@ correlation_matrix <- function(data,
 #' # Correlations by group with significance filter
 #' correlations(mtcars, Vars = c("mpg", "hp", "wt", "disp"),
 #'              group_by = "am", sig_only = TRUE)
+#'
+#' # Include only specific statistics
+#' correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+#'              include = c("r", "ci", "p", "sig"))
+#'
+#' # Exclude statistics you don't need
+#' correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+#'              exclude = c("stat", "df"))
+#'
+#' # Disable auto-consolidation (always show df and n columns)
+#' correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+#'              auto_consolidate = FALSE)
 #' }
 #'
 #' @importFrom stats cor.test p.adjust complete.cases qt pt qnorm lm residuals ave
@@ -645,13 +667,37 @@ correlations <- function(data,
                          id = NULL,
                          between = FALSE,
                          group_by = NULL,
+                         include = NULL,
+                         exclude = NULL,
+                         auto_consolidate = TRUE,
                          digits = 3,
                          title = NULL) {
 
   # Match arguments
   type <- match.arg(type)
+
   method <- match.arg(method)
   p_adjust <- match.arg(p_adjust)
+
+  # Validate include/exclude
+  valid_stats <- c("r", "ci", "stat", "df", "p", "n", "sig")
+  if (!is.null(include) && !is.null(exclude)) {
+    stop("Use 'include' OR 'exclude', not both")
+  }
+  if (!is.null(include)) {
+    invalid <- setdiff(include, valid_stats)
+    if (length(invalid) > 0) {
+      stop("Invalid include values: ", paste(invalid, collapse = ", "),
+           ". Valid options: ", paste(valid_stats, collapse = ", "))
+    }
+  }
+  if (!is.null(exclude)) {
+    invalid <- setdiff(exclude, valid_stats)
+    if (length(invalid) > 0) {
+      stop("Invalid exclude values: ", paste(invalid, collapse = ", "),
+           ". Valid options: ", paste(valid_stats, collapse = ", "))
+    }
+  }
 
   # Validate inputs
   if (!is.data.frame(data)) {
@@ -721,6 +767,9 @@ correlations <- function(data,
             id = if (multilevel) id else NULL,
             between = between,
             group_by = NULL,  # Don't recurse further
+            include = include,
+            exclude = exclude,
+            auto_consolidate = auto_consolidate,
             digits = digits,
             title = NULL
           )
@@ -1212,9 +1261,57 @@ correlations <- function(data,
   display_df$n <- results_df$n
   display_df$Sig <- results_df$sig
 
+  # Auto-consolidate constant values (df, n) to subtitle
+  consolidated_info <- list()
+  if (auto_consolidate) {
+    # Check if df is constant
+    if (length(unique(results_df$df)) == 1) {
+      consolidated_info$df <- unique(results_df$df)
+      display_df$df <- NULL
+    }
+    # Check if n is constant
+    if (length(unique(results_df$n)) == 1) {
+      consolidated_info$n <- unique(results_df$n)
+      display_df$n <- NULL
+    }
+  }
+
+  # Apply include/exclude filtering to columns
+  # Mapping of user-friendly names to actual column names
+  stat_col_map <- list(
+    r = "r",
+    ci = "95% CI",
+    stat = stat_name,  # t, S, or z depending on method
+    df = "df",
+    p = "p",
+    n = "n",
+    sig = "Sig"
+  )
+
+  if (!is.null(include)) {
+    # Keep only included columns (plus Variable1, Variable2, Level)
+    keep_cols <- c("Variable1", "Variable2")
+    if (multilevel && "Level" %in% names(display_df)) keep_cols <- c(keep_cols, "Level")
+    for (stat in include) {
+      col_name <- stat_col_map[[stat]]
+      if (!is.null(col_name) && col_name %in% names(display_df)) {
+        keep_cols <- c(keep_cols, col_name)
+      }
+    }
+    display_df <- display_df[, keep_cols, drop = FALSE]
+  } else if (!is.null(exclude)) {
+    # Remove excluded columns
+    for (stat in exclude) {
+      col_name <- stat_col_map[[stat]]
+      if (!is.null(col_name) && col_name %in% names(display_df)) {
+        display_df[[col_name]] <- NULL
+      }
+    }
+  }
+
   # Create gt table
   left_cols <- c("Variable1", "Variable2")
-  if (multilevel) left_cols <- c(left_cols, "Level")
+  if (multilevel && "Level" %in% names(display_df)) left_cols <- c(left_cols, "Level")
 
   gt_table <- gt::gt(display_df) |>
     gt::cols_align(align = "left", columns = left_cols) |>
@@ -1243,6 +1340,20 @@ correlations <- function(data,
     subtitle <- paste0(nrow(results_df), " pairs, ", n_significant, " significant (p < .05)")
   }
 
+  # Append consolidated values to subtitle
+  if (length(consolidated_info) > 0) {
+    consol_parts <- c()
+    if (!is.null(consolidated_info$n)) {
+      consol_parts <- c(consol_parts, paste0("n = ", consolidated_info$n))
+    }
+    if (!is.null(consolidated_info$df)) {
+      consol_parts <- c(consol_parts, paste0("df = ", consolidated_info$df))
+    }
+    if (length(consol_parts) > 0) {
+      subtitle <- paste0(subtitle, " | ", paste(consol_parts, collapse = ", "))
+    }
+  }
+
   gt_table <- gt_table |>
     gt::tab_header(
       title = if (!is.null(title)) title else default_title,
@@ -1267,33 +1378,37 @@ correlations <- function(data,
       gt::tab_source_note(source_note = paste0("Within: group-mean centered (removes between-cluster variance). ID variable: ", id_var))
   }
 
-  # Color significant rows
-  sig_rows <- which(results_df$p < 0.05)
-  if (length(sig_rows) > 0) {
-    gt_table <- gt_table |>
-      gt::tab_style(
-        style = gt::cell_text(color = "#27AE60"),
-        locations = gt::cells_body(columns = "Sig", rows = sig_rows)
-      )
+  # Color significant rows (only if Sig column exists)
+  if ("Sig" %in% names(display_df)) {
+    sig_rows <- which(results_df$p < 0.05)
+    if (length(sig_rows) > 0) {
+      gt_table <- gt_table |>
+        gt::tab_style(
+          style = gt::cell_text(color = "#27AE60"),
+          locations = gt::cells_body(columns = "Sig", rows = sig_rows)
+        )
+    }
   }
 
-  # Highlight strong correlations
-  strong_pos <- which(results_df$r >= 0.5)
-  strong_neg <- which(results_df$r <= -0.5)
+  # Highlight strong correlations (only if r column exists)
+  if ("r" %in% names(display_df)) {
+    strong_pos <- which(results_df$r >= 0.5)
+    strong_neg <- which(results_df$r <= -0.5)
 
-  if (length(strong_pos) > 0) {
-    gt_table <- gt_table |>
-      gt::tab_style(
-        style = gt::cell_text(color = "#2980B9", weight = "bold"),
-        locations = gt::cells_body(columns = "r", rows = strong_pos)
-      )
-  }
-  if (length(strong_neg) > 0) {
-    gt_table <- gt_table |>
-      gt::tab_style(
-        style = gt::cell_text(color = "#C0392B", weight = "bold"),
-        locations = gt::cells_body(columns = "r", rows = strong_neg)
-      )
+    if (length(strong_pos) > 0) {
+      gt_table <- gt_table |>
+        gt::tab_style(
+          style = gt::cell_text(color = "#2980B9", weight = "bold"),
+          locations = gt::cells_body(columns = "r", rows = strong_pos)
+        )
+    }
+    if (length(strong_neg) > 0) {
+      gt_table <- gt_table |>
+        gt::tab_style(
+          style = gt::cell_text(color = "#C0392B", weight = "bold"),
+          locations = gt::cells_body(columns = "r", rows = strong_neg)
+        )
+    }
   }
 
   print(gt_table)
@@ -1306,7 +1421,8 @@ correlations <- function(data,
     n_significant = n_significant,
     type = type,
     method = method,
-    p_adjust = p_adjust
+    p_adjust = p_adjust,
+    consolidated = consolidated_info
   )
 
   if (multilevel) {
