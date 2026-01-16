@@ -220,8 +220,14 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' and stratified analyses using `repeat_category`.
 #'
 #' @param data A data frame containing the variables to analyze.
-#' @param category Character. Name of the grouping variable (e.g., `"gender"`,
-#'   `"treatment"`). This variable defines the groups to compare.
+#' @param category Character. Name(s) of the grouping variable(s). Can be:
+#'   \itemize{
+#'     \item Single variable: `"gender"` - compare groups defined by gender
+#'     \item Multiple variables: `c("gender", "treatment")` - compare interaction
+#'       groups (e.g., "Male | Treatment", "Female | Control")
+#'   }
+#' @param category_sep Character. Separator for combined group labels when
+#'   multiple variables are passed to `category`. Default: `" | "`.
 #' @param Vars A character vector of numeric variable names to compare across
 #'   groups. Example: `c("score1", "score2", "reaction_time")`.
 #' @param repeat_category Optional character. Name of a stratification variable.
@@ -385,6 +391,30 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #'
 #' # Check equivalence conclusions
 #' results$summary_data[, c("gender", "mean", "equivalence_conclusion")]
+#'
+#' # ============================================================
+#' # EXAMPLE 7: Combined/Interaction Groups
+#' # ============================================================
+#' data <- data.frame(
+#'   strength = rep(c("Strong", "Weak"), each = 60),
+#'   gender = rep(c("Male", "Female"), times = 60),
+#'   score = rnorm(120, mean = 100, sd = 15)
+#' )
+#'
+#' # Pass multiple variables to category for interaction groups
+#' results <- compare_groups(
+#'   data = data,
+#'   category = c("strength", "gender"),  # Creates "Strong | Male", "Strong | Female", etc.
+#'   Vars = c("score")
+#' )
+#'
+#' # Custom separator
+#' results <- compare_groups(
+#'   data = data,
+#'   category = c("strength", "gender"),
+#'   category_sep = " x ",  # Creates "Strong x Male", etc.
+#'   Vars = c("score")
+#' )
 #' }
 #'
 #' @seealso
@@ -396,7 +426,9 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' @importFrom stats t.test aov sd var p.adjust pairwise.t.test pairwise.wilcox.test TukeyHSD as.formula kruskal.test wilcox.test
 #'
 #' @export
-compare_groups <- function(data, category, Vars, repeat_category = NULL,
+compare_groups <- function(data, category, Vars,
+                                      category_sep = " | ",
+                                      repeat_category = NULL,
                                       repeat_levels = NULL,
                                       plots = TRUE, table = TRUE,
                                       type = "auto",
@@ -508,14 +540,41 @@ compare_groups <- function(data, category, Vars, repeat_category = NULL,
     stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
   }
 
-  # Handle category variable (expects quoted string)
+  # ===========================================================================
+  # Handle category variable(s)
+  # ===========================================================================
   if (missing(category) || is.null(category)) {
-    stop("'category' must be specified as a character string")
+    stop("'category' must be specified")
   }
-  if (!is.character(category) || length(category) != 1) {
-    stop("'category' must be a single character string (variable name)")
+  if (!is.character(category)) {
+    stop("'category' must be a character string or vector of variable names")
   }
-  category_name_str <- category
+
+  # Check that all category variables exist
+  missing_cat <- setdiff(category, names(data))
+  if (length(missing_cat) > 0) {
+    stop("Category variable(s) not found in data: ", paste(missing_cat, collapse = ", "))
+  }
+
+  # Store original category variables for reference
+  category_vars_orig <- category
+
+  # If multiple category variables, combine them
+  if (length(category) > 1) {
+    data$.combined_category <- apply(
+      data[, category, drop = FALSE], 1,
+      function(x) paste(x, collapse = category_sep)
+    )
+    category_name_str <- ".combined_category"
+
+    if (verbose) {
+      n_groups <- length(unique(data$.combined_category[!is.na(data$.combined_category)]))
+      cat("Combined", paste(category, collapse = " + "), "into", n_groups, "groups\n\n")
+    }
+  } else {
+    category_name_str <- category
+  }
+
   category_sym <- rlang::sym(category_name_str)
 
   if (!category_name_str %in% names(data)) {
