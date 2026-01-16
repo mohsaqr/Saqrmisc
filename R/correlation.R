@@ -2,15 +2,18 @@
 #'
 #' @description
 #' Creates a formatted correlation matrix with significance stars, optional
-#' confidence intervals, and heatmap visualization.
+#' confidence intervals, and heatmap visualization. Supports bivariate (zero-order),
+#' partial, and semi-partial correlations.
 #'
 #' @param data A data frame containing the variables to correlate.
 #' @param Vars Character vector of variable names to include in the correlation matrix.
+#' @param type Type of correlation: "bivariate" (default, zero-order), "partial", or "semi-partial".
+#'   For partial/semi-partial, each pair is controlled for all other variables in Vars.
 #' @param method Correlation method: "pearson" (default), "spearman", or "kendall".
 #' @param triangle Which triangle to display: "lower" (default), "upper", or "full".
 #' @param diagonal What to show on the diagonal: "dash" (default), "one", or "names".
 #' @param show_n Logical. Show pairwise sample sizes? Default FALSE.
-#' @param show_ci Logical. Show 95% confidence intervals? Default FALSE.
+#' @param show_ci Logical. Show 95% confidence intervals? Default FALSE. Only available for bivariate Pearson.
 #' @param show_p Logical. Show p-values below correlations? Default FALSE.
 #' @param p_adjust Method for p-value adjustment: "none" (default), "bonferroni", "holm", "fdr".
 #' @param stars Logical. Show significance stars? Default TRUE.
@@ -18,6 +21,7 @@
 #' @param digits Number of decimal places. Default 2.
 #' @param title Optional title for the table.
 #' @param use Method for handling missing data: "pairwise" (default) or "complete".
+#'   Note: partial and semi-partial correlations always use complete cases.
 #'
 #' @return A list containing:
 #' \itemize{
@@ -34,6 +38,21 @@
 #' correlation_matrix(
 #'   data = mtcars,
 #'   Vars = c("mpg", "cyl", "disp", "hp")
+#' )
+#'
+#' # Partial correlations (controlling for other variables)
+#' correlation_matrix(
+#'   data = mtcars,
+#'   Vars = c("mpg", "cyl", "disp", "hp"),
+#'   type = "partial",
+#'   title = "Partial Correlations"
+#' )
+#'
+#' # Semi-partial correlations
+#' correlation_matrix(
+#'   data = mtcars,
+#'   Vars = c("mpg", "cyl", "disp", "hp"),
+#'   type = "semi-partial"
 #' )
 #'
 #' # With confidence intervals and heatmap
@@ -54,12 +73,13 @@
 #' )
 #' }
 #'
-#' @importFrom stats cor cor.test p.adjust complete.cases qt
+#' @importFrom stats cor cor.test p.adjust complete.cases qt lm residuals pt
 #' @importFrom gt gt tab_header tab_source_note cols_label cols_align tab_style cell_fill cell_text cells_body
 #' @importFrom ggplot2 ggplot aes geom_tile geom_text scale_fill_gradient2 theme_minimal theme labs element_blank element_text
 #' @export
 correlation_matrix <- function(data,
                                 Vars,
+                                type = c("bivariate", "partial", "semi-partial"),
                                 method = c("pearson", "spearman", "kendall"),
                                 triangle = c("lower", "upper", "full"),
                                 diagonal = c("dash", "one", "names"),
@@ -75,7 +95,8 @@ correlation_matrix <- function(data,
 
 
   # Match arguments
- method <- match.arg(method)
+  type <- match.arg(type)
+  method <- match.arg(method)
   triangle <- match.arg(triangle)
   diagonal <- match.arg(diagonal)
   p_adjust <- match.arg(p_adjust)
@@ -88,6 +109,12 @@ correlation_matrix <- function(data,
 
   if (missing(Vars) || length(Vars) < 2) {
     stop("'Vars' must contain at least 2 variable names")
+  }
+
+  # Partial/semi-partial require at least 3 variables
+
+  if (type %in% c("partial", "semi-partial") && length(Vars) < 3) {
+    stop("Partial and semi-partial correlations require at least 3 variables")
   }
 
   # Check that all variables exist
@@ -106,14 +133,22 @@ correlation_matrix <- function(data,
   }
 
   # Handle missing data
-  if (use == "complete") {
+  # Partial/semi-partial always require complete cases
+  if (use == "complete" || type %in% c("partial", "semi-partial")) {
     data_subset <- data_subset[complete.cases(data_subset), ]
     if (nrow(data_subset) < 3) {
       stop("Fewer than 3 complete cases available")
     }
   }
 
+  # CI only available for bivariate Pearson
+  if (show_ci && type != "bivariate") {
+    warning("Confidence intervals only available for bivariate correlations. Ignoring show_ci.")
+    show_ci <- FALSE
+  }
+
   n_vars <- length(Vars)
+  n_obs <- nrow(data_subset)
 
   # Initialize matrices
   cor_matrix <- matrix(NA, nrow = n_vars, ncol = n_vars)
@@ -128,46 +163,112 @@ correlation_matrix <- function(data,
   rownames(ci_lower) <- colnames(ci_lower) <- Vars
   rownames(ci_upper) <- colnames(ci_upper) <- Vars
 
-  # Calculate correlations pairwise
+  # Helper function to calculate partial correlation
+  calc_partial_cor <- function(x, y, z_data, method) {
+    # Regress x on z and get residuals
+    x_resid <- residuals(lm(x ~ ., data = z_data))
+    # Regress y on z and get residuals
+    y_resid <- residuals(lm(y ~ ., data = z_data))
+    # Correlate residuals
+    if (method == "pearson") {
+      cor(x_resid, y_resid)
+    } else {
+      cor(x_resid, y_resid, method = method)
+    }
+  }
+
+  # Helper function to calculate semi-partial correlation
+  calc_semipartial_cor <- function(x, y, z_data, method) {
+    # Keep x as is, regress y on z and get residuals
+    y_resid <- residuals(lm(y ~ ., data = z_data))
+    # Correlate x with residuals of y
+    if (method == "pearson") {
+      cor(x, y_resid)
+    } else {
+      cor(x, y_resid, method = method)
+    }
+  }
+
+  # Calculate correlations
   for (i in 1:n_vars) {
     for (j in 1:n_vars) {
       if (i == j) {
         cor_matrix[i, j] <- 1
         p_matrix[i, j] <- 0
-        n_matrix[i, j] <- sum(!is.na(data_subset[[Vars[i]]]))
+        n_matrix[i, j] <- if (type == "bivariate" && use == "pairwise") {
+          sum(!is.na(data_subset[[Vars[i]]]))
+        } else {
+          n_obs
+        }
         ci_lower[i, j] <- 1
         ci_upper[i, j] <- 1
       } else {
-        # Get complete pairs
-        x <- data_subset[[Vars[i]]]
-        y <- data_subset[[Vars[j]]]
-        complete_pairs <- complete.cases(x, y)
-        n_pairs <- sum(complete_pairs)
-        n_matrix[i, j] <- n_pairs
+        if (type == "bivariate") {
+          # Standard bivariate correlation
+          x <- data_subset[[Vars[i]]]
+          y <- data_subset[[Vars[j]]]
+          complete_pairs <- complete.cases(x, y)
+          n_pairs <- sum(complete_pairs)
+          n_matrix[i, j] <- n_pairs
 
-        if (n_pairs >= 3) {
-          tryCatch({
-            test_result <- cor.test(x, y, method = method, use = "complete.obs")
-            cor_matrix[i, j] <- test_result$estimate
-            p_matrix[i, j] <- test_result$p.value
+          if (n_pairs >= 3) {
+            tryCatch({
+              test_result <- cor.test(x, y, method = method, use = "complete.obs")
+              cor_matrix[i, j] <- test_result$estimate
+              p_matrix[i, j] <- test_result$p.value
 
-            # Confidence intervals (only for Pearson)
-            if (method == "pearson" && n_pairs >= 4) {
-              if (!is.null(test_result$conf.int)) {
-                ci_lower[i, j] <- test_result$conf.int[1]
-                ci_upper[i, j] <- test_result$conf.int[2]
-              } else {
-                # Calculate CI manually using Fisher's z transformation
-                r <- test_result$estimate
-                z <- atanh(r)
-                se <- 1 / sqrt(n_pairs - 3)
-                z_crit <- qnorm(0.975)
-                ci_lower[i, j] <- tanh(z - z_crit * se)
-                ci_upper[i, j] <- tanh(z + z_crit * se)
+              # Confidence intervals (only for Pearson)
+              if (method == "pearson" && n_pairs >= 4) {
+                if (!is.null(test_result$conf.int)) {
+                  ci_lower[i, j] <- test_result$conf.int[1]
+                  ci_upper[i, j] <- test_result$conf.int[2]
+                } else {
+                  # Calculate CI manually using Fisher's z transformation
+                  r <- test_result$estimate
+                  z <- atanh(r)
+                  se <- 1 / sqrt(n_pairs - 3)
+                  z_crit <- qnorm(0.975)
+                  ci_lower[i, j] <- tanh(z - z_crit * se)
+                  ci_upper[i, j] <- tanh(z + z_crit * se)
+                }
               }
+            }, error = function(e) {
+              warning("Could not calculate correlation for ", Vars[i], " and ", Vars[j], ": ", e$message)
+            })
+          }
+        } else {
+          # Partial or semi-partial correlation
+          n_matrix[i, j] <- n_obs
+
+          # Get control variables (all other variables except i and j)
+          control_vars <- setdiff(Vars, c(Vars[i], Vars[j]))
+          z_data <- data_subset[, control_vars, drop = FALSE]
+
+          x <- data_subset[[Vars[i]]]
+          y <- data_subset[[Vars[j]]]
+
+          tryCatch({
+            if (type == "partial") {
+              r <- calc_partial_cor(x, y, z_data, method)
+            } else {
+              # semi-partial
+              r <- calc_semipartial_cor(x, y, z_data, method)
+            }
+            cor_matrix[i, j] <- r
+
+            # Calculate p-value for partial/semi-partial correlation
+            # df = n - k - 2, where k is number of control variables
+            k <- length(control_vars)
+            df <- n_obs - k - 2
+
+            if (df > 0 && !is.na(r) && abs(r) < 1) {
+              t_stat <- r * sqrt(df / (1 - r^2))
+              p_matrix[i, j] <- 2 * pt(-abs(t_stat), df = df)
+            } else {
+              p_matrix[i, j] <- NA
             }
           }, error = function(e) {
-            warning("Could not calculate correlation for ", Vars[i], " and ", Vars[j], ": ", e$message)
+            warning("Could not calculate ", type, " correlation for ", Vars[i], " and ", Vars[j], ": ", e$message)
           })
         }
       }
@@ -303,11 +404,18 @@ correlation_matrix <- function(data,
   }
 
   # Add method note
-  method_note <- paste0("Correlation method: ",
+  type_label <- switch(type,
+                       "bivariate" = "",
+                       "partial" = "Partial ",
+                       "semi-partial" = "Semi-partial ")
+  method_note <- paste0(type_label, "Correlation method: ",
                         switch(method,
                                "pearson" = "Pearson",
                                "spearman" = "Spearman",
                                "kendall" = "Kendall"))
+  if (type != "bivariate") {
+    method_note <- paste0(method_note, " (controlling for other variables)")
+  }
   gt_table <- gt_table |>
     gt::tab_source_note(source_note = method_note)
 
@@ -413,7 +521,9 @@ correlation_matrix <- function(data,
     table = gt_table,
     correlation_matrix = cor_matrix,
     p_matrix = p_matrix,
-    n_matrix = n_matrix
+    n_matrix = n_matrix,
+    type = type,
+    method = method
   )
 
   if (show_ci && method == "pearson") {
