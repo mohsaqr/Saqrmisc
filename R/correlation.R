@@ -544,7 +544,8 @@ correlation_matrix <- function(data,
 #' @description
 #' Creates a comprehensive long-format correlation table showing all pairwise
 #' correlations with full statistics including r, confidence intervals, test
-#' statistics, degrees of freedom, p-values, and sample sizes.
+#' statistics, degrees of freedom, p-values, and sample sizes. Supports
+#' multilevel/repeated measures correlations for nested data.
 #'
 #' @param data A data frame containing the variables to correlate.
 #' @param Vars Character vector of variable names to include.
@@ -554,6 +555,12 @@ correlation_matrix <- function(data,
 #' @param ci_level Confidence level for intervals. Default 0.95.
 #' @param min_r Numeric. Only show correlations with |r| >= this value. Default NULL (show all).
 #' @param sig_only Logical. Only show significant correlations (p < .05)? Default FALSE.
+#' @param multilevel Logical. Calculate multilevel (within-cluster) correlations? Default FALSE.
+#'   When TRUE, removes between-cluster variance to estimate within-cluster associations.
+#' @param id Unquoted name of the clustering/ID variable for multilevel correlations.
+#'   Required when multilevel = TRUE.
+#' @param between Logical. Also report between-cluster correlations? Default FALSE.
+#'   Only used when multilevel = TRUE.
 #' @param digits Number of decimal places. Default 3.
 #' @param title Optional title for the table.
 #'
@@ -563,7 +570,17 @@ correlation_matrix <- function(data,
 #'   \item \code{data}: Data frame with all statistics
 #'   \item \code{n_pairs}: Number of variable pairs
 #'   \item \code{n_significant}: Number of significant correlations
+#'   \item \code{between_data}: Between-cluster correlations (if multilevel & between = TRUE)
 #' }
+#'
+#' @details
+#' When \code{multilevel = TRUE}, the function calculates within-cluster correlations
+#' by group-mean centering variables before computing correlations. This removes
+#' between-cluster variance and estimates the pooled within-cluster association,
+#' appropriate for repeated measures or hierarchically nested data.
+#'
+#' The degrees of freedom for multilevel correlations are adjusted as:
+#' df = n_observations - n_clusters - 1
 #'
 #' @examples
 #' \dontrun{
@@ -580,10 +597,19 @@ correlation_matrix <- function(data,
 #' # Only significant correlations
 #' correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"),
 #'              sig_only = TRUE)
+#'
+#' # Multilevel correlations (within-person)
+#' # For repeated measures data with multiple observations per participant
+#' correlations(longitudinal_data, Vars = c("anxiety", "depression", "stress"),
+#'              multilevel = TRUE, id = participant_id)
+#'
+#' # Multilevel with between-cluster correlations
+#' correlations(longitudinal_data, Vars = c("anxiety", "depression"),
+#'              multilevel = TRUE, id = participant_id, between = TRUE)
 #' }
 #'
-#' @importFrom stats cor.test p.adjust complete.cases qt pt qnorm lm residuals
-#' @importFrom gt gt tab_header tab_source_note cols_align tab_style cell_text cells_body
+#' @importFrom stats cor.test p.adjust complete.cases qt pt qnorm lm residuals ave
+#' @importFrom gt gt tab_header tab_source_note cols_align tab_style cell_text cells_body tab_row_group
 #' @export
 correlations <- function(data,
                          Vars,
@@ -593,6 +619,9 @@ correlations <- function(data,
                          ci_level = 0.95,
                          min_r = NULL,
                          sig_only = FALSE,
+                         multilevel = FALSE,
+                         id = NULL,
+                         between = FALSE,
                          digits = 3,
                          title = NULL) {
 
@@ -614,6 +643,20 @@ correlations <- function(data,
     stop("Partial and semi-partial correlations require at least 3 variables")
   }
 
+  # Capture id variable for multilevel
+  id_var <- NULL
+  if (multilevel) {
+    id_expr <- substitute(id)
+    if (is.null(id_expr) || identical(id_expr, quote(NULL))) {
+      stop("'id' must be specified when multilevel = TRUE")
+    }
+    id_var <- deparse(id_expr)
+
+    if (!id_var %in% names(data)) {
+      stop("ID variable '", id_var, "' not found in data")
+    }
+  }
+
   # Check that all variables exist
   missing_vars <- setdiff(Vars, names(data))
   if (length(missing_vars) > 0) {
@@ -621,20 +664,46 @@ correlations <- function(data,
   }
 
   # Subset data
-  data_subset <- data[, Vars, drop = FALSE]
+  if (multilevel) {
+    data_subset <- data[, c(id_var, Vars), drop = FALSE]
+  } else {
+    data_subset <- data[, Vars, drop = FALSE]
+  }
 
-  # Check numeric
-  non_numeric <- names(data_subset)[!sapply(data_subset, is.numeric)]
+  # Check numeric (excluding id variable)
+  check_vars <- if (multilevel) Vars else names(data_subset)
+  non_numeric <- check_vars[!sapply(data_subset[check_vars], is.numeric)]
   if (length(non_numeric) > 0) {
     stop("All variables must be numeric. Non-numeric: ", paste(non_numeric, collapse = ", "))
   }
 
-  # For partial/semi-partial, use complete cases
-  if (type %in% c("partial", "semi-partial")) {
+  # For partial/semi-partial or multilevel, use complete cases
+  if (type %in% c("partial", "semi-partial") || multilevel) {
     data_subset <- data_subset[complete.cases(data_subset), ]
     if (nrow(data_subset) < 3) {
       stop("Fewer than 3 complete cases available")
     }
+  }
+
+  # Multilevel: group-mean center variables
+  n_clusters <- NULL
+  if (multilevel) {
+    cluster_ids <- data_subset[[id_var]]
+    n_clusters <- length(unique(cluster_ids))
+
+    if (n_clusters < 2) {
+      stop("Multilevel correlations require at least 2 clusters/IDs")
+    }
+
+    # Group-mean center each variable
+    for (var_name in Vars) {
+      group_means <- ave(data_subset[[var_name]], cluster_ids, FUN = mean)
+      data_subset[[paste0(var_name, "_within")]] <- data_subset[[var_name]] - group_means
+      data_subset[[paste0(var_name, "_between")]] <- group_means
+    }
+
+    cat(sprintf("Multilevel correlations: %d observations in %d clusters\n",
+                nrow(data_subset), n_clusters))
   }
 
   n_vars <- length(Vars)
@@ -653,9 +722,15 @@ correlations <- function(data,
     var2 <- pairs[2, k]
 
     if (type == "bivariate") {
-      # Bivariate correlation
-      x <- data_subset[[var1]]
-      y <- data_subset[[var2]]
+      # Bivariate correlation (or multilevel within-cluster)
+      if (multilevel) {
+        # Use within-cluster centered variables
+        x <- data_subset[[paste0(var1, "_within")]]
+        y <- data_subset[[paste0(var2, "_within")]]
+      } else {
+        x <- data_subset[[var1]]
+        y <- data_subset[[var2]]
+      }
       complete_mask <- complete.cases(x, y)
       n <- sum(complete_mask)
 
@@ -666,19 +741,31 @@ correlations <- function(data,
 
         if (!is.null(test_result)) {
           r <- as.numeric(test_result$estimate)
-          p <- test_result$p.value
+          p_raw <- test_result$p.value
           stat <- as.numeric(test_result$statistic)
-          df <- if (!is.null(test_result$parameter)) as.numeric(test_result$parameter) else n - 2
+
+          # Adjust df for multilevel
+          if (multilevel) {
+            # df = n - k - 1 where k is number of clusters
+            df <- n - n_clusters - 1
+            if (df > 0 && !is.na(r) && abs(r) < 1) {
+              # Recalculate t and p with adjusted df
+              stat <- r * sqrt(df / (1 - r^2))
+              p_raw <- 2 * pt(-abs(stat), df = df)
+            }
+          } else {
+            df <- if (!is.null(test_result$parameter)) as.numeric(test_result$parameter) else n - 2
+          }
 
           # CI for Pearson
           if (method == "pearson" && n >= 4) {
-            if (!is.null(test_result$conf.int)) {
+            if (!multilevel && !is.null(test_result$conf.int)) {
               ci_low <- test_result$conf.int[1]
               ci_high <- test_result$conf.int[2]
             } else {
-              # Fisher's z
+              # Fisher's z (use adjusted df for multilevel)
               z <- atanh(r)
-              se <- 1 / sqrt(n - 3)
+              se <- 1 / sqrt(max(df - 1, 1))
               z_crit <- qnorm(1 - (1 - ci_level) / 2)
               ci_low <- tanh(z - z_crit * se)
               ci_high <- tanh(z + z_crit * se)
@@ -696,7 +783,7 @@ correlations <- function(data,
             CI_high = ci_high,
             statistic = stat,
             df = df,
-            p = p,
+            p = p_raw,
             n = n,
             stringsAsFactors = FALSE
           )
@@ -769,6 +856,82 @@ correlations <- function(data,
     stop("Could not calculate any correlations")
   }
 
+  # Add level indicator for multilevel
+  if (multilevel) {
+    results_df$Level <- "Within"
+  }
+
+  # Calculate between-cluster correlations if requested
+  between_df <- NULL
+  if (multilevel && between) {
+    between_results <- vector("list", n_pairs)
+
+    # Get unique cluster means
+    cluster_ids <- data_subset[[id_var]]
+    unique_clusters <- unique(cluster_ids)
+    n_between <- length(unique_clusters)
+
+    for (k in 1:n_pairs) {
+      var1 <- pairs[1, k]
+      var2 <- pairs[2, k]
+
+      # Get cluster means
+      x_means <- tapply(data_subset[[var1]], cluster_ids, mean)
+      y_means <- tapply(data_subset[[var2]], cluster_ids, mean)
+
+      if (length(x_means) >= 3) {
+        test_result <- tryCatch({
+          cor.test(x_means, y_means, method = method, conf.level = ci_level)
+        }, error = function(e) NULL)
+
+        if (!is.null(test_result)) {
+          r <- as.numeric(test_result$estimate)
+          p_raw <- test_result$p.value
+          stat <- as.numeric(test_result$statistic)
+          df <- if (!is.null(test_result$parameter)) as.numeric(test_result$parameter) else n_between - 2
+
+          # CI for Pearson
+          if (method == "pearson" && n_between >= 4) {
+            if (!is.null(test_result$conf.int)) {
+              ci_low <- test_result$conf.int[1]
+              ci_high <- test_result$conf.int[2]
+            } else {
+              z <- atanh(r)
+              se <- 1 / sqrt(n_between - 3)
+              z_crit <- qnorm(1 - (1 - ci_level) / 2)
+              ci_low <- tanh(z - z_crit * se)
+              ci_high <- tanh(z + z_crit * se)
+            }
+          } else {
+            ci_low <- NA
+            ci_high <- NA
+          }
+
+          between_results[[k]] <- data.frame(
+            Variable1 = var1,
+            Variable2 = var2,
+            r = r,
+            CI_low = ci_low,
+            CI_high = ci_high,
+            statistic = stat,
+            df = df,
+            p = p_raw,
+            n = n_between,
+            Level = "Between",
+            stringsAsFactors = FALSE
+          )
+        }
+      }
+    }
+
+    between_df <- do.call(rbind, between_results[!sapply(between_results, is.null)])
+
+    # Combine within and between
+    if (!is.null(between_df) && nrow(between_df) > 0) {
+      results_df <- rbind(results_df, between_df)
+    }
+  }
+
   # Adjust p-values
   if (p_adjust != "none") {
     results_df$p_original <- results_df$p
@@ -808,6 +971,11 @@ correlations <- function(data,
     stringsAsFactors = FALSE
   )
 
+  # Add Level column for multilevel
+  if (multilevel) {
+    display_df$Level <- results_df$Level
+  }
+
   # Format r
   display_df$r <- sapply(results_df$r, function(r) {
     fmt <- formatC(r, format = "f", digits = digits)
@@ -846,9 +1014,12 @@ correlations <- function(data,
   display_df$Sig <- results_df$sig
 
   # Create gt table
+  left_cols <- c("Variable1", "Variable2")
+  if (multilevel) left_cols <- c(left_cols, "Level")
+
   gt_table <- gt::gt(display_df) |>
-    gt::cols_align(align = "left", columns = c("Variable1", "Variable2")) |>
-    gt::cols_align(align = "center", columns = -c(1, 2)) |>
+    gt::cols_align(align = "left", columns = left_cols) |>
+    gt::cols_align(align = "center", columns = setdiff(names(display_df), left_cols)) |>
     gt::tab_style(
       style = gt::cell_text(weight = "bold"),
       locations = gt::cells_body(columns = c("Variable1", "Variable2"))
@@ -864,8 +1035,14 @@ correlations <- function(data,
                          "spearman" = "Spearman",
                          "kendall" = "Kendall")
 
-  default_title <- paste0(type_label, method_label, " Correlations")
-  subtitle <- paste0(nrow(results_df), " pairs, ", n_significant, " significant (p < .05)")
+  if (multilevel) {
+    default_title <- paste0("Multilevel ", method_label, " Correlations")
+    subtitle <- paste0(n_total, " observations in ", n_clusters, " clusters | ",
+                       n_significant, " significant (p < .05)")
+  } else {
+    default_title <- paste0(type_label, method_label, " Correlations")
+    subtitle <- paste0(nrow(results_df), " pairs, ", n_significant, " significant (p < .05)")
+  }
 
   gt_table <- gt_table |>
     gt::tab_header(
@@ -884,6 +1061,11 @@ correlations <- function(data,
   if (type != "bivariate") {
     gt_table <- gt_table |>
       gt::tab_source_note(source_note = "Controlling for other variables in Vars")
+  }
+
+  if (multilevel) {
+    gt_table <- gt_table |>
+      gt::tab_source_note(source_note = paste0("Within: group-mean centered (removes between-cluster variance). ID variable: ", id_var))
   }
 
   # Color significant rows
@@ -917,7 +1099,7 @@ correlations <- function(data,
 
   print(gt_table)
 
-  invisible(list(
+  result <- list(
     table = gt_table,
     data = results_df,
     display = display_df,
@@ -926,5 +1108,16 @@ correlations <- function(data,
     type = type,
     method = method,
     p_adjust = p_adjust
-  ))
+  )
+
+  if (multilevel) {
+    result$multilevel <- TRUE
+    result$n_clusters <- n_clusters
+    result$id_var <- id_var
+    if (between && !is.null(between_df)) {
+      result$between_data <- between_df
+    }
+  }
+
+  invisible(result)
 }

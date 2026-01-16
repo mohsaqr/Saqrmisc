@@ -13,6 +13,9 @@ correlations(
   ci_level = 0.95,
   min_r = NULL,
   sig_only = FALSE,
+  multilevel = FALSE,
+  id = NULL,
+  between = FALSE,
   digits = 3,
   title = NULL
 )
@@ -34,6 +37,15 @@ correlations(
 
 \item{sig_only}{Logical. Only show significant correlations (p < .05)? Default FALSE.}
 
+\item{multilevel}{Logical. Calculate multilevel (within-cluster) correlations? Default FALSE.
+When TRUE, removes between-cluster variance to estimate within-cluster associations.}
+
+\item{id}{Unquoted name of the clustering/ID variable for multilevel correlations.
+Required when multilevel = TRUE.}
+
+\item{between}{Logical. Also report between-cluster correlations? Default FALSE.
+Only used when multilevel = TRUE.}
+
 \item{digits}{Number of decimal places. Default 3.}
 
 \item{title}{Optional title for the table.}
@@ -45,12 +57,23 @@ A list containing:
   \item \code{data}: Data frame with all statistics
   \item \code{n_pairs}: Number of variable pairs
   \item \code{n_significant}: Number of significant correlations
+  \item \code{between_data}: Between-cluster correlations (if multilevel & between = TRUE)
 }
 }
 \description{
 Creates a comprehensive long-format correlation table showing all pairwise
 correlations with full statistics including r, confidence intervals, test
-statistics, degrees of freedom, p-values, and sample sizes.
+statistics, degrees of freedom, p-values, and sample sizes. Supports
+multilevel/repeated measures correlations for nested data.
+}
+\details{
+When \code{multilevel = TRUE}, the function calculates within-cluster correlations
+by group-mean centering variables before computing correlations. This removes
+between-cluster variance and estimates the pooled within-cluster association,
+appropriate for repeated measures or hierarchically nested data.
+
+The degrees of freedom for multilevel correlations are adjusted as:
+df = n_observations - n_clusters - 1
 }
 \examples{
 \dontrun{
@@ -67,6 +90,15 @@ correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp"),
 # Only significant correlations
 correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"),
              sig_only = TRUE)
+
+# Multilevel correlations (within-person)
+# For repeated measures data with multiple observations per participant
+correlations(longitudinal_data, Vars = c("anxiety", "depression", "stress"),
+             multilevel = TRUE, id = participant_id)
+
+# Multilevel with between-cluster correlations
+correlations(longitudinal_data, Vars = c("anxiety", "depression"),
+             multilevel = TRUE, id = participant_id, between = TRUE)
 }
 
 }
