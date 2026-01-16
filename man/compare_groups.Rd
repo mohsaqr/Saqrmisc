@@ -12,6 +12,7 @@ compare_groups(
   repeat_category = NULL,
   repeat_levels = NULL,
   plots = TRUE,
+  plot_style = c("points", "boxplot", "bar", "violin", "ggstatsplot"),
   table = TRUE,
   type = "auto",
   bayesian = FALSE,
@@ -50,7 +51,17 @@ multiple variables are passed to `category`. Default: `" | "`.}
 When provided, separate analyses are performed for each level (e.g., analyze
 gender differences separately for each country).}
 
-\item{plots}{Logical. Generate ggstatsplot visualizations? Default: `TRUE`.}
+\item{plots}{Logical. Generate visualizations? Default: `TRUE`.}
+
+\item{plot_style}{Character. Style of plots to generate:
+\describe{
+  \item{`"points"` (default)}{Jittered points with mean and CI error bars - clean and modern}
+  \item{`"boxplot"`}{Modern boxplot with jittered points overlay}
+  \item{`"bar"`}{Bar plot with CI error bars - classic presentation style}
+  \item{`"violin"`}{Violin plot with inner boxplot showing distribution shape}
+  \item{`"ggstatsplot"`}{Original ggstatsplot style with statistical annotations
+    (requires ggstatsplot package - will prompt to install if missing)}
+}}
 
 \item{table}{Logical. Generate summary statistics table? Default: `TRUE`.}
 

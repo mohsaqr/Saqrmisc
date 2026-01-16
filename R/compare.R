@@ -199,6 +199,163 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 }
 
 # =============================================================================
+# PLOTTING HELPER FUNCTIONS
+# =============================================================================
+
+#' Create a modern theme for comparison plots
+#' @noRd
+theme_compare <- function() {
+  ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(face = "bold", size = 14, hjust = 0.5),
+      plot.subtitle = ggplot2::element_text(size = 10, hjust = 0.5, color = "gray40"),
+      axis.title = ggplot2::element_text(face = "bold", size = 11),
+      axis.text = ggplot2::element_text(size = 10),
+      legend.position = "none",
+      panel.grid.major.x = ggplot2::element_blank(),
+      panel.grid.minor = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(10, 10, 10, 10)
+    )
+}
+
+#' Modern color palette for comparison plots
+#' @noRd
+get_compare_colors <- function(n, palette = "default") {
+  if (palette == "default") {
+    # Modern, vibrant but professional colors
+    cols <- c("#3498DB", "#E74C3C", "#2ECC71", "#9B59B6", "#F39C12", "#1ABC9C",
+              "#E91E63", "#00BCD4", "#FF5722", "#607D8B")
+  } else if (palette == "pastel") {
+    cols <- c("#74B9FF", "#FF7675", "#55EFC4", "#A29BFE", "#FFEAA7", "#81ECEC",
+              "#FD79A8", "#74B9FF", "#FAB1A0", "#B2BEC3")
+  } else if (palette == "bold") {
+    cols <- c("#2980B9", "#C0392B", "#27AE60", "#8E44AD", "#D35400", "#16A085",
+              "#C2185B", "#0097A7", "#E64A19", "#455A64")
+  }
+  if (n <= length(cols)) cols[1:n] else colorRampPalette(cols)(n)
+}
+
+#' Create points + mean + CI plot
+#' @noRd
+plot_points_style <- function(data, x_var, y_var, colors, title = NULL, subtitle = NULL) {
+  # Calculate summary statistics
+  summary_stats <- data %>%
+    dplyr::group_by(.data[[x_var]]) %>%
+    dplyr::summarise(
+      mean = mean(.data[[y_var]], na.rm = TRUE),
+      sd = stats::sd(.data[[y_var]], na.rm = TRUE),
+      n = dplyr::n(),
+      se = sd / sqrt(n),
+      ci = stats::qt(0.975, n - 1) * se,
+      .groups = "drop"
+    )
+
+  n_groups <- length(unique(data[[x_var]]))
+  plot_colors <- if (length(colors) >= n_groups) colors[1:n_groups] else get_compare_colors(n_groups)
+
+  ggplot2::ggplot() +
+    # Jittered points
+    ggplot2::geom_jitter(
+      data = data,
+      ggplot2::aes(x = .data[[x_var]], y = .data[[y_var]], color = .data[[x_var]]),
+      width = 0.15, alpha = 0.5, size = 2
+    ) +
+    # Mean point
+    ggplot2::geom_point(
+      data = summary_stats,
+      ggplot2::aes(x = .data[[x_var]], y = mean, fill = .data[[x_var]]),
+      shape = 21, size = 4, color = "white", stroke = 1.5
+    ) +
+    # Error bars (CI)
+    ggplot2::geom_errorbar(
+      data = summary_stats,
+      ggplot2::aes(x = .data[[x_var]], ymin = mean - ci, ymax = mean + ci, color = .data[[x_var]]),
+      width = 0.1, linewidth = 1
+    ) +
+    ggplot2::scale_color_manual(values = plot_colors) +
+    ggplot2::scale_fill_manual(values = plot_colors) +
+    ggplot2::labs(x = NULL, y = y_var, title = title, subtitle = subtitle) +
+    theme_compare()
+}
+
+#' Create modern boxplot
+#' @noRd
+plot_boxplot_style <- function(data, x_var, y_var, colors, title = NULL, subtitle = NULL,
+                                show_points = TRUE) {
+  n_groups <- length(unique(data[[x_var]]))
+  plot_colors <- if (length(colors) >= n_groups) colors[1:n_groups] else get_compare_colors(n_groups)
+
+  p <- ggplot2::ggplot(data, ggplot2::aes(x = .data[[x_var]], y = .data[[y_var]],
+                                           fill = .data[[x_var]], color = .data[[x_var]])) +
+    ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA, color = "gray30", linewidth = 0.5)
+
+  if (show_points) {
+    p <- p + ggplot2::geom_jitter(width = 0.15, alpha = 0.4, size = 1.5)
+  }
+
+  p +
+    ggplot2::scale_fill_manual(values = plot_colors) +
+    ggplot2::scale_color_manual(values = plot_colors) +
+    ggplot2::labs(x = NULL, y = y_var, title = title, subtitle = subtitle) +
+    theme_compare()
+}
+
+#' Create bar plot with error bars
+#' @noRd
+plot_bar_style <- function(data, x_var, y_var, colors, title = NULL, subtitle = NULL,
+                            error_type = "ci") {
+  # Calculate summary statistics
+  summary_stats <- data %>%
+    dplyr::group_by(.data[[x_var]]) %>%
+    dplyr::summarise(
+      mean = mean(.data[[y_var]], na.rm = TRUE),
+      sd = stats::sd(.data[[y_var]], na.rm = TRUE),
+      n = dplyr::n(),
+      se = sd / sqrt(n),
+      ci = stats::qt(0.975, n - 1) * se,
+      .groups = "drop"
+    )
+
+  # Choose error bar type
+  summary_stats$error <- if (error_type == "ci") summary_stats$ci else summary_stats$se
+
+  n_groups <- length(unique(data[[x_var]]))
+  plot_colors <- if (length(colors) >= n_groups) colors[1:n_groups] else get_compare_colors(n_groups)
+
+  ggplot2::ggplot(summary_stats, ggplot2::aes(x = .data[[x_var]], y = mean, fill = .data[[x_var]])) +
+    ggplot2::geom_col(alpha = 0.85, color = "gray30", linewidth = 0.3, width = 0.7) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = mean - error, ymax = mean + error),
+      width = 0.15, linewidth = 0.7, color = "gray20"
+    ) +
+    ggplot2::scale_fill_manual(values = plot_colors) +
+    ggplot2::labs(x = NULL, y = y_var, title = title, subtitle = subtitle) +
+    theme_compare()
+}
+
+#' Create violin plot
+#' @noRd
+plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle = NULL,
+                               show_box = TRUE) {
+  n_groups <- length(unique(data[[x_var]]))
+  plot_colors <- if (length(colors) >= n_groups) colors[1:n_groups] else get_compare_colors(n_groups)
+
+  p <- ggplot2::ggplot(data, ggplot2::aes(x = .data[[x_var]], y = .data[[y_var]],
+                                           fill = .data[[x_var]])) +
+    ggplot2::geom_violin(alpha = 0.7, color = "gray30", linewidth = 0.5, trim = FALSE)
+
+  if (show_box) {
+    p <- p + ggplot2::geom_boxplot(width = 0.15, fill = "white", alpha = 0.8,
+                                    outlier.shape = NA, color = "gray30")
+  }
+
+  p +
+    ggplot2::scale_fill_manual(values = plot_colors) +
+    ggplot2::labs(x = NULL, y = y_var, title = title, subtitle = subtitle) +
+    theme_compare()
+}
+
+# =============================================================================
 # MAIN FUNCTION
 # =============================================================================
 
@@ -233,7 +390,16 @@ generate_anova_text_report <- function(variable, category, data, anova_details, 
 #' @param repeat_category Optional character. Name of a stratification variable.
 #'   When provided, separate analyses are performed for each level (e.g., analyze
 #'   gender differences separately for each country).
-#' @param plots Logical. Generate ggstatsplot visualizations? Default: `TRUE`.
+#' @param plots Logical. Generate visualizations? Default: `TRUE`.
+#' @param plot_style Character. Style of plots to generate:
+#'   \describe{
+#'     \item{`"points"` (default)}{Jittered points with mean and CI error bars - clean and modern}
+#'     \item{`"boxplot"`}{Modern boxplot with jittered points overlay}
+#'     \item{`"bar"`}{Bar plot with CI error bars - classic presentation style}
+#'     \item{`"violin"`}{Violin plot with inner boxplot showing distribution shape}
+#'     \item{`"ggstatsplot"`}{Original ggstatsplot style with statistical annotations
+#'       (requires ggstatsplot package - will prompt to install if missing)}
+#'   }
 #' @param table Logical. Generate summary statistics table? Default: `TRUE`.
 #' @param type Character. Type of statistical test to use. Options:
 #'   \describe{
@@ -430,7 +596,9 @@ compare_groups <- function(data, category, Vars,
                                       category_sep = " | ",
                                       repeat_category = NULL,
                                       repeat_levels = NULL,
-                                      plots = TRUE, table = TRUE,
+                                      plots = TRUE,
+                                      plot_style = c("points", "boxplot", "bar", "violin", "ggstatsplot"),
+                                      table = TRUE,
                                       type = "auto",
                                       bayesian = FALSE,
                                       equivalence = FALSE, equivalence_bounds = c(-0.5, 0.5),
@@ -527,6 +695,9 @@ compare_groups <- function(data, category, Vars,
     stop("p_adjust_method must be one of: ", paste(valid_methods, collapse = ", "))
   }
 
+  # Validate plot_style
+  plot_style <- match.arg(plot_style)
+
   # Validate equivalence bounds
   if (equivalence) {
     if (length(equivalence_bounds) != 2 || equivalence_bounds[1] >= equivalence_bounds[2]) {
@@ -622,7 +793,7 @@ compare_groups <- function(data, category, Vars,
   # ===========================================================================
   # Check Required Packages
   # ===========================================================================
-  required_pkgs <- c("ggstatsplot", "gt", "gridExtra")
+  required_pkgs <- c("gt", "gridExtra")
   if (bayesian) required_pkgs <- c(required_pkgs, "BayesFactor")
   if (equivalence) required_pkgs <- c(required_pkgs, "TOSTER")
   if (!nonparametric) required_pkgs <- c(required_pkgs, "effsize", "effectsize")
@@ -630,6 +801,19 @@ compare_groups <- function(data, category, Vars,
   for (pkg in required_pkgs) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
       stop("Package '", pkg, "' is required. Install with: install.packages('", pkg, "')")
+    }
+  }
+
+  # Handle ggstatsplot separately - it's optional
+
+  if (plots && plot_style == "ggstatsplot") {
+    if (!requireNamespace("ggstatsplot", quietly = TRUE)) {
+      message("\n", strrep("=", 60))
+      message("ggstatsplot is not installed.")
+      message("Install with: install.packages('ggstatsplot')")
+      message("Falling back to plot_style = 'points'")
+      message(strrep("=", 60), "\n")
+      plot_style <- "points"
     }
   }
 
@@ -709,28 +893,63 @@ compare_groups <- function(data, category, Vars,
             next
           }
 
-          # Determine test type
-          if (nonparametric) {
-            test_type <- "nonparametric"
-          } else if (bayesian) {
-            test_type <- "bayes"
-          } else {
-            test_type <- "parametric"
-          }
+          # Create plot based on style
+          if (plot_style == "ggstatsplot") {
+            # Original ggstatsplot style
+            if (nonparametric) {
+              test_type <- "nonparametric"
+            } else if (bayesian) {
+              test_type <- "bayes"
+            } else {
+              test_type <- "parametric"
+            }
 
-          p <- ggstatsplot::ggbetweenstats(
-            data = data_subset,
-            x = !!category_sym,
-            y = !!comp_cat_sym,
-            type = test_type,
-            bf.message = bayesian,
-            pairwise.display = if (n_groups > 2 && posthoc) pairwise_display else "none",
-            p.adjust.method = if (p_adjust_method == "none") "bonferroni" else p_adjust_method,
-            xlab = "",
-            title = "",
-            conf.level = 0.95
-          ) +
-            ggplot2::scale_color_manual(values = colors[1:n_groups])
+            p <- ggstatsplot::ggbetweenstats(
+              data = data_subset,
+              x = !!category_sym,
+              y = !!comp_cat_sym,
+              type = test_type,
+              bf.message = bayesian,
+              pairwise.display = if (n_groups > 2 && posthoc) pairwise_display else "none",
+              p.adjust.method = if (p_adjust_method == "none") "bonferroni" else p_adjust_method,
+              xlab = "",
+              title = "",
+              conf.level = 0.95
+            ) +
+              ggplot2::scale_color_manual(values = colors[1:n_groups])
+
+          } else {
+            # Clean modern styles
+            # Filter out NA values for plotting
+            plot_data <- data_subset[!is.na(data_subset[[comp_cat_name]]), ]
+
+            p <- switch(plot_style,
+              "points" = plot_points_style(
+                data = plot_data,
+                x_var = category_name_str,
+                y_var = comp_cat_name,
+                colors = colors
+              ),
+              "boxplot" = plot_boxplot_style(
+                data = plot_data,
+                x_var = category_name_str,
+                y_var = comp_cat_name,
+                colors = colors
+              ),
+              "bar" = plot_bar_style(
+                data = plot_data,
+                x_var = category_name_str,
+                y_var = comp_cat_name,
+                colors = colors
+              ),
+              "violin" = plot_violin_style(
+                data = plot_data,
+                x_var = category_name_str,
+                y_var = comp_cat_name,
+                colors = colors
+              )
+            )
+          }
 
           plot_name <- paste0(category_name_str, "_vs_", comp_cat_name)
           all_plots[[plot_name]] <- p
