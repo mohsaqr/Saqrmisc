@@ -16,6 +16,7 @@ correlations(
   multilevel = FALSE,
   id = NULL,
   between = FALSE,
+  group_by = NULL,
   digits = 3,
   title = NULL
 )
@@ -45,6 +46,9 @@ Required when multilevel = TRUE.}
 
 \item{between}{Logical. Also report between-cluster correlations? Default FALSE.
 Only used when multilevel = TRUE.}
+
+\item{group_by}{Unquoted name of grouping variable to compute correlations separately per group.
+Results are combined into one table with a "Group" column.}
 
 \item{digits}{Number of decimal places. Default 3.}
 
@@ -99,6 +103,13 @@ correlations(longitudinal_data, Vars = c("anxiety", "depression", "stress"),
 # Multilevel with between-cluster correlations
 correlations(longitudinal_data, Vars = c("anxiety", "depression"),
              multilevel = TRUE, id = participant_id, between = TRUE)
+
+# Correlations by group (stratified)
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = cyl)
+
+# Correlations by group with significance filter
+correlations(mtcars, Vars = c("mpg", "hp", "wt", "disp"),
+             group_by = am, sig_only = TRUE)
 }
 
 }

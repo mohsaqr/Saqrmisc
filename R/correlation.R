@@ -561,6 +561,8 @@ correlation_matrix <- function(data,
 #'   Required when multilevel = TRUE.
 #' @param between Logical. Also report between-cluster correlations? Default FALSE.
 #'   Only used when multilevel = TRUE.
+#' @param group_by Unquoted name of grouping variable to compute correlations separately per group.
+#'   Results are combined into one table with a "Group" column.
 #' @param digits Number of decimal places. Default 3.
 #' @param title Optional title for the table.
 #'
@@ -606,6 +608,13 @@ correlation_matrix <- function(data,
 #' # Multilevel with between-cluster correlations
 #' correlations(longitudinal_data, Vars = c("anxiety", "depression"),
 #'              multilevel = TRUE, id = participant_id, between = TRUE)
+#'
+#' # Correlations by group (stratified)
+#' correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = cyl)
+#'
+#' # Correlations by group with significance filter
+#' correlations(mtcars, Vars = c("mpg", "hp", "wt", "disp"),
+#'              group_by = am, sig_only = TRUE)
 #' }
 #'
 #' @importFrom stats cor.test p.adjust complete.cases qt pt qnorm lm residuals ave
@@ -622,6 +631,7 @@ correlations <- function(data,
                          multilevel = FALSE,
                          id = NULL,
                          between = FALSE,
+                         group_by = NULL,
                          digits = 3,
                          title = NULL) {
 
@@ -641,6 +651,170 @@ correlations <- function(data,
 
   if (type %in% c("partial", "semi-partial") && length(Vars) < 3) {
     stop("Partial and semi-partial correlations require at least 3 variables")
+  }
+
+  # Capture group_by variable
+  group_var <- NULL
+  group_expr <- substitute(group_by)
+  if (!is.null(group_expr) && !identical(group_expr, quote(NULL))) {
+    group_var <- deparse(group_expr)
+    if (!group_var %in% names(data)) {
+      stop("Group variable '", group_var, "' not found in data")
+    }
+  }
+
+ # Handle group_by: compute correlations for each group and combine
+  if (!is.null(group_var)) {
+    group_levels <- unique(data[[group_var]])
+    group_levels <- group_levels[!is.na(group_levels)]
+
+    cat(sprintf("Computing correlations for %d groups: %s\n\n",
+                length(group_levels), paste(group_levels, collapse = ", ")))
+
+    all_results <- list()
+    all_display <- list()
+
+    for (g in group_levels) {
+      group_data <- data[data[[group_var]] == g & !is.na(data[[group_var]]), ]
+
+      if (nrow(group_data) < 3) {
+        warning("Group '", g, "' has fewer than 3 observations, skipping")
+        next
+      }
+
+      # Recursively call without group_by
+      group_result <- tryCatch({
+        suppressMessages(
+          correlations(
+            data = group_data,
+            Vars = Vars,
+            type = type,
+            method = method,
+            p_adjust = p_adjust,
+            ci_level = ci_level,
+            min_r = min_r,
+            sig_only = sig_only,
+            multilevel = multilevel,
+            id = if (multilevel) eval(substitute(id), group_data) else NULL,
+            between = between,
+            group_by = NULL,  # Don't recurse further
+            digits = digits,
+            title = NULL
+          )
+        )
+      }, error = function(e) {
+        warning("Could not compute correlations for group '", g, "': ", e$message)
+        NULL
+      })
+
+      if (!is.null(group_result) && !is.null(group_result$data)) {
+        group_result$data$Group <- g
+        group_result$display$Group <- g
+        all_results[[as.character(g)]] <- group_result$data
+        all_display[[as.character(g)]] <- group_result$display
+      }
+    }
+
+    if (length(all_results) == 0) {
+      stop("Could not compute correlations for any group")
+    }
+
+    # Combine results
+    results_df <- do.call(rbind, all_results)
+    display_df <- do.call(rbind, all_display)
+
+    # Reorder columns to put Group first
+    results_df <- results_df[, c("Group", setdiff(names(results_df), "Group"))]
+    display_df <- display_df[, c("Group", setdiff(names(display_df), "Group"))]
+
+    # Sort by Group, then by absolute r
+    results_df <- results_df[order(results_df$Group, -abs(results_df$r)), ]
+    display_df <- display_df[order(display_df$Group, -abs(results_df$r)), ]
+
+    rownames(results_df) <- NULL
+    rownames(display_df) <- NULL
+
+    n_significant <- sum(results_df$p < 0.05)
+
+    # Create gt table with row groups
+    gt_table <- gt::gt(display_df) |>
+      gt::cols_align(align = "left", columns = c("Group", "Variable1", "Variable2")) |>
+      gt::cols_align(align = "center", columns = setdiff(names(display_df), c("Group", "Variable1", "Variable2"))) |>
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_body(columns = c("Variable1", "Variable2"))
+      )
+
+    # Title
+    type_label <- switch(type,
+                         "bivariate" = "",
+                         "partial" = "Partial ",
+                         "semi-partial" = "Semi-partial ")
+    method_label <- switch(method,
+                           "pearson" = "Pearson",
+                           "spearman" = "Spearman",
+                           "kendall" = "Kendall")
+
+    default_title <- paste0(type_label, method_label, " Correlations by ", group_var)
+    subtitle <- paste0(length(group_levels), " groups, ", n_significant, " significant (p < .05)")
+
+    gt_table <- gt_table |>
+      gt::tab_header(
+        title = if (!is.null(title)) title else default_title,
+        subtitle = subtitle
+      )
+
+    # Footnotes
+    footnote <- "* p < .05, ** p < .01, *** p < .001"
+    if (p_adjust != "none") {
+      footnote <- paste0(footnote, " (", p_adjust, " adjusted per group)")
+    }
+    gt_table <- gt_table |>
+      gt::tab_source_note(source_note = footnote)
+
+    # Color significant
+    sig_rows <- which(results_df$p < 0.05)
+    if (length(sig_rows) > 0) {
+      gt_table <- gt_table |>
+        gt::tab_style(
+          style = gt::cell_text(color = "#27AE60"),
+          locations = gt::cells_body(columns = "Sig", rows = sig_rows)
+        )
+    }
+
+    # Highlight strong correlations
+    strong_pos <- which(results_df$r >= 0.5)
+    strong_neg <- which(results_df$r <= -0.5)
+
+    if (length(strong_pos) > 0) {
+      gt_table <- gt_table |>
+        gt::tab_style(
+          style = gt::cell_text(color = "#2980B9", weight = "bold"),
+          locations = gt::cells_body(columns = "r", rows = strong_pos)
+        )
+    }
+    if (length(strong_neg) > 0) {
+      gt_table <- gt_table |>
+        gt::tab_style(
+          style = gt::cell_text(color = "#C0392B", weight = "bold"),
+          locations = gt::cells_body(columns = "r", rows = strong_neg)
+        )
+    }
+
+    print(gt_table)
+
+    return(invisible(list(
+      table = gt_table,
+      data = results_df,
+      display = display_df,
+      n_pairs = nrow(results_df),
+      n_significant = n_significant,
+      n_groups = length(group_levels),
+      group_var = group_var,
+      type = type,
+      method = method,
+      p_adjust = p_adjust
+    )))
   }
 
   # Capture id variable for multilevel
