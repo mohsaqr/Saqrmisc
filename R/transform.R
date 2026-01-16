@@ -484,3 +484,173 @@ standardize_vec <- function(x, na.rm = TRUE) {
   if (is.na(x_sd) || x_sd == 0) return(rep(0, length(x)))
   (x - x_mean) / x_sd
 }
+
+
+#' Reverse Code Variables
+#'
+#' @description
+#' Reverse codes numeric variables, commonly used for Likert scales where some
+#' items are negatively worded. Uses the formula: reversed = (max + min) - original.
+#'
+#' @param data A data frame.
+#' @param Vars Character vector of variable names to reverse code.
+#' @param min Numeric. Minimum value of the scale. If NULL (default), detected from data.
+#' @param max Numeric. Maximum value of the scale. If NULL (default), detected from data.
+#' @param suffix Character. Suffix for new column names. Default "_r".
+#'
+#' @return Data frame with reverse coded variables added.
+#'
+#' @details
+#' The reverse coding formula is: reversed = (max + min) - original
+#'
+#' For a 1-5 Likert scale:
+#' \itemize{
+#'   \item 1 becomes 5
+#'   \item 2 becomes 4
+#'   \item 3 stays 3
+#'   \item 4 becomes 2
+#'   \item 5 becomes 1
+#' }
+#'
+#' If min/max are not specified, they are detected from the data. For Likert scales,
+#' it's recommended to explicitly specify min and max to ensure correct reversal
+#' even if extreme values are not present in the data.
+#'
+#' @examples
+#' \dontrun{
+#' # Create sample Likert data
+#' df <- data.frame(
+#'   item1 = c(1, 2, 3, 4, 5),
+#'   item2 = c(5, 4, 3, 2, 1),  # reverse-worded
+#'   item3 = c(2, 3, 4, 3, 2)
+#' )
+#'
+#' # Reverse code with automatic detection
+#' df <- reverse_code(df, Vars = "item2")
+#'
+#' # Reverse code with explicit scale (1-5 Likert)
+#' df <- reverse_code(df, Vars = "item2", min = 1, max = 5)
+#'
+#' # Reverse code multiple items
+#' df <- reverse_code(df, Vars = c("item2", "item3"), min = 1, max = 5)
+#'
+#' # 0-10 scale
+#' df <- reverse_code(df, Vars = "item2", min = 0, max = 10)
+#' }
+#'
+#' @export
+reverse_code <- function(data,
+                         Vars,
+                         min = NULL,
+                         max = NULL,
+                         suffix = "_r") {
+
+  if (!is.data.frame(data)) {
+    stop("'data' must be a data frame. Use reverse_code_vec() for vectors in mutate().")
+  }
+
+  if (missing(Vars) || length(Vars) == 0) {
+    stop("'Vars' must be specified")
+  }
+
+  # Check variables exist
+  missing_vars <- setdiff(Vars, names(data))
+  if (length(missing_vars) > 0) {
+    stop("Variables not found: ", paste(missing_vars, collapse = ", "))
+  }
+
+  # Check numeric
+  non_numeric <- Vars[!sapply(data[Vars], is.numeric)]
+  if (length(non_numeric) > 0) {
+    stop("All variables must be numeric: ", paste(non_numeric, collapse = ", "))
+  }
+
+  result <- data
+
+  for (var_name in Vars) {
+    x <- data[[var_name]]
+    new_col_name <- paste0(var_name, suffix)
+
+    # Determine min/max
+    var_min <- if (is.null(min)) min(x, na.rm = TRUE) else min
+    var_max <- if (is.null(max)) max(x, na.rm = TRUE) else max
+
+    if (var_min >= var_max) {
+      warning(sprintf("Variable '%s' has min >= max, skipping", var_name))
+      result[[new_col_name]] <- x
+      next
+    }
+
+    # Reverse code: reversed = (max + min) - original
+    result[[new_col_name]] <- (var_max + var_min) - x
+
+    # Report
+    if (is.null(min) || is.null(max)) {
+      cat(sprintf("Reverse coded '%s' (detected scale: %g-%g)\n", var_name, var_min, var_max))
+    } else {
+      cat(sprintf("Reverse coded '%s' (scale: %g-%g)\n", var_name, var_min, var_max))
+    }
+  }
+
+  invisible(result)
+}
+
+
+#' Reverse Code a Vector (for use in mutate/across)
+#'
+#' @description
+#' Vectorized reverse coding for use with dplyr mutate and across.
+#'
+#' @param x Numeric vector to reverse code.
+#' @param min Numeric. Minimum value of the scale. If NULL (default), detected from data.
+#' @param max Numeric. Maximum value of the scale. If NULL (default), detected from data.
+#' @param na.rm Logical. Remove NA values when detecting min/max? Default TRUE.
+#'
+#' @return Reverse coded numeric vector.
+#'
+#' @details
+#' The reverse coding formula is: reversed = (max + min) - original
+#'
+#' For Likert scales, always specify min and max explicitly to ensure correct
+#' reversal even when extreme values are not present in the data.
+#'
+#' @examples
+#' \dontrun{
+#' library(dplyr)
+#'
+#' df <- data.frame(
+#'   item1 = c(1, 2, 3, 4, 5),
+#'   item2 = c(5, 4, 3, 2, 1),
+#'   item3 = c(2, 3, 4, 3, 2)
+#' )
+#'
+#' # Reverse single variable (auto-detect scale)
+#' df %>% mutate(item2_r = reverse_code_vec(item2))
+#'
+#' # Reverse with explicit 1-5 scale
+#' df %>% mutate(item2_r = reverse_code_vec(item2, min = 1, max = 5))
+#'
+#' # Reverse multiple variables
+#' df %>% mutate(across(c(item2, item3), ~reverse_code_vec(.x, min = 1, max = 5), .names = "{.col}_r"))
+#'
+#' # 0-10 scale
+#' df %>% mutate(item2_r = reverse_code_vec(item2, min = 0, max = 10))
+#'
+#' # 1-7 Likert scale
+#' df %>% mutate(item2_r = reverse_code_vec(item2, min = 1, max = 7))
+#' }
+#'
+#' @export
+reverse_code_vec <- function(x, min = NULL, max = NULL, na.rm = TRUE) {
+  # Determine min/max
+  x_min <- if (is.null(min)) min(x, na.rm = na.rm) else min
+  x_max <- if (is.null(max)) max(x, na.rm = na.rm) else max
+
+  if (is.na(x_min) || is.na(x_max) || x_min >= x_max) {
+    warning("Cannot reverse code: invalid min/max")
+    return(x)
+  }
+
+  # Reverse code: reversed = (max + min) - original
+  (x_max + x_min) - x
+}
