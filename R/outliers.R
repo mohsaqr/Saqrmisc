@@ -1,14 +1,17 @@
 #' Check for Outliers
 #'
 #' @description
-#' Detects univariate and multivariate outliers using z-score, IQR, or
-#' Mahalanobis distance methods.
+#' Detects univariate and multivariate outliers using various methods including
+#' z-score (2SD, 3SD, etc.), IQR, percentile, or Mahalanobis distance.
 #'
 #' @param data A data frame containing the variables.
 #' @param Vars Character vector of numeric variable names to check.
-#' @param method Detection method: "zscore", "iqr", or "mahalanobis".
+#' @param method Detection method: "zscore", "iqr", "percentile", or "mahalanobis".
 #' @param threshold Numeric threshold for outlier detection.
-#'   Defaults: zscore = 3.29, iqr = 1.5, mahalanobis = chi-sq p < .001.
+#'   For zscore: number of SDs (default 3). Common values: 2, 2.5, 3, 3.29.
+#'   For iqr: IQR multiplier (default 1.5). Common values: 1.5, 3.
+#'   For percentile: percentile cutoff (default 0.01 for 1st/99th). Values like 0.05 for 5th/95th.
+#'   For mahalanobis: chi-sq p-value threshold (default 0.001).
 #' @param flag Logical. Add outlier flag column to returned data? Default TRUE.
 #' @param plot Logical. Create outlier visualization? Default TRUE.
 #'
@@ -22,11 +25,20 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Z-score method
-#' outlier_check(mtcars, Vars = c("mpg", "hp"), method = "zscore")
+#' # Z-score with 3 SD threshold
+#' outlier_check(mtcars, Vars = c("mpg", "hp"), method = "zscore", threshold = 3)
 #'
-#' # IQR method with custom threshold
-#' outlier_check(mtcars, Vars = c("mpg", "hp"), method = "iqr", threshold = 3)
+#' # Z-score with 2 SD threshold (more conservative)
+#' outlier_check(mtcars, Vars = c("mpg", "hp"), method = "zscore", threshold = 2)
+#'
+#' # IQR method
+#' outlier_check(mtcars, Vars = c("mpg", "hp"), method = "iqr", threshold = 1.5)
+#'
+#' # Percentile method (1st and 99th percentile)
+#' outlier_check(mtcars, Vars = c("mpg", "hp"), method = "percentile", threshold = 0.01)
+#'
+#' # Percentile method (5th and 95th percentile)
+#' outlier_check(mtcars, Vars = c("mpg", "hp"), method = "percentile", threshold = 0.05)
 #'
 #' # Mahalanobis distance (multivariate)
 #' outlier_check(mtcars, Vars = c("mpg", "hp", "wt"), method = "mahalanobis")
@@ -38,7 +50,7 @@
 #' @export
 outlier_check <- function(data,
                           Vars,
-                          method = c("zscore", "iqr", "mahalanobis"),
+                          method = c("zscore", "iqr", "percentile", "mahalanobis"),
                           threshold = NULL,
                           flag = TRUE,
                           plot = TRUE) {
@@ -67,9 +79,10 @@ outlier_check <- function(data,
   # Set default thresholds
   if (is.null(threshold)) {
     threshold <- switch(method,
-                        "zscore" = 3.29,      # p < .001 two-tailed
-                        "iqr" = 1.5,          # Standard IQR multiplier
-                        "mahalanobis" = NULL  # Will use chi-sq p < .001
+                        "zscore" = 3,           # 3 SD
+                        "iqr" = 1.5,            # Standard IQR multiplier
+                        "percentile" = 0.01,    # 1st and 99th percentile
+                        "mahalanobis" = 0.001   # p < .001
     )
   }
 
@@ -101,19 +114,25 @@ outlier_check <- function(data,
       n_outliers <- sum(is_outlier, na.rm = TRUE)
       outlier_indices <- which(is_outlier)
 
+      # Calculate bounds
+      lower_bound <- x_mean - threshold * x_sd
+      upper_bound <- x_mean + threshold * x_sd
+
       summary_list[[var_name]] <- data.frame(
         Variable = var_name,
-        Method = paste0("z-score > ", threshold),
+        Method = paste0("Z-score > ", threshold, " SD"),
         N_Outliers = n_outliers,
         Pct_Outliers = round(n_outliers / sum(!is.na(x)) * 100, 2),
-        Min_Z = round(min(abs(z_scores[is_outlier]), na.rm = TRUE), 2),
-        Max_Z = round(max(abs(z_scores[is_outlier]), na.rm = TRUE), 2),
+        Lower_Bound = round(lower_bound, 2),
+        Upper_Bound = round(upper_bound, 2),
         stringsAsFactors = FALSE
       )
 
       outlier_details[[var_name]] <- list(
         indices = outlier_indices,
-        z_scores = z_scores
+        z_scores = z_scores,
+        lower = lower_bound,
+        upper = upper_bound
       )
     }
 
@@ -157,6 +176,48 @@ outlier_check <- function(data,
 
     summary_df <- do.call(rbind, summary_list)
 
+  } else if (method == "percentile") {
+    # Percentile method (univariate)
+    summary_list <- list()
+
+    # Threshold is the percentile (e.g., 0.01 means 1st and 99th percentile)
+    lower_pct <- threshold
+    upper_pct <- 1 - threshold
+
+    for (var_name in Vars) {
+      x <- data[[var_name]]
+      lower_bound <- quantile(x, lower_pct, na.rm = TRUE)
+      upper_bound <- quantile(x, upper_pct, na.rm = TRUE)
+
+      is_outlier <- (x < lower_bound | x > upper_bound) & !is.na(x)
+      outlier_flags <- outlier_flags | is_outlier
+
+      n_outliers <- sum(is_outlier, na.rm = TRUE)
+      outlier_indices <- which(is_outlier)
+
+      # Format percentile labels
+      lower_label <- paste0(round(lower_pct * 100, 1), "th")
+      upper_label <- paste0(round(upper_pct * 100, 1), "th")
+
+      summary_list[[var_name]] <- data.frame(
+        Variable = var_name,
+        Method = paste0("Percentile <", lower_label, " or >", upper_label),
+        N_Outliers = n_outliers,
+        Pct_Outliers = round(n_outliers / sum(!is.na(x)) * 100, 2),
+        Lower_Bound = round(lower_bound, 2),
+        Upper_Bound = round(upper_bound, 2),
+        stringsAsFactors = FALSE
+      )
+
+      outlier_details[[var_name]] <- list(
+        indices = outlier_indices,
+        lower = lower_bound,
+        upper = upper_bound
+      )
+    }
+
+    summary_df <- do.call(rbind, summary_list)
+
   } else if (method == "mahalanobis") {
     # Mahalanobis distance (multivariate)
     if (length(Vars) < 2) {
@@ -178,13 +239,9 @@ outlier_check <- function(data,
     mahal_dist <- rep(NA, n_total)
     mahal_dist[complete_mask] <- mahalanobis(data_complete, center, cov_matrix)
 
-    # Chi-square threshold
+    # Chi-square threshold based on p-value
     df <- length(Vars)
-    if (is.null(threshold)) {
-      chi_sq_threshold <- qchisq(0.999, df)  # p < .001
-    } else {
-      chi_sq_threshold <- threshold
-    }
+    chi_sq_threshold <- qchisq(1 - threshold, df)
 
     is_outlier <- mahal_dist > chi_sq_threshold & !is.na(mahal_dist)
     outlier_flags <- is_outlier
@@ -197,7 +254,7 @@ outlier_check <- function(data,
 
     summary_df <- data.frame(
       Variables = paste(Vars, collapse = ", "),
-      Method = paste0("Mahalanobis (df=", df, ")"),
+      Method = paste0("Mahalanobis (p < ", threshold, ")"),
       N_Outliers = n_outliers,
       Pct_Outliers = round(n_outliers / sum(complete_mask) * 100, 2),
       Chi_Sq_Threshold = round(chi_sq_threshold, 2),
@@ -238,7 +295,7 @@ outlier_check <- function(data,
   # Create plot if requested
   plot_obj <- NULL
   if (plot) {
-    if (method %in% c("zscore", "iqr")) {
+    if (method %in% c("zscore", "iqr", "percentile")) {
       # Boxplot for univariate methods
       plot_data <- do.call(rbind, lapply(Vars, function(var_name) {
         data.frame(
@@ -291,7 +348,7 @@ outlier_check <- function(data,
         ggplot2::theme_minimal() +
         ggplot2::labs(
           title = "Mahalanobis Distance",
-          subtitle = paste0("Threshold (p < .001): ", round(outlier_details[["mahalanobis"]]$threshold, 2)),
+          subtitle = paste0("Threshold (p < ", threshold, "): ", round(outlier_details[["mahalanobis"]]$threshold, 2)),
           x = "Observation", y = "Mahalanobis Distance"
         ) +
         ggplot2::theme(legend.position = "bottom")
@@ -319,19 +376,28 @@ outlier_check <- function(data,
 #'
 #' @description
 #' Replaces detected outliers with specified values such as NA, mean,
-#' median, or winsorized values.
+#' median, or winsorized values. Supports multiple detection methods.
 #'
 #' @param data A data frame.
 #' @param Vars Character vector of numeric variable names to process.
-#' @param detect Detection method: "zscore" or "iqr".
+#' @param detect Detection method: "zscore", "iqr", or "percentile".
 #' @param threshold Numeric threshold for detection.
-#'   Defaults: zscore = 3.29, iqr = 1.5.
+#'   For zscore: number of SDs (default 3). Use 2 for 2SD, 2.5 for 2.5SD, etc.
+#'   For iqr: IQR multiplier (default 1.5).
+#'   For percentile: percentile cutoff (default 0.01 for 1st/99th).
 #' @param replace_with Replacement method: "NA", "mean", "median", "winsorize", or "boundary".
 #' @param suffix Character. Suffix for new columns. If NULL (default), replaces in place.
 #'
 #' @return Data frame with outliers replaced.
 #'
 #' @details
+#' Detection methods:
+#' \itemize{
+#'   \item \code{"zscore"}: Values beyond threshold SDs from mean. Common thresholds: 2, 2.5, 3, 3.29
+#'   \item \code{"iqr"}: Values beyond Q1/Q3 +/- threshold*IQR. Common thresholds: 1.5, 3
+#'   \item \code{"percentile"}: Values below or above percentile cutoffs. E.g., 0.01 = 1st/99th, 0.05 = 5th/95th
+#' }
+#'
 #' Replacement methods:
 #' \itemize{
 #'   \item \code{"NA"}: Set outliers to NA
@@ -345,21 +411,24 @@ outlier_check <- function(data,
 #' \dontrun{
 #' df <- mtcars
 #'
-#' # Replace outliers with NA
-#' df_clean <- replace_outliers(df, Vars = "hp", replace_with = "NA")
+#' # Replace outliers beyond 2 SD with NA
+#' df_clean <- replace_outliers(df, Vars = "hp", detect = "zscore", threshold = 2, replace_with = "NA")
 #'
-#' # Winsorize outliers
-#' df_clean <- replace_outliers(df, Vars = c("mpg", "hp"), replace_with = "winsorize")
+#' # Winsorize at 3 SD
+#' df_clean <- replace_outliers(df, Vars = "hp", detect = "zscore", threshold = 3, replace_with = "winsorize")
 #'
-#' # Replace with median, keep original in new column
-#' df_clean <- replace_outliers(df, Vars = "hp", replace_with = "median", suffix = "_clean")
+#' # Replace outliers at 5th/95th percentile with median
+#' df_clean <- replace_outliers(df, Vars = "hp", detect = "percentile", threshold = 0.05, replace_with = "median")
+#'
+#' # IQR-based winsorization
+#' df_clean <- replace_outliers(df, Vars = c("mpg", "hp"), detect = "iqr", replace_with = "winsorize")
 #' }
 #'
 #' @importFrom stats sd IQR quantile median
 #' @export
 replace_outliers <- function(data,
                              Vars,
-                             detect = c("zscore", "iqr"),
+                             detect = c("zscore", "iqr", "percentile"),
                              threshold = NULL,
                              replace_with = c("NA", "mean", "median", "winsorize", "boundary"),
                              suffix = NULL) {
@@ -389,8 +458,9 @@ replace_outliers <- function(data,
   # Set default thresholds
   if (is.null(threshold)) {
     threshold <- switch(detect,
-                        "zscore" = 3.29,
-                        "iqr" = 1.5
+                        "zscore" = 3,
+                        "iqr" = 1.5,
+                        "percentile" = 0.01
     )
   }
 
@@ -401,20 +471,23 @@ replace_outliers <- function(data,
     x <- data[[var_name]]
     new_col_name <- if (is.null(suffix)) var_name else paste0(var_name, suffix)
 
-    # Detect outliers
+    # Detect outliers based on method
     if (detect == "zscore") {
       x_mean <- mean(x, na.rm = TRUE)
       x_sd <- sd(x, na.rm = TRUE)
 
       if (x_sd == 0) {
         z_scores <- rep(0, length(x))
+        lower_bound <- x_mean
+        upper_bound <- x_mean
       } else {
         z_scores <- (x - x_mean) / x_sd
+        lower_bound <- x_mean - threshold * x_sd
+        upper_bound <- x_mean + threshold * x_sd
       }
 
       is_outlier <- abs(z_scores) > threshold & !is.na(x)
-      lower_bound <- x_mean - threshold * x_sd
-      upper_bound <- x_mean + threshold * x_sd
+      method_label <- paste0(threshold, " SD")
 
     } else if (detect == "iqr") {
       q1 <- quantile(x, 0.25, na.rm = TRUE)
@@ -425,13 +498,24 @@ replace_outliers <- function(data,
       upper_bound <- q3 + threshold * iqr_val
 
       is_outlier <- (x < lower_bound | x > upper_bound) & !is.na(x)
+      method_label <- paste0("IQR x ", threshold)
+
+    } else if (detect == "percentile") {
+      lower_pct <- threshold
+      upper_pct <- 1 - threshold
+
+      lower_bound <- quantile(x, lower_pct, na.rm = TRUE)
+      upper_bound <- quantile(x, upper_pct, na.rm = TRUE)
+
+      is_outlier <- (x < lower_bound | x > upper_bound) & !is.na(x)
+      method_label <- paste0(round(lower_pct * 100, 1), "th/", round(upper_pct * 100, 1), "th percentile")
     }
 
     n_outliers <- sum(is_outlier, na.rm = TRUE)
 
     if (n_outliers == 0) {
       result[[new_col_name]] <- x
-      cat(sprintf("No outliers detected in '%s'\n", var_name))
+      cat(sprintf("No outliers detected in '%s' (method: %s)\n", var_name, method_label))
       next
     }
 
@@ -465,11 +549,136 @@ replace_outliers <- function(data,
     result[[new_col_name]] <- new_vals
     total_replaced <- total_replaced + n_outliers
 
-    cat(sprintf("Replaced %d outliers in '%s' using %s (detect: %s, threshold: %s)\n",
-                n_outliers, var_name, replace_with, detect, threshold))
+    cat(sprintf("Replaced %d outliers in '%s' using %s (detect: %s)\n",
+                n_outliers, var_name, replace_with, method_label))
   }
 
   cat(sprintf("\nTotal outliers replaced: %d\n", total_replaced))
 
   invisible(result)
+}
+
+
+#' Check if Value is Outlier (vectorized for mutate/across)
+#'
+#' @description
+#' Vectorized function to detect outliers for use with dplyr.
+#' For group-wise detection, use dplyr::group_by() before mutate().
+#'
+#' @param x Numeric vector.
+#' @param method Detection method: "zscore", "iqr", or "percentile".
+#' @param threshold Threshold value.
+#' @param na.rm Logical. Remove NA values? Default TRUE.
+#'
+#' @return Logical vector indicating outliers.
+#'
+#' @examples
+#' \dontrun{
+#' library(dplyr)
+#'
+#' # Flag outliers beyond 2 SD
+#' mtcars %>% mutate(hp_outlier = is_outlier(hp, method = "zscore", threshold = 2))
+#'
+#' # Flag outliers at 5th/95th percentile
+#' mtcars %>% mutate(hp_outlier = is_outlier(hp, method = "percentile", threshold = 0.05))
+#'
+#' # Group-wise outlier detection
+#' mtcars %>% group_by(cyl) %>% mutate(hp_outlier = is_outlier(hp))
+#' }
+#'
+#' @export
+is_outlier <- function(x, method = c("zscore", "iqr", "percentile"), threshold = NULL, na.rm = TRUE) {
+  method <- match.arg(method)
+
+  if (is.null(threshold)) {
+    threshold <- switch(method,
+                        "zscore" = 3,
+                        "iqr" = 1.5,
+                        "percentile" = 0.01)
+  }
+
+  if (method == "zscore") {
+    x_mean <- mean(x, na.rm = na.rm)
+    x_sd <- sd(x, na.rm = na.rm)
+    if (is.na(x_sd) || x_sd == 0) return(rep(FALSE, length(x)))
+    z_scores <- abs((x - x_mean) / x_sd)
+    return(z_scores > threshold & !is.na(x))
+
+  } else if (method == "iqr") {
+    q1 <- quantile(x, 0.25, na.rm = na.rm)
+    q3 <- quantile(x, 0.75, na.rm = na.rm)
+    iqr_val <- IQR(x, na.rm = na.rm)
+    lower <- q1 - threshold * iqr_val
+    upper <- q3 + threshold * iqr_val
+    return((x < lower | x > upper) & !is.na(x))
+
+  } else if (method == "percentile") {
+    lower <- quantile(x, threshold, na.rm = na.rm)
+    upper <- quantile(x, 1 - threshold, na.rm = na.rm)
+    return((x < lower | x > upper) & !is.na(x))
+  }
+}
+
+
+#' Winsorize a Vector (vectorized for mutate/across)
+#'
+#' @description
+#' Vectorized winsorization for use with dplyr.
+#' For group-wise winsorization, use dplyr::group_by() before mutate().
+#'
+#' @param x Numeric vector.
+#' @param method Detection method: "zscore", "iqr", or "percentile".
+#' @param threshold Threshold value.
+#' @param na.rm Logical. Remove NA values? Default TRUE.
+#'
+#' @return Winsorized numeric vector.
+#'
+#' @examples
+#' \dontrun{
+#' library(dplyr)
+#'
+#' # Winsorize at 3 SD
+#' mtcars %>% mutate(hp_w = winsorize_vec(hp, method = "zscore", threshold = 3))
+#'
+#' # Winsorize at 5th/95th percentile
+#' mtcars %>% mutate(hp_w = winsorize_vec(hp, method = "percentile", threshold = 0.05))
+#'
+#' # Group-wise winsorization
+#' mtcars %>% group_by(cyl) %>% mutate(hp_w = winsorize_vec(hp))
+#' }
+#'
+#' @export
+winsorize_vec <- function(x, method = c("zscore", "iqr", "percentile"), threshold = NULL, na.rm = TRUE) {
+  method <- match.arg(method)
+
+  if (is.null(threshold)) {
+    threshold <- switch(method,
+                        "zscore" = 3,
+                        "iqr" = 1.5,
+                        "percentile" = 0.05)
+  }
+
+  if (method == "zscore") {
+    x_mean <- mean(x, na.rm = na.rm)
+    x_sd <- sd(x, na.rm = na.rm)
+    if (is.na(x_sd) || x_sd == 0) return(x)
+    lower <- x_mean - threshold * x_sd
+    upper <- x_mean + threshold * x_sd
+
+  } else if (method == "iqr") {
+    q1 <- quantile(x, 0.25, na.rm = na.rm)
+    q3 <- quantile(x, 0.75, na.rm = na.rm)
+    iqr_val <- IQR(x, na.rm = na.rm)
+    lower <- q1 - threshold * iqr_val
+    upper <- q3 + threshold * iqr_val
+
+  } else if (method == "percentile") {
+    lower <- quantile(x, threshold, na.rm = na.rm)
+    upper <- quantile(x, 1 - threshold, na.rm = na.rm)
+  }
+
+  result <- x
+  result[x < lower & !is.na(x)] <- lower
+  result[x > upper & !is.na(x)] <- upper
+  return(result)
 }

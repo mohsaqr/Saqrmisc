@@ -9,8 +9,8 @@ auto_describe(
   group_by = NULL,
   numeric_stats = c("n", "mean", "sd", "median", "min", "max"),
   digits = 2,
-  max_categories = 10,
   exclude = NULL,
+  force_categorical = NULL,
   title_numeric = "Numeric Variables",
   title_categorical = "Categorical Variables",
   theme = "default",
@@ -29,10 +29,10 @@ Default: `c("n", "mean", "sd", "median", "min", "max")`.}
 
 \item{digits}{Integer. Decimal places for numeric output. Default: `2`.}
 
-\item{max_categories}{Integer. Maximum unique values for a variable to be
-treated as categorical. Default: `10`.}
-
 \item{exclude}{Character vector of column names to exclude. Default: `NULL`.}
+
+\item{force_categorical}{Character vector of numeric column names to treat as
+categorical instead. Default: `NULL`.}
 
 \item{title_numeric}{Title for numeric table. Default: `"Numeric Variables"`.}
 

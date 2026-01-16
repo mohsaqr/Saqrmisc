@@ -9,6 +9,7 @@ compare_groups(
   category,
   Vars,
   repeat_category = NULL,
+  repeat_levels = NULL,
   plots = TRUE,
   table = TRUE,
   type = "auto",
@@ -19,11 +20,13 @@ compare_groups(
   p_adjust_method = "none",
   posthoc = TRUE,
   posthoc_method = "games-howell",
+  posthoc_table = FALSE,
   pairwise_display = "significant",
   min_threshold = 0.05,
   min_subcategory = 5,
   colors = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  combined_table = TRUE
 )
 }
 \arguments{
@@ -91,6 +94,11 @@ repeat_category levels. Default: `5`.}
 a built-in palette.}
 
 \item{verbose}{Logical. Print progress messages? Default: `TRUE`.}
+
+\item{combined_table}{Logical. When `repeat_category` is used, combine all
+results into a single table? Default: `TRUE`. The combined table shows
+all repeat_category levels together with bold highest means and red
+significant p-values.}
 }
 \value{
 A list with class "comparison_results" containing:
