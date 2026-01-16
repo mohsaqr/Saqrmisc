@@ -37,15 +37,16 @@ library(Saqrmisc)
 
 ## Package Overview
 
-The Saqrmisc package includes seven main functional areas:
+The Saqrmisc package includes eight main functional areas:
 
 1. **Group Comparisons** (`compare_groups`)
 2. **Correlation Matrix** (`correlation_matrix`)
-3. **Descriptive Statistics** (`descriptive_table`)
-4. **Categorical Frequency Tables** (`categorical_table`)
-5. **Model-Based Clustering** (`clustering`)
-6. **Categorical Variable Analysis** (`mosaic_analysis`)
-7. **Network Estimation** (`estimate_single_network`)
+3. **Full Correlation Tables** (`correlations`)
+4. **Descriptive Statistics** (`descriptive_table`)
+5. **Categorical Frequency Tables** (`categorical_table`)
+6. **Model-Based Clustering** (`clustering`)
+7. **Categorical Variable Analysis** (`mosaic_analysis`)
+8. **Network Estimation** (`estimate_single_network`)
 
 ## 1. Group Comparisons
 
@@ -251,7 +252,129 @@ result$heatmap
 - **Confidence intervals**: Optional 95% CIs (bivariate Pearson only)
 - **Heatmap**: Color-coded visualization
 
-## 3. Descriptive Statistics
+## 3. Full Correlation Tables
+
+The `correlations()` function creates comprehensive long-format correlation tables with full statistics for each variable pair. This is ideal for detailed reporting and when you need complete statistics (r, CI, t, df, p, n) for each correlation.
+
+### Basic Usage
+
+```{r correlations_basic}
+# Full correlation table with all statistics
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp", "wt")
+)
+
+# Only show strong correlations (|r| >= 0.7)
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp", "wt"),
+  min_r = 0.7
+)
+
+# Only show significant correlations
+correlations(
+ data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp", "wt", "qsec"),
+  sig_only = TRUE
+)
+
+# With p-value adjustment
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  p_adjust = "bonferroni"
+)
+```
+
+### Stratified Correlations by Group
+
+Compute correlations separately for each group level, with results combined into one table:
+
+```{r correlations_grouped}
+# Correlations by number of cylinders
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "hp", "wt"),
+  group_by = cyl
+)
+
+# Correlations by transmission type, only significant
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "hp", "wt", "disp"),
+  group_by = am,
+  sig_only = TRUE
+)
+```
+
+### Multilevel Correlations
+
+For repeated measures or hierarchically nested data, use multilevel correlations to estimate within-cluster associations while removing between-cluster variance:
+
+```{r correlations_multilevel}
+# Create sample longitudinal data
+set.seed(123)
+n_subjects <- 30
+n_timepoints <- 4
+
+longitudinal_data <- data.frame(
+  participant_id = rep(1:n_subjects, each = n_timepoints),
+  time = rep(1:n_timepoints, n_subjects),
+  anxiety = rnorm(n_subjects * n_timepoints, mean = 5, sd = 1.5),
+  depression = rnorm(n_subjects * n_timepoints, mean = 4, sd = 1.2),
+  stress = rnorm(n_subjects * n_timepoints, mean = 6, sd = 1.8)
+)
+
+# Within-person correlations (multilevel)
+correlations(
+  data = longitudinal_data,
+  Vars = c("anxiety", "depression", "stress"),
+  multilevel = TRUE,
+  id = participant_id
+)
+
+# Include between-person correlations
+correlations(
+  data = longitudinal_data,
+  Vars = c("anxiety", "depression"),
+  multilevel = TRUE,
+  id = participant_id,
+  between = TRUE
+)
+```
+
+### Partial and Semi-partial Correlations
+
+```{r correlations_partial}
+# Partial correlations (controlling for other variables)
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  type = "partial"
+)
+
+# Semi-partial correlations
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  type = "semi-partial"
+)
+```
+
+### Key Features
+
+- **Full statistics**: r, 95% CI, t-statistic, df, p-value, n for each pair
+- **Correlation types**: Bivariate, partial, semi-partial
+- **Filtering**: Show only strong (`min_r`) or significant (`sig_only`) correlations
+- **P-value adjustment**: Bonferroni, Holm, FDR correction
+- **Group-by**: Compute correlations separately per group level
+- **Multilevel**: Within-cluster correlations for nested/repeated measures data
+- **Between correlations**: Optional between-cluster correlations
+- **Color highlighting**: Strong positive (blue), strong negative (red), significant (green)
+- **Sorted output**: Results sorted by absolute correlation strength
+
+## 4. Descriptive Statistics
 
 The `descriptive_table()` function creates publication-ready descriptive statistics tables.
 
@@ -281,7 +404,7 @@ descriptive_table(
 )
 ```
 
-## 4. Categorical Frequency Tables
+## 5. Categorical Frequency Tables
 
 The `categorical_table()` function creates frequency tables with chi-square tests.
 
@@ -305,7 +428,7 @@ categorical_table(
 )
 ```
 
-## 5. Model-Based Clustering
+## 6. Model-Based Clustering
 
 The `clustering()` function performs comprehensive model-based clustering using MoEClust.
 
@@ -350,7 +473,7 @@ model_comparison_table(clustering_results)
 - **Comprehensive visualization**: Profile plots, heatmaps, bar charts
 - **Cluster stability**: Bootstrap assessment with `assess_cluster_stability()`
 
-## 6. Categorical Variable Analysis
+## 7. Categorical Variable Analysis
 
 The `mosaic_analysis()` function performs comprehensive analysis of categorical variables.
 
@@ -379,7 +502,7 @@ print(mosaic_results$cramers_v)
 print(mosaic_results$summary_table)
 ```
 
-## 7. Network Estimation
+## 8. Network Estimation
 
 The `estimate_single_network()` function estimates psychological networks.
 
