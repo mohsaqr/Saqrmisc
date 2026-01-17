@@ -5,23 +5,244 @@
 # Null coalescing operator (if not from rlang)
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+#' Convert data frame to clean markdown table
+#' @param df Data frame to convert
+#' @param digits Number of decimal places for numeric columns
+#' @param max_rows Maximum rows to include (NULL for all)
+#' @return Character string with markdown table
+#' @noRd
+df_to_markdown <- function(df, digits = 3, max_rows = NULL) {
+  if (is.null(df) || !inherits(df, "data.frame") || nrow(df) == 0) {
+    return(NULL)
+  }
+
+  # Convert tibble to data frame
+
+  df <- as.data.frame(df)
+
+ # Limit rows if specified
+  if (!is.null(max_rows) && nrow(df) > max_rows) {
+    df <- df[1:max_rows, , drop = FALSE]
+  }
+
+  # Round numeric columns
+  for (col in names(df)) {
+    if (is.numeric(df[[col]])) {
+      df[[col]] <- round(df[[col]], digits)
+    }
+  }
+
+  # Create header
+  header <- paste0("| ", paste(names(df), collapse = " | "), " |")
+  separator <- paste0("|", paste(rep("---", ncol(df)), collapse = "|"), "|
+")
+
+  # Create rows
+  rows <- apply(df, 1, function(row) {
+    paste0("| ", paste(row, collapse = " | "), " |")
+  })
+
+  paste(c(header, separator, rows), collapse = "\n")
+}
+
+#' Create a saqr_result object
+#'
+#' @description
+#' Creates a standardized result object for Saqrmisc functions that includes
+#' both the original data and a clean markdown representation for AI interpretation.
+#'
+#' @param data The main data (data frame or tibble with results)
+#' @param table Optional gt table or formatted table
+#' @param type Character describing the analysis type (e.g., "group_comparison", "correlation", "descriptive")
+#' @param markdown Optional pre-built markdown string. If NULL, auto-generated from data.
+#' @param ... Additional components to include in the result
+#'
+#' @return A list with class "saqr_result" containing data, table, markdown, and other components
+#' @export
+saqr_result <- function(data = NULL, table = NULL, type = "analysis", markdown = NULL, ...) {
+  result <- list(
+    data = data,
+    table = table,
+    type = type,
+    ...
+  )
+
+  # Auto-generate markdown if not provided
+  if (is.null(markdown)) {
+    result$markdown <- generate_saqr_markdown(result)
+  } else {
+    result$markdown <- markdown
+  }
+
+  class(result) <- c("saqr_result", "list")
+  result
+}
+
+#' Generate markdown summary for saqr_result
+#' @noRd
+generate_saqr_markdown <- function(x) {
+  parts <- c()
+
+  # Add type header
+  if (!is.null(x$type)) {
+    type_label <- switch(x$type,
+      "group_comparison" = "## Group Comparison Results",
+      "correlation" = "## Correlation Analysis",
+      "descriptive" = "## Descriptive Statistics",
+      "categorical" = "## Categorical Analysis",
+      paste0("## ", tools::toTitleCase(gsub("_", " ", x$type)))
+    )
+    parts <- c(parts, type_label, "")
+  }
+
+  # Add main data table
+  if (!is.null(x$data) && inherits(x$data, "data.frame") && nrow(x$data) > 0) {
+    # Select key columns for cleaner output
+    df <- as.data.frame(x$data)
+
+    # Try to identify and keep only important columns
+    key_cols <- intersect(names(df), c(
+      # Grouping
+      "variable", "Variable", "group", "Group", "category", "LLM",
+      # Descriptives
+      "n", "N", "mean", "Mean", "sd", "SD", "se", "SE", "median", "Median",
+      # Test statistics
+      "statistic", "t_statistic", "f_statistic", "chi_square",
+      "p_value", "p", "P-value", "p_adjusted",
+      # Effect sizes
+      "effect_size", "efsz", "ES", "cohens_d", "eta_sq", "cramers_v", "ef_type",
+      # Other
+      "test_type", "df", "t_df", "ci_lower", "ci_upper"
+    ))
+
+    if (length(key_cols) > 0) {
+      df_clean <- df[, key_cols, drop = FALSE]
+    } else {
+      # If no key columns found, use first 8 columns
+      df_clean <- df[, 1:min(8, ncol(df)), drop = FALSE]
+    }
+
+    md_table <- df_to_markdown(df_clean)
+    if (!is.null(md_table)) {
+      parts <- c(parts, "### Results Table", "", md_table, "")
+    }
+  }
+
+  # Add correlation matrix if present
+  if (!is.null(x$correlation_matrix) && is.matrix(x$correlation_matrix)) {
+    parts <- c(parts, "### Correlation Matrix", "")
+    cor_df <- as.data.frame(round(x$correlation_matrix, 3))
+    cor_df <- cbind(Variable = rownames(cor_df), cor_df)
+    md_table <- df_to_markdown(cor_df)
+    if (!is.null(md_table)) {
+      parts <- c(parts, md_table, "")
+    }
+  }
+
+  # Add p-values matrix if present
+  if (!is.null(x$p_matrix) && is.matrix(x$p_matrix)) {
+    parts <- c(parts, "### P-values Matrix", "")
+    p_df <- as.data.frame(round(x$p_matrix, 4))
+    p_df <- cbind(Variable = rownames(p_df), p_df)
+    md_table <- df_to_markdown(p_df, digits = 4)
+    if (!is.null(md_table)) {
+      parts <- c(parts, md_table, "")
+    }
+  }
+
+  # Add test statistics summary if present
+  if (!is.null(x$test_summary) && is.character(x$test_summary)) {
+    parts <- c(parts, "### Statistical Tests", "", x$test_summary, "")
+  }
+
+  paste(parts, collapse = "\n")
+}
+
+#' Print method for saqr_result
+#' @export
+print.saqr_result <- function(x, ...) {
+  cat("Saqr Result:", x$type, "\n")
+  cat(strrep("-", 40), "\n")
+  if (!is.null(x$table) && inherits(x$table, "gt_tbl")) {
+    print(x$table)
+  } else if (!is.null(x$data)) {
+    print(x$data)
+  }
+  invisible(x)
+}
+
 #' Smart output capture for different object types
 #' @noRd
 capture_smart_output <- function(x) {
   obj_class <- class(x)
+
+  # Handle saqr_result objects - use markdown if available
+ if (inherits(x, "saqr_result")) {
+    if (!is.null(x$markdown) && nchar(trimws(x$markdown)) > 0) {
+      return(x$markdown)
+    }
+    # Fallback: generate markdown
+    return(generate_saqr_markdown(x))
+  }
 
   # Helper to check if object is data frame or tibble
   is_df_like <- function(obj) {
     inherits(obj, "data.frame") || inherits(obj, "tbl_df") || inherits(obj, "tbl")
   }
 
-  # Helper to safely print data frame/tibble
+  # Helper to convert df to markdown with smart column selection
+  df_to_md <- function(obj, label) {
+    if (is.null(obj) || !is_df_like(obj) || nrow(obj) == 0) return(NULL)
+
+    df <- as.data.frame(obj)
+
+    # Select only key numeric/character columns, exclude complex list columns
+    keep_cols <- c()
+    for (col in names(df)) {
+      val <- df[[col]]
+      # Keep if it's numeric, character, factor, or logical (not list)
+      if (is.numeric(val) || is.character(val) || is.factor(val) || is.logical(val)) {
+        # Skip columns that look like they contain long text or reports
+        if (is.character(val) && any(nchar(val) > 200, na.rm = TRUE)) next
+        keep_cols <- c(keep_cols, col)
+      }
+    }
+
+    # Prioritize key statistical columns
+    priority_cols <- c(
+      "variable", "Variable", "group", "Group", "category", "LLM",
+      "n", "N", "mean", "Mean", "sd", "SD", "se", "SE", "median",
+      "p_value", "p", "p_adjusted", "efsz", "ES", "effect_size",
+      "ef_type", "test_type", "statistic", "t_statistic", "f_statistic",
+      "df", "t_df", "df1", "df2"
+    )
+
+    # Reorder: priority columns first, then others
+    priority_present <- intersect(priority_cols, keep_cols)
+    other_cols <- setdiff(keep_cols, priority_cols)
+    keep_cols <- c(priority_present, other_cols)
+
+    # Limit to reasonable number of columns
+    if (length(keep_cols) > 12) {
+      keep_cols <- keep_cols[1:12]
+    }
+
+    if (length(keep_cols) == 0) return(NULL)
+
+    df_clean <- df[, keep_cols, drop = FALSE]
+    md <- df_to_markdown(df_clean)
+    if (!is.null(md) && nchar(trimws(md)) > 0) {
+      return(paste0(label, "\n\n", md))
+    }
+    NULL
+  }
+
+  # Helper to safely print data frame/tibble (fallback)
   safe_print_df <- function(obj, label) {
     if (is.null(obj)) return(NULL)
     if (!is_df_like(obj)) return(NULL)
     if (nrow(obj) == 0) return(NULL)
 
-    # Convert tibble to data frame for cleaner printing
     if (inherits(obj, "tbl_df")) {
       output <- paste(utils::capture.output(print(as.data.frame(obj))), collapse = "\n")
     } else {
@@ -38,14 +259,14 @@ capture_smart_output <- function(x) {
   if (is.list(x) && !is.data.frame(x) && !inherits(x, "tbl_df")) {
     parts <- c()
 
-    # Check for summary_data first (from compare_groups) - most common
-    captured <- safe_print_df(x$summary_data, "Summary Data:")
+    # Check for summary_data first (from compare_groups) - use markdown format
+    captured <- df_to_md(x$summary_data, "## Summary Data")
     if (!is.null(captured)) parts <- c(parts, captured)
 
     # Check for summary_table (gt table data)
     if (!is.null(x$summary_table)) {
       if (inherits(x$summary_table, "gt_tbl") && !is.null(x$summary_table$`_data`)) {
-        captured <- safe_print_df(x$summary_table$`_data`, "Summary Table:")
+        captured <- df_to_md(x$summary_table$`_data`, "## Summary Table")
         if (!is.null(captured)) parts <- c(parts, captured)
       } else if (is_df_like(x$summary_table)) {
         captured <- safe_print_df(x$summary_table, "Summary Table:")
@@ -54,26 +275,41 @@ capture_smart_output <- function(x) {
     }
 
     # Check for display data frame (formatted for viewing)
-    captured <- safe_print_df(x$display, "Display Table:")
+    captured <- df_to_md(x$display, "## Display Table")
     if (!is.null(captured)) parts <- c(parts, captured)
 
     # Check for raw data
-    captured <- safe_print_df(x$data, "Data:")
+    captured <- df_to_md(x$data, "## Data")
     if (!is.null(captured)) parts <- c(parts, captured)
 
-    # Check for correlation matrix
+    # Check for correlation matrix - convert to markdown table
     if (!is.null(x$correlation_matrix) && is.matrix(x$correlation_matrix)) {
-      parts <- c(parts, paste0("Correlation Matrix:\n", paste(utils::capture.output(print(round(x$correlation_matrix, 3))), collapse = "\n")))
+      cor_df <- as.data.frame(round(x$correlation_matrix, 3))
+      cor_df <- cbind(Variable = rownames(cor_df), cor_df)
+      md_table <- df_to_markdown(cor_df)
+      if (!is.null(md_table)) {
+        parts <- c(parts, paste0("## Correlation Matrix\n\n", md_table))
+      }
     }
 
-    # Check for p-values matrix
+    # Check for p-values matrix - convert to markdown table
     if (!is.null(x$p_matrix) && is.matrix(x$p_matrix)) {
-      parts <- c(parts, paste0("P-values:\n", paste(utils::capture.output(print(round(x$p_matrix, 4))), collapse = "\n")))
+      p_df <- as.data.frame(round(x$p_matrix, 4))
+      p_df <- cbind(Variable = rownames(p_df), p_df)
+      md_table <- df_to_markdown(p_df, digits = 4)
+      if (!is.null(md_table)) {
+        parts <- c(parts, paste0("## P-values\n\n", md_table))
+      }
     }
 
-    # Check for n_matrix (sample sizes)
+    # Check for n_matrix (sample sizes) - convert to markdown table
     if (!is.null(x$n_matrix) && is.matrix(x$n_matrix)) {
-      parts <- c(parts, paste0("Sample Sizes:\n", paste(utils::capture.output(print(x$n_matrix)), collapse = "\n")))
+      n_df <- as.data.frame(x$n_matrix)
+      n_df <- cbind(Variable = rownames(n_df), n_df)
+      md_table <- df_to_markdown(n_df, digits = 0)
+      if (!is.null(md_table)) {
+        parts <- c(parts, paste0("## Sample Sizes\n\n", md_table))
+      }
     }
 
     # Check for test results (chi-square, etc.)
