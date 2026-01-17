@@ -385,8 +385,13 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #'   }
 #' @param category_sep Character. Separator for combined group labels when
 #'   multiple variables are passed to `category`. Default: `" | "`.
-#' @param Vars A character vector of numeric variable names to compare across
-#'   groups. Example: `c("score1", "score2", "reaction_time")`.
+#' @param Vars Column specification for variables to compare. Can be:
+#'   \itemize{
+#'     \item NULL (default): all numeric columns
+#'     \item Character vector: column names, e.g., `c("score1", "score2")`
+#'     \item Numeric vector: column indices, e.g., `2:5`
+#'     \item Single number: from that column to end, e.g., `2` means cols 2 to last
+#'   }
 #' @param repeat_category Optional character. Name of a stratification variable.
 #'   When provided, separate analyses are performed for each level (e.g., analyze
 #'   gender differences separately for each country).
@@ -592,7 +597,7 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @importFrom stats t.test aov sd var p.adjust pairwise.t.test pairwise.wilcox.test TukeyHSD as.formula kruskal.test wilcox.test
 #'
 #' @export
-compare_groups <- function(data, category, Vars,
+compare_groups <- function(data, category, Vars = NULL,
                                       category_sep = " | ",
                                       repeat_category = NULL,
                                       repeat_levels = NULL,
@@ -628,13 +633,7 @@ compare_groups <- function(data, category, Vars,
     stop("data must be a data frame")
   }
 
-  if (missing(Vars) || is.null(Vars) || length(Vars) == 0) {
-    stop("Vars parameter is required and must be a non-empty character vector")
-  }
-
-  if (!is.character(Vars)) {
-    stop("Vars must be a character vector of variable names")
-  }
+  # Vars will be resolved after category is determined (to exclude it)
 
   # ===========================================================================
   # Process 'type' parameter
@@ -705,12 +704,6 @@ compare_groups <- function(data, category, Vars,
     }
   }
 
-  # Check variables exist
-  missing_vars <- setdiff(Vars, names(data))
-  if (length(missing_vars) > 0) {
-    stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
-  }
-
   # ===========================================================================
   # Handle category variable(s)
   # ===========================================================================
@@ -751,6 +744,9 @@ compare_groups <- function(data, category, Vars,
   if (!category_name_str %in% names(data)) {
     stop("Category variable '", category_name_str, "' not found in data")
   }
+
+  # Resolve Vars using flexible specification (exclude category variables)
+  Vars <- resolve_cols(data, Vars, numeric_only = TRUE, exclude = category_vars_orig)
 
   # Handle repeat_category variable(s) (expects character string or vector)
   repeat_category_vars <- NULL

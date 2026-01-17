@@ -23,6 +23,72 @@ utils::globalVariables(c("Variable", "above_threshold", "aic", "bic", "cluster",
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
+#' Resolve Column Specification to Column Names
+#'
+#' @description
+#' Internal helper that converts flexible column specifications to column names.
+#'
+#' @param data A data frame.
+#' @param cols Column specification: NULL (all numeric), character vector (names),
+#'   numeric vector (indices), or single number (from that column to end).
+#' @param numeric_only Logical. If TRUE, only return numeric columns.
+#' @param exclude Character vector of column names to exclude.
+#' @return Character vector of column names.
+#' @noRd
+resolve_cols <- function(data, cols = NULL, numeric_only = TRUE, exclude = NULL) {
+  if (is.null(cols)) {
+    # All columns (optionally numeric only)
+    if (numeric_only) {
+      col_names <- names(data)[sapply(data, is.numeric)]
+    } else {
+      col_names <- names(data)
+    }
+  } else if (is.character(cols)) {
+    # Column names provided
+    missing <- setdiff(cols, names(data))
+    if (length(missing) > 0) {
+      stop("Columns not found: ", paste(missing, collapse = ", "))
+    }
+    col_names <- cols
+  } else if (is.numeric(cols)) {
+    if (length(cols) == 1) {
+      # Single number: from that column to end
+      if (cols < 1 || cols > ncol(data)) {
+        stop("Column index out of range (1 to ", ncol(data), ")")
+      }
+      col_names <- names(data)[cols:ncol(data)]
+    } else {
+      # Vector of indices
+      if (any(cols < 1) || any(cols > ncol(data))) {
+        stop("Column indices out of range (1 to ", ncol(data), ")")
+      }
+      col_names <- names(data)[cols]
+    }
+    # Filter to numeric if requested
+    if (numeric_only) {
+      non_numeric <- col_names[!sapply(data[col_names], is.numeric)]
+      if (length(non_numeric) > 0) {
+        warning("Excluding non-numeric columns: ", paste(non_numeric, collapse = ", "))
+        col_names <- col_names[sapply(data[col_names], is.numeric)]
+      }
+    }
+  } else {
+    stop("Column specification must be NULL, character vector, or numeric vector")
+  }
+
+  # Exclude specified columns
+  if (!is.null(exclude)) {
+    col_names <- setdiff(col_names, exclude)
+  }
+
+  if (length(col_names) == 0) {
+    stop("No valid columns found after applying specification")
+  }
+
+  return(col_names)
+}
+
 #' Calculate skewness
 #'
 #' @param x Numeric vector
@@ -122,8 +188,13 @@ calculate_stat <- function(x, stat, digits = 2) {
 #' outputs beautifully formatted gt tables.
 #'
 #' @param data A data frame containing the variables to summarize.
-#' @param Vars Character vector of numeric variable names to describe.
-#'   If NULL (default), all numeric variables in the data frame are used.
+#' @param Vars Column specification for variables to describe. Can be:
+#'   \itemize{
+#'     \item NULL (default): all numeric columns
+#'     \item Character vector: column names, e.g., `c("age", "score")`
+#'     \item Numeric vector: column indices, e.g., `2:5`
+#'     \item Single number: from that column to end, e.g., `2` means cols 2 to last
+#'   }
 #' @param group_by Optional character. Name of a grouping variable for
 #'   stratified statistics. When provided, statistics are calculated separately
 #'   for each group level.
@@ -293,34 +364,8 @@ descriptive_table <- function(data,
     stop("data must be a data frame")
   }
 
-  # If Vars is NULL, auto-select all numeric variables
-  if (is.null(Vars)) {
-    Vars <- names(data)[sapply(data, is.numeric)]
-    # Exclude group_by variable if it's numeric
-    if (!is.null(group_by) && group_by %in% Vars) {
-      Vars <- setdiff(Vars, group_by)
-    }
-    if (length(Vars) == 0) {
-      stop("No numeric variables found in data")
-    }
-    message("Using all numeric variables: ", paste(Vars, collapse = ", "), "\n")
-  }
-
-  if (!is.character(Vars)) {
-    stop("Vars must be a character vector of variable names")
-  }
-
-  # Check variables exist
-  missing_vars <- setdiff(Vars, names(data))
-  if (length(missing_vars) > 0) {
-    stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
-  }
-
-  # Check variables are numeric
-  non_numeric <- Vars[!sapply(data[Vars], is.numeric)]
-  if (length(non_numeric) > 0) {
-    stop("Variables must be numeric: ", paste(non_numeric, collapse = ", "))
-  }
+  # Resolve Vars using flexible specification
+  Vars <- resolve_cols(data, Vars, numeric_only = TRUE, exclude = group_by)
 
   # Validate stats
   valid_stats <- c("n", "missing", "missing_pct", "mean", "sd", "se", "var",

@@ -7,7 +7,7 @@
 compare_groups(
   data,
   category,
-  Vars,
+  Vars = NULL,
   category_sep = " | ",
   repeat_category = NULL,
   repeat_levels = NULL,
@@ -41,8 +41,13 @@ compare_groups(
     groups (e.g., "Male | Treatment", "Female | Control")
 }}
 
-\item{Vars}{A character vector of numeric variable names to compare across
-groups. Example: `c("score1", "score2", "reaction_time")`.}
+\item{Vars}{Column specification for variables to compare. Can be:
+\itemize{
+  \item NULL (default): all numeric columns
+  \item Character vector: column names, e.g., `c("score1", "score2")`
+  \item Numeric vector: column indices, e.g., `2:5`
+  \item Single number: from that column to end, e.g., `2` means cols 2 to last
+}}
 
 \item{category_sep}{Character. Separator for combined group labels when
 multiple variables are passed to `category`. Default: `" | "`.}

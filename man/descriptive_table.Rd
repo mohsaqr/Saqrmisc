@@ -25,8 +25,13 @@ descriptive_table(
 \arguments{
 \item{data}{A data frame containing the variables to summarize.}
 
-\item{Vars}{Character vector of numeric variable names to describe.
-If NULL (default), all numeric variables in the data frame are used.}
+\item{Vars}{Column specification for variables to describe. Can be:
+\itemize{
+  \item NULL (default): all numeric columns
+  \item Character vector: column names, e.g., `c("age", "score")`
+  \item Numeric vector: column indices, e.g., `2:5`
+  \item Single number: from that column to end, e.g., `2` means cols 2 to last
+}}
 
 \item{group_by}{Optional character. Name of a grouping variable for
 stratified statistics. When provided, statistics are calculated separately
