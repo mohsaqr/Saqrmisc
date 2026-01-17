@@ -2,6 +2,119 @@
 #
 # Functions for converting and analyzing sequence data.
 
+#' Count Events per ID
+#'
+#' @description
+#' Converts long-format event data to a frequency table with counts per ID.
+#' Useful for transforming event logs, clickstream data, or any repeated
+#' measures into a wide format suitable for analysis.
+#'
+#' @param data A data frame containing event data in long format.
+#' @param id Character vector. Name(s) of ID column(s). If multiple IDs are
+#'   provided, they are combined. If NULL (default), uses the first column.
+#' @param event Character. Name of the event/action column to count.
+#'   If NULL (default), uses the second column.
+#' @param na_values Character vector of values to treat as missing.
+#'   Default includes common missing indicators.
+#'
+#' @return A data frame with one row per unique ID combination and columns
+#'   for each unique event value containing counts.
+#'
+#' @examples
+#' \dontrun{
+#' # Event log data
+#' events <- data.frame(
+#'   student = c(1, 1, 1, 2, 2, 2, 3, 3),
+#'   action = c("login", "view", "submit", "login", "view", "view", "login", "submit")
+#' )
+#'
+#' # Count events per student
+#' count_events(events, id = "student", event = "action")
+#'
+#' # Multiple ID columns
+#' events2 <- data.frame(
+#'   student = c(1, 1, 1, 1, 2, 2),
+#'   course = c("A", "A", "B", "B", "A", "A"),
+#'   action = c("view", "submit", "view", "view", "view", "submit")
+#' )
+#'
+#' count_events(events2, id = c("student", "course"), event = "action")
+#' }
+#'
+#' @importFrom dplyr count all_of
+#' @importFrom tidyr pivot_wider
+#' @export
+count_events <- function(data,
+                         id = NULL,
+                         event = NULL,
+                         na_values = NULL) {
+
+  if (!is.data.frame(data)) {
+    stop("'data' must be a data frame")
+  }
+
+  if (nrow(data) == 0) {
+    stop("'data' has no rows")
+  }
+
+  # Auto-detect ID column (first column)
+  if (is.null(id)) {
+    id <- names(data)[1]
+    message("Using '", id, "' as ID column")
+  }
+
+  # Validate ID columns exist
+  missing_id <- setdiff(id, names(data))
+  if (length(missing_id) > 0) {
+    stop("ID column(s) not found: ", paste(missing_id, collapse = ", "))
+  }
+
+  # Auto-detect event column (second column, or first non-ID)
+ if (is.null(event)) {
+    remaining <- setdiff(names(data), id)
+    if (length(remaining) == 0) {
+      stop("No event column found (only ID columns present)")
+    }
+    event <- remaining[1]
+    message("Using '", event, "' as event column")
+  }
+
+  if (!event %in% names(data)) {
+    stop("Event column '", event, "' not found in data")
+  }
+
+  # Default NA values
+  if (is.null(na_values)) {
+    na_values <- c("*", "%", "-", "", "NA", "na", "N/A", "n/a",
+                   "void", "VOID", "missing", "MISSING", ".", "?")
+  }
+
+  # Filter out missing values from event column
+  data_clean <- data
+  data_clean[[event]] <- as.character(data_clean[[event]])
+  data_clean <- data_clean[
+    !is.na(data_clean[[event]]) &
+    !(data_clean[[event]] %in% na_values) &
+    nchar(trimws(data_clean[[event]])) > 0,
+  ]
+
+  if (nrow(data_clean) == 0) {
+    warning("No valid events after filtering missing values")
+    return(data.frame())
+  }
+
+  # Count events per ID
+  result <- data_clean %>%
+    dplyr::count(dplyr::across(dplyr::all_of(id)), .data[[event]]) %>%
+    tidyr::pivot_wider(
+      names_from = dplyr::all_of(event),
+      values_from = n,
+      values_fill = 0
+    )
+
+  return(as.data.frame(result))
+}
+
 #' Convert Sequence Data to Various Formats
 #'
 #' @description
