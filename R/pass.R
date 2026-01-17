@@ -626,7 +626,7 @@ capture_smart_output <- function(x) {
 #' @param x Any R object to interpret (test result, model, data frame, etc.)
 #' @param prompt Custom prompt to use. If NULL, builds from action and style.
 #'   Note: This REPLACES the default prompt entirely.
-#' @param add_prompt Additional instructions to ADD to the default prompt.
+#' @param append_prompt Additional instructions to ADD to the default prompt.
 #'   Unlike `prompt`, this appends to (not replaces) the auto-generated prompt.
 #' @param action What to do with the output:
 #'   \itemize{
@@ -707,8 +707,8 @@ capture_smart_output <- function(x) {
 #' my_results |> pass(prompt = "Focus only on the interaction effects")
 #'
 #' # Add to default prompt (keeps "write methods/results" + your addition)
-#' my_results |> pass(add_prompt = "Also mention limitations of the sample size")
-#' my_results |> pass(action = "write", add_prompt = "Include a brief discussion section")
+#' my_results |> pass(append_prompt = "Also mention limitations of the sample size")
+#' my_results |> pass(action = "write", append_prompt = "Include a brief discussion section")
 #'
 #' # Custom context (about your study)
 #' t.test(score ~ group, data = mydata) |>
@@ -730,7 +730,7 @@ capture_smart_output <- function(x) {
 #' @export
 pass <- function(x,
                  prompt = NULL,
-                 add_prompt = NULL,
+                 append_prompt = NULL,
                  action = c("write", "interpret", "explain", "summarize", "critique", "suggest"),
                  style = c("scientific", "simple", "detailed", "brief"),
                  output = c("text", "markdown", "md", "latex", "html"),
@@ -810,7 +810,7 @@ pass <- function(x,
 
   # Build the prompt
   system_prompt <- build_system_prompt(action, style, output, system_message)
-  user_prompt <- build_user_prompt(output_text, obj_info, prompt, add_prompt, context, action)
+  user_prompt <- build_user_prompt(output_text, obj_info, prompt, append_prompt, context, action)
 
   if (!quiet) {
     if (use_local) {
@@ -1102,7 +1102,7 @@ build_system_prompt <- function(action, style, output, system_message = NULL) {
 
 #' Build user prompt
 #' @noRd
-build_user_prompt <- function(output_text, obj_info, custom_prompt, add_prompt, context, action) {
+build_user_prompt <- function(output_text, obj_info, custom_prompt, append_prompt, context, action) {
   parts <- c()
 
   if (!is.null(context)) {
@@ -1129,8 +1129,8 @@ build_user_prompt <- function(output_text, obj_info, custom_prompt, add_prompt, 
   }
 
   # Add additional prompt (appends to default or custom prompt)
-  if (!is.null(add_prompt) && nzchar(add_prompt)) {
-    parts <- c(parts, paste0("\nAdditional instructions: ", add_prompt))
+  if (!is.null(append_prompt) && nzchar(append_prompt)) {
+    parts <- c(parts, paste0("\nAdditional instructions: ", append_prompt))
   }
 
   paste(parts, collapse = "\n")
