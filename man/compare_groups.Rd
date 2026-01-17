@@ -53,6 +53,9 @@ multiple variables are passed to category. Default: " | ".}
 When provided, separate analyses are performed for each level (e.g., analyze
 gender differences separately for each country).}
 
+\item{repeat_levels}{Optional character vector. Specific levels of repeat_category
+to include in the analysis. If NULL (default), all levels are used.}
+
 \item{plots}{Logical. Generate visualizations? Default TRUE.}
 
 \item{plot_style}{Character. Style of plots: "points" (default, jittered with CI),
@@ -84,6 +87,9 @@ Default: TRUE. Results include a comparison table and text report.}
 
 \item{posthoc_method}{Method for post-hoc comparisons: "games-howell" (default,
 does not assume equal variances) or "tukey" (Tukey's HSD, assumes equal variances).}
+
+\item{posthoc_table}{Logical. Include detailed post-hoc pairwise comparison table
+in the output? Default FALSE.}
 
 \item{pairwise_display}{Which pairwise comparisons to show on plots? Options:
 "significant" (default), "all", "none".}

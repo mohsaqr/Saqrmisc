@@ -6,6 +6,11 @@
 \usage{
 \method{print}{cluster_stability}(x, ...)
 }
+\arguments{
+\item{x}{A cluster_stability object}
+
+\item{...}{Additional arguments (ignored)}
+}
 \description{
 Print method for cluster_stability
 }

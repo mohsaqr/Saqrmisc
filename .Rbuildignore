@@ -8,4 +8,6 @@
 ^\.github$
 ^\.git$
 ^\.gitignore$
-^build_prompt\.md$ 
+^build_prompt\.md$
+^\.claude$
+^LICENSE\.md$ 

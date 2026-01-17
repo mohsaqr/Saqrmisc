@@ -144,10 +144,10 @@
 #' @importFrom tibble tibble
 #' @importFrom tidyr pivot_longer
 #' @importFrom magrittr %>%
-#' @importFrom grDevices colorRampPalette pdf png svg dev.off
+#' @importFrom grDevices colorRampPalette pdf png svg dev.off rgb
 #' @importFrom grid gpar
 #' @importFrom vcd mosaic labeling_values
-#' @importFrom utils modifyList packageVersion
+#' @importFrom utils modifyList packageVersion head combn
 #'
 #' @keywords internal
 "_PACKAGE"

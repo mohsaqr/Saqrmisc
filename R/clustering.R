@@ -1491,6 +1491,8 @@ find_cluster_mapping <- function(original, bootstrap, n_clusters) {
 }
 
 #' Print method for cluster_stability
+#' @param x A cluster_stability object
+#' @param ... Additional arguments (ignored)
 #' @export
 print.cluster_stability <- function(x, ...) {
   cat("Cluster Stability Assessment\n")

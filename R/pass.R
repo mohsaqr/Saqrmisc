@@ -159,6 +159,8 @@ generate_saqr_markdown <- function(x) {
 }
 
 #' Print method for saqr_result
+#' @param x A saqr_result object
+#' @param ... Additional arguments (ignored)
 #' @export
 print.saqr_result <- function(x, ...) {
   cat("Saqr Result:", x$type, "\n")

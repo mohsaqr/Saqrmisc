@@ -385,6 +385,8 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @param repeat_category Optional character. Name of a stratification variable.
 #'   When provided, separate analyses are performed for each level (e.g., analyze
 #'   gender differences separately for each country).
+#' @param repeat_levels Optional character vector. Specific levels of repeat_category
+#'   to include in the analysis. If NULL (default), all levels are used.
 #' @param plots Logical. Generate visualizations? Default TRUE.
 #' @param plot_style Character. Style of plots: "points" (default, jittered with CI),
 #'   "boxplot", "bar", "violin", or "ggstatsplot" (requires ggstatsplot package).
@@ -406,6 +408,8 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #'   Default: TRUE. Results include a comparison table and text report.
 #' @param posthoc_method Method for post-hoc comparisons: "games-howell" (default,
 #'   does not assume equal variances) or "tukey" (Tukey's HSD, assumes equal variances).
+#' @param posthoc_table Logical. Include detailed post-hoc pairwise comparison table
+#'   in the output? Default FALSE.
 #' @param pairwise_display Which pairwise comparisons to show on plots? Options:
 #'   "significant" (default), "all", "none".
 #' @param min_threshold Numeric. Minimum proportion (0-1) of total sample required

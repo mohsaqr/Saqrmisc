@@ -6,6 +6,11 @@
 \usage{
 \method{print}{saqr_result}(x, ...)
 }
+\arguments{
+\item{x}{A saqr_result object}
+
+\item{...}{Additional arguments (ignored)}
+}
 \description{
 Print method for saqr_result
 }
