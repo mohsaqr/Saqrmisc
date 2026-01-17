@@ -17,7 +17,9 @@ mosaic_analysis(
   percentage_base = "total",
   use_fisher = FALSE,
   verbose = TRUE,
-  save_plot = NULL
+  save_plot = NULL,
+  interpret = FALSE,
+  ...
 )
 }
 \arguments{
@@ -53,6 +55,14 @@ Defaults to "total".}
 
 \item{save_plot}{Optional file path to save the mosaic plot. Supports .png, .pdf, .svg.
 Defaults to NULL (no saving).}
+
+\item{interpret}{Logical. Pass results to AI for automatic interpretation?
+Default FALSE. When TRUE, generates clean Methods and Results text using
+AI. Includes chi-square/Fisher test results and Cramer's V effect size.
+Requires API key setup (see \code{\link{set_api_key}}).}
+
+\item{...}{Additional arguments passed to \code{\link{pass}} when
+interpret = TRUE (e.g., provider, model, context, append_prompt).}
 }
 \value{
 A list of class "mosaic_analysis" containing:

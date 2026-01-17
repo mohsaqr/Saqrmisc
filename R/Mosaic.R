@@ -177,6 +177,12 @@ interpret_cramers_v <- function(v, df) {
 #' @param verbose Logical. If TRUE, prints results to console. Defaults to TRUE.
 #' @param save_plot Optional file path to save the mosaic plot. Supports .png, .pdf, .svg.
 #'   Defaults to NULL (no saving).
+#' @param interpret Logical. Pass results to AI for automatic interpretation?
+#'   Default FALSE. When TRUE, generates clean Methods and Results text using
+#'   AI. Includes chi-square/Fisher test results and Cramer's V effect size.
+#'   Requires API key setup (see \code{\link{set_api_key}}).
+#' @param ... Additional arguments passed to \code{\link{pass}} when
+#'   interpret = TRUE (e.g., provider, model, context, append_prompt).
 #'
 #' @return A list of class "mosaic_analysis" containing:
 #' \itemize{
@@ -237,7 +243,9 @@ mosaic_analysis <- function(data, var1, var2, min_count = 10,
                             percentage_base = "total",
                             use_fisher = FALSE,
                             verbose = TRUE,
-                            save_plot = NULL) {
+                            save_plot = NULL,
+                            interpret = FALSE,
+                            ...) {
 
 
   # Input validation
@@ -522,6 +530,45 @@ if (!is.data.frame(data)) {
   )
 
   class(results) <- c("mosaic_analysis", "list")
+
+  # ===========================================================================
+  # AI Interpretation (if requested)
+  # ===========================================================================
+  if (interpret) {
+    # Build comprehensive metadata including chi-square results
+    metadata <- list(
+      var1 = var1_name,
+      var2 = var2_name,
+      var1_label = var1_label,
+      var2_label = var2_label,
+      test_type = test_type,
+      total_n = sum(filtered_table),
+      original_n = nrow(clean_data),
+      filtered_n = nrow(filtered_data)
+    )
+
+    # Add chi-square or Fisher test results
+    if (use_fisher) {
+      metadata$fisher_p <- p_value
+    } else {
+      metadata$chi_sq <- as.numeric(test_statistic)
+      metadata$df <- as.numeric(test_df)
+      metadata$p_value <- p_value
+    }
+
+    # Add effect size
+    metadata$cramers_v <- cramers_v
+    metadata$effect_interpretation <- cramers_v_interpretation
+
+    # Add contingency table info
+    metadata$n_rows <- nrow(filtered_table)
+    metadata$n_cols <- ncol(filtered_table)
+    metadata$row_categories <- rownames(filtered_table)
+    metadata$col_categories <- colnames(filtered_table)
+
+    # Call the interpretation function
+    interpret_with_ai(results, analysis_type = "categorical_analysis", metadata = metadata, ...)
+  }
 
   return(invisible(results))
 }
