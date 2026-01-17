@@ -224,6 +224,11 @@ calculate_stat <- function(x, stat, digits = 2) {
 #'   mean for each variable? Default: TRUE when compare is `TRUE`.
 #' @param sig_color Character. Color for significant p-values (< 0.05).
 #'   Default: `"red"`. Set to `NULL` to disable coloring.
+#' @param interpret Logical. Pass results to AI for automatic interpretation?
+#'   Default FALSE. When TRUE, generates clean Methods and Results text using
+#'   AI. Requires API key setup (see \code{\link{set_api_key}}).
+#' @param ... Additional arguments passed to \code{\link{pass}} when
+#'   interpret = TRUE (e.g., provider, model, context, append_prompt).
 #'
 #' @return Depending on format: a gt table object (default), a data frame (plain),
 #'   a markdown string, a LaTeX string, or a knitr::kable object.
@@ -322,7 +327,9 @@ descriptive_table <- function(data,
                               theme = "default",
                               compare = FALSE,
                               bold_highest = NULL,
-                              sig_color = "red") {
+                              sig_color = "red",
+                              interpret = FALSE,
+                              ...) {
 
   # ===========================================================================
   # Input Validation
@@ -951,6 +958,33 @@ descriptive_table <- function(data,
           locations = gt::cells_body(rows = overall_rows)
         )
     }
+  }
+
+  # ===========================================================================
+  # AI Interpretation (if requested)
+  # ===========================================================================
+  if (interpret) {
+    # Build metadata for the interpretation
+    metadata <- list(
+      variables = Vars,
+      total_n = nrow(data),
+      statistics = stats,
+      analysis_type = "descriptive"
+    )
+
+    if (!is.null(group_by_str)) {
+      metadata$grouping_var <- group_by_str
+      metadata$groups <- unique(data[[group_by_str]])
+      metadata$n_groups <- length(metadata$groups)
+
+      if (compare && !is.null(test_results)) {
+        metadata$comparison_performed <- TRUE
+        metadata$test_type <- if (metadata$n_groups == 2) "t-test" else "ANOVA"
+      }
+    }
+
+    # Call the interpretation function
+    interpret_with_ai(gt_table, analysis_type = "descriptive", metadata = metadata, ...)
   }
 
   return(gt_table)

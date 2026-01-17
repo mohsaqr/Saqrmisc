@@ -20,7 +20,9 @@ descriptive_table(
   theme = "default",
   compare = FALSE,
   bold_highest = NULL,
-  sig_color = "red"
+  sig_color = "red",
+  interpret = FALSE,
+  ...
 )
 }
 \arguments{
@@ -76,6 +78,13 @@ mean for each variable? Default: TRUE when compare is `TRUE`.}
 
 \item{sig_color}{Character. Color for significant p-values (< 0.05).
 Default: `"red"`. Set to `NULL` to disable coloring.}
+
+\item{interpret}{Logical. Pass results to AI for automatic interpretation?
+Default FALSE. When TRUE, generates clean Methods and Results text using
+AI. Requires API key setup (see \code{\link{set_api_key}}).}
+
+\item{...}{Additional arguments passed to \code{\link{pass}} when
+interpret = TRUE (e.g., provider, model, context, append_prompt).}
 }
 \value{
 Depending on format: a gt table object (default), a data frame (plain),
