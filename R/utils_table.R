@@ -2,6 +2,27 @@
 #
 # Shared utility functions for table output formatting across all Saqrmisc functions.
 
+#' Print method for markdown tables
+#' @param x A markdown_table object
+#' @param ... Additional arguments (ignored)
+#' @export
+#' @noRd
+print.markdown_table <- function(x, ...) {
+
+  cat(x, "\n")
+  invisible(x)
+}
+
+#' Print method for latex tables
+#' @param x A latex_table object
+#' @param ... Additional arguments (ignored)
+#' @export
+#' @noRd
+print.latex_table <- function(x, ...) {
+  cat(x, "\n")
+  invisible(x)
+}
+
 #' Format Table Output
 #'
 #' @description

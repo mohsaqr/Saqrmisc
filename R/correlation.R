@@ -411,7 +411,7 @@ correlation_matrix <- function(data,
   final_title <- if (!is.null(title)) title else default_title
 
   # ===========================================================================
-  # Return Non-GT Formats
+  # Return Non-GT Formats (using format_table utility)
   # ===========================================================================
   if (format %in% c("plain", "markdown", "latex", "kable")) {
     # Build base result
@@ -428,98 +428,22 @@ correlation_matrix <- function(data,
       base_result$ci_upper <- ci_upper
     }
 
-    # Plain format - return data frame
-    if (format == "plain") {
-      base_result$display = display_df
-      print(display_df)
-      return(invisible(base_result))
-    }
+    # Use format_table utility
+    table_output <- format_table(
+      df = display_df,
+      format = format,
+      title = if (show_header) final_title else NULL,
+      show_header = show_header,
+      digits = digits,
+      footnote = if (stars) "* p < .05, ** p < .01, *** p < .001" else NULL,
+      bold_cols = "Variable",
+      align_left = "Variable"
+    )
 
-    # Markdown format
-    if (format == "markdown") {
-      header <- paste("|", paste(names(display_df), collapse = " | "), "|")
-      separator <- paste("|", paste(rep("---", ncol(display_df)), collapse = " | "), "|")
-
-      rows <- apply(display_df, 1, function(row) {
-        paste("|", paste(row, collapse = " | "), "|")
-      })
-
-      if (show_header) {
-        md_table <- paste(c(
-          paste0("## ", final_title),
-          "",
-          header, separator, rows,
-          "",
-          if (stars) "\\* p < .05, \\*\\* p < .01, \\*\\*\\* p < .001" else NULL
-        ), collapse = "\n")
-      } else {
-        md_table <- paste(c(header, separator, rows), collapse = "\n")
-      }
-
-      class(md_table) <- c("markdown_table", "character")
-      base_result$table <- md_table
-      base_result$display <- display_df
-      print(md_table)
-      return(invisible(base_result))
-    }
-
-    # LaTeX format
-    if (format == "latex") {
-      col_align <- paste(rep("l", ncol(display_df)), collapse = "")
-      header <- paste(names(display_df), collapse = " & ")
-
-      rows <- apply(display_df, 1, function(row) {
-        paste(row, collapse = " & ")
-      })
-
-      if (show_header) {
-        latex_table <- paste(c(
-          paste0("% ", final_title),
-          paste0("\\begin{tabular}{", col_align, "}"),
-          "\\hline",
-          paste0(header, " \\\\"),
-          "\\hline",
-          paste0(rows, " \\\\"),
-          "\\hline",
-          "\\end{tabular}"
-        ), collapse = "\n")
-      } else {
-        latex_table <- paste(c(
-          paste0("\\begin{tabular}{", col_align, "}"),
-          "\\hline",
-          paste0(header, " \\\\"),
-          "\\hline",
-          paste0(rows, " \\\\"),
-          "\\hline",
-          "\\end{tabular}"
-        ), collapse = "\n")
-      }
-
-      class(latex_table) <- c("latex_table", "character")
-      base_result$table <- latex_table
-      base_result$display <- display_df
-      print(latex_table)
-      return(invisible(base_result))
-    }
-
-    # Kable format
-    if (format == "kable") {
-      if (requireNamespace("knitr", quietly = TRUE)) {
-        kable_out <- knitr::kable(display_df, format = "markdown", digits = digits)
-        if (show_header) {
-          kable_out <- c(paste0("## ", final_title), "", kable_out)
-        }
-        base_result$table <- kable_out
-        base_result$display <- display_df
-        print(kable_out)
-        return(invisible(base_result))
-      } else {
-        warning("knitr not available, returning plain format")
-        base_result$display <- display_df
-        print(display_df)
-        return(invisible(base_result))
-      }
-    }
+    base_result$table <- table_output
+    base_result$display <- display_df
+    print(table_output)
+    return(invisible(base_result))
   }
 
   # ===========================================================================
@@ -1489,131 +1413,44 @@ correlations <- function(data,
   final_title <- if (!is.null(title)) title else default_title
 
   # ===========================================================================
-  # Return Non-GT Formats
+  # Return Non-GT Formats (using format_table utility)
   # ===========================================================================
   if (format %in% c("plain", "markdown", "latex", "kable")) {
-    # Plain format - return data frame
-    if (format == "plain") {
-      result <- list(
-        data = results_df,
-        display = display_df,
-        n_pairs = nrow(results_df),
-        n_significant = n_significant,
-        type = type,
-        method = method,
-        p_adjust = p_adjust,
-        consolidated = consolidated_info
-      )
-      if (multilevel) {
-        result$multilevel <- TRUE
-        result$n_clusters <- n_clusters
-        result$id_var <- id_var
-        if (between && !is.null(between_df)) {
-          result$between_data <- between_df
-        }
-      }
-      print(display_df)
-      return(invisible(result))
-    }
+    # Build base result
+    base_result <- list(
+      data = results_df,
+      display = display_df,
+      n_pairs = nrow(results_df),
+      n_significant = n_significant,
+      type = type,
+      method = method,
+      p_adjust = p_adjust,
+      consolidated = consolidated_info
+    )
 
-    # Markdown format
-    if (format == "markdown") {
-      # Build markdown table
-      header <- paste("|", paste(names(display_df), collapse = " | "), "|")
-      separator <- paste("|", paste(rep("---", ncol(display_df)), collapse = " | "), "|")
-
-      rows <- apply(display_df, 1, function(row) {
-        paste("|", paste(row, collapse = " | "), "|")
-      })
-
-      if (show_header) {
-        md_table <- paste(c(
-          paste0("## ", final_title),
-          paste0("*", subtitle, "*"),
-          "",
-          header, separator, rows,
-          "",
-          "\\* p < .05, \\*\\* p < .01, \\*\\*\\* p < .001"
-        ), collapse = "\n")
-      } else {
-        md_table <- paste(c(header, separator, rows), collapse = "\n")
-      }
-
-      class(md_table) <- c("markdown_table", "character")
-      print(md_table)
-      return(invisible(list(
-        table = md_table,
-        data = results_df,
-        display = display_df,
-        n_pairs = nrow(results_df),
-        n_significant = n_significant
-      )))
-    }
-
-    # LaTeX format
-    if (format == "latex") {
-      col_align <- paste(rep("l", ncol(display_df)), collapse = "")
-      header <- paste(names(display_df), collapse = " & ")
-
-      rows <- apply(display_df, 1, function(row) {
-        paste(row, collapse = " & ")
-      })
-
-      if (show_header) {
-        latex_table <- paste(c(
-          paste0("% ", final_title),
-          "\\begin{tabular}{", col_align, "}",
-          "\\hline",
-          paste0(header, " \\\\"),
-          "\\hline",
-          paste0(rows, " \\\\"),
-          "\\hline",
-          "\\end{tabular}",
-          paste0("% ", subtitle)
-        ), collapse = "\n")
-      } else {
-        latex_table <- paste(c(
-          "\\begin{tabular}{", col_align, "}",
-          "\\hline",
-          paste0(header, " \\\\"),
-          "\\hline",
-          paste0(rows, " \\\\"),
-          "\\hline",
-          "\\end{tabular}"
-        ), collapse = "\n")
-      }
-
-      class(latex_table) <- c("latex_table", "character")
-      print(latex_table)
-      return(invisible(list(
-        table = latex_table,
-        data = results_df,
-        display = display_df,
-        n_pairs = nrow(results_df),
-        n_significant = n_significant
-      )))
-    }
-
-    # Kable format
-    if (format == "kable") {
-      if (requireNamespace("knitr", quietly = TRUE)) {
-        kable_out <- knitr::kable(display_df, format = "markdown", digits = digits)
-        if (show_header) {
-          kable_out <- c(paste0("## ", final_title), "", kable_out)
-        }
-        print(kable_out)
-        return(invisible(list(
-          table = kable_out,
-          data = results_df,
-          display = display_df,
-          n_pairs = nrow(results_df),
-          n_significant = n_significant
-        )))
-      } else {
-        warning("knitr not available, returning markdown format")
-        format <- "markdown"
+    if (multilevel) {
+      base_result$multilevel <- TRUE
+      base_result$n_clusters <- n_clusters
+      base_result$id_var <- id_var
+      if (between && !is.null(between_df)) {
+        base_result$between_data <- between_df
       }
     }
+
+    # Use format_table utility
+    table_output <- format_table(
+      df = display_df,
+      format = format,
+      title = if (show_header) final_title else NULL,
+      subtitle = if (show_header) subtitle else NULL,
+      show_header = show_header,
+      digits = digits,
+      footnote = "* p < .05, ** p < .01, *** p < .001"
+    )
+
+    base_result$table <- table_output
+    print(table_output)
+    return(invisible(base_result))
   }
 
   # ===========================================================================

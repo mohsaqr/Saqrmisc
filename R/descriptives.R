@@ -89,119 +89,6 @@ resolve_cols <- function(data, cols = NULL, numeric_only = TRUE, exclude = NULL)
   return(col_names)
 }
 
-#' Format Table Output
-#'
-#' @description
-#' Internal helper that formats a data frame into various table styles.
-#'
-#' @param df A data frame to format.
-#' @param style Output style: "gt", "plain", "markdown", "latex", "kable".
-#' @param title Optional title for the table.
-#' @param subtitle Optional subtitle for the table.
-#' @param show_header Logical. Show title/subtitle header?
-#' @param digits Number of decimal places for numeric columns.
-#' @return Formatted table or data frame.
-#' @noRd
-format_table_output <- function(df,
-                                style = c("gt", "plain", "markdown", "latex", "kable"),
-                                title = NULL,
-                                subtitle = NULL,
-                                show_header = TRUE,
-                                digits = 2) {
-  style <- match.arg(style)
-
-  if (style == "plain") {
-    return(df)
-  }
-
-  if (style == "markdown") {
-    # Convert to markdown table
-    header <- paste("|", paste(names(df), collapse = " | "), "|")
-    sep <- paste("|", paste(rep("---", ncol(df)), collapse = " | "), "|")
-    rows <- apply(df, 1, function(row) {
-      paste("|", paste(row, collapse = " | "), "|")
-    })
-    md <- paste(c(header, sep, rows), collapse = "\n")
-    if (show_header && !is.null(title)) {
-      md <- paste0("## ", title, "\n\n", md)
-      if (!is.null(subtitle)) {
-        md <- sub("\n\n", paste0("\n*", subtitle, "*\n\n"), md)
-      }
-    }
-    class(md) <- c("markdown_table", "character")
-    return(md)
-  }
-
-  if (style == "latex") {
-    # Convert to LaTeX tabular
-    header <- paste(names(df), collapse = " & ")
-    rows <- apply(df, 1, function(row) paste(row, collapse = " & "))
-    align <- paste(rep("l", ncol(df)), collapse = "")
-    latex <- paste0(
-      "\\begin{tabular}{", align, "}\n",
-      "\\hline\n",
-      header, " \\\\\n",
-      "\\hline\n",
-      paste(rows, "\\\\", collapse = "\n"), "\n",
-      "\\hline\n",
-      "\\end{tabular}"
-    )
-    if (show_header && !is.null(title)) {
-      latex <- paste0("% ", title, "\n", latex)
-    }
-    class(latex) <- c("latex_table", "character")
-    return(latex)
-  }
-
-  if (style == "kable") {
-    if (!requireNamespace("knitr", quietly = TRUE)) {
-      warning("knitr not available, returning plain data frame")
-      return(df)
-    }
-    tbl <- knitr::kable(df, digits = digits, format = "pipe")
-    if (show_header && !is.null(title)) {
-      tbl <- c(paste0("## ", title), "", tbl)
-    }
-    return(tbl)
-  }
-
-  # Default: gt table
-  if (!requireNamespace("gt", quietly = TRUE)) {
-    warning("gt not available, returning plain data frame")
-    return(df)
-  }
-
-  tbl <- gt::gt(df)
-
-  if (show_header && (!is.null(title) || !is.null(subtitle))) {
-    tbl <- tbl |> gt::tab_header(title = title, subtitle = subtitle)
-  }
-
-  # Format numeric columns
-  numeric_cols <- names(df)[sapply(df, is.numeric)]
-  if (length(numeric_cols) > 0) {
-    tbl <- tbl |> gt::fmt_number(columns = all_of(numeric_cols), decimals = digits)
-  }
-
-  return(tbl)
-}
-
-#' Print method for markdown tables
-#' @export
-#' @noRd
-print.markdown_table <- function(x, ...) {
-  cat(x, "\n")
-  invisible(x)
-}
-
-#' Print method for latex tables
-#' @export
-#' @noRd
-print.latex_table <- function(x, ...) {
-  cat(x, "\n")
-  invisible(x)
-}
-
 #' Calculate skewness
 #'
 #' @param x Numeric vector
@@ -666,9 +553,9 @@ descriptive_table <- function(data,
   if (format %in% c("plain", "markdown", "latex", "kable") && (is.null(group_by_str) || format != "kable")) {
     # kable with group_by has special handling below
     if (format == "kable" && is.null(group_by_str)) {
-      result <- format_table_output(
+      result <- format_table(
         df = desc_data,
-        style = format,
+        format = format,
         title = if (show_header) title else NULL,
         subtitle = if (show_header) subtitle else NULL,
         show_header = show_header,
@@ -681,9 +568,9 @@ descriptive_table <- function(data,
     }
 
     if (format %in% c("plain", "markdown", "latex")) {
-      result <- format_table_output(
+      result <- format_table(
         df = desc_data,
-        style = format,
+        format = format,
         title = if (show_header) title else NULL,
         subtitle = if (show_header) subtitle else NULL,
         show_header = show_header,
@@ -1434,9 +1321,9 @@ categorical_table <- function(data,
 
     # Handle non-GT formats
     if (format %in% c("markdown", "latex", "kable")) {
-      return(format_table_output(
+      return(format_table(
         df = freq_data,
-        style = format,
+        format = format,
         title = if (show_header) title else NULL,
         subtitle = if (show_header) subtitle else NULL,
         show_header = show_header,
@@ -1579,9 +1466,9 @@ categorical_table <- function(data,
 
     # Handle non-GT formats
     if (format %in% c("markdown", "latex", "kable")) {
-      output <- format_table_output(
+      output <- format_table(
         df = result_df,
-        style = format,
+        format = format,
         title = if (show_header) title else NULL,
         subtitle = if (show_header) subtitle else NULL,
         show_header = show_header,
