@@ -122,8 +122,8 @@ calculate_stat <- function(x, stat, digits = 2) {
 #' outputs beautifully formatted gt tables.
 #'
 #' @param data A data frame containing the variables to summarize.
-#' @param Vars A character vector of numeric variable names to describe.
-#'   Example: `c("age", "score1", "score2")`.
+#' @param Vars Character vector of numeric variable names to describe.
+#'   If NULL (default), all numeric variables in the data frame are used.
 #' @param group_by Optional character. Name of a grouping variable for
 #'   stratified statistics. When provided, statistics are calculated separately
 #'   for each group level.
@@ -271,7 +271,7 @@ calculate_stat <- function(x, stat, digits = 2) {
 #'
 #' @export
 descriptive_table <- function(data,
-                              Vars,
+                              Vars = NULL,
                               group_by = NULL,
                               stats = c("n", "mean", "sd", "median", "min", "max"),
                               digits = 2,
@@ -293,8 +293,17 @@ descriptive_table <- function(data,
     stop("data must be a data frame")
   }
 
-  if (missing(Vars) || is.null(Vars) || length(Vars) == 0) {
-    stop("Vars parameter is required and must be a non-empty character vector")
+  # If Vars is NULL, auto-select all numeric variables
+  if (is.null(Vars)) {
+    Vars <- names(data)[sapply(data, is.numeric)]
+    # Exclude group_by variable if it's numeric
+    if (!is.null(group_by) && group_by %in% Vars) {
+      Vars <- setdiff(Vars, group_by)
+    }
+    if (length(Vars) == 0) {
+      stop("No numeric variables found in data")
+    }
+    message("Using all numeric variables: ", paste(Vars, collapse = ", "), "\n")
   }
 
   if (!is.character(Vars)) {

@@ -6,7 +6,7 @@
 \usage{
 descriptive_table(
   data,
-  Vars,
+  Vars = NULL,
   group_by = NULL,
   stats = c("n", "mean", "sd", "median", "min", "max"),
   digits = 2,
@@ -25,8 +25,8 @@ descriptive_table(
 \arguments{
 \item{data}{A data frame containing the variables to summarize.}
 
-\item{Vars}{A character vector of numeric variable names to describe.
-Example: `c("age", "score1", "score2")`.}
+\item{Vars}{Character vector of numeric variable names to describe.
+If NULL (default), all numeric variables in the data frame are used.}
 
 \item{group_by}{Optional character. Name of a grouping variable for
 stratified statistics. When provided, statistics are calculated separately
