@@ -28,16 +28,39 @@ utils::globalVariables(c("Variable", "above_threshold", "aic", "bic", "cluster",
 #'
 #' @description
 #' Internal helper that converts flexible column specifications to column names.
+#' Supports NSE (non-standard evaluation) for unquoted column ranges like col_a:col_b.
 #'
 #' @param data A data frame.
 #' @param cols Column specification: NULL (all numeric), character vector (names),
-#'   numeric vector (indices), or single number (from that column to end).
+#'   numeric vector (indices), single number (from that column to end),
+#'   or unquoted range (col_a:col_b).
+#' @param cols_expr The unevaluated expression for cols (from substitute()).
 #' @param numeric_only Logical. If TRUE, only return numeric columns.
 #' @param exclude Character vector of column names to exclude.
 #' @return Character vector of column names.
 #' @noRd
-resolve_cols <- function(data, cols = NULL, numeric_only = TRUE, exclude = NULL) {
-  if (is.null(cols)) {
+resolve_cols <- function(data, cols = NULL, cols_expr = NULL, numeric_only = TRUE, exclude = NULL) {
+
+ # Helper function to resolve column range from names
+  resolve_range <- function(start_col, end_col, all_names) {
+    start_idx <- match(start_col, all_names)
+    end_idx <- match(end_col, all_names)
+    if (is.na(start_idx)) stop("Column not found: ", start_col)
+    if (is.na(end_idx)) stop("Column not found: ", end_col)
+    if (start_idx > end_idx) {
+      tmp <- start_idx; start_idx <- end_idx; end_idx <- tmp
+    }
+    all_names[start_idx:end_idx]
+  }
+
+  # Check if cols_expr is a range expression (e.g., col_a:col_b)
+  if (!is.null(cols_expr) && is.call(cols_expr) && identical(cols_expr[[1]], as.symbol(":"))) {
+    # It's a range expression like col_a:col_b
+    start_col <- as.character(cols_expr[[2]])
+    end_col <- as.character(cols_expr[[3]])
+    all_names <- names(data)
+    col_names <- resolve_range(start_col, end_col, all_names)
+  } else if (is.null(cols)) {
     # All columns (optionally numeric only)
     if (numeric_only) {
       col_names <- names(data)[sapply(data, is.numeric)]
@@ -51,16 +74,7 @@ resolve_cols <- function(data, cols = NULL, numeric_only = TRUE, exclude = NULL)
       if (length(range_parts) == 2) {
         start_col <- trimws(range_parts[1])
         end_col <- trimws(range_parts[2])
-        all_names <- names(data)
-        start_idx <- match(start_col, all_names)
-        end_idx <- match(end_col, all_names)
-        if (is.na(start_idx)) stop("Column not found: ", start_col)
-        if (is.na(end_idx)) stop("Column not found: ", end_col)
-        if (start_idx > end_idx) {
-          # Swap if in wrong order
-          tmp <- start_idx; start_idx <- end_idx; end_idx <- tmp
-        }
-        col_names <- all_names[start_idx:end_idx]
+        col_names <- resolve_range(start_col, end_col, names(data))
       } else {
         stop("Invalid range specification: ", cols)
       }
@@ -86,20 +100,12 @@ resolve_cols <- function(data, cols = NULL, numeric_only = TRUE, exclude = NULL)
       }
       col_names <- names(data)[cols]
     }
-    # Filter to numeric if requested
-    if (numeric_only) {
-      non_numeric <- col_names[!sapply(data[col_names], is.numeric)]
-      if (length(non_numeric) > 0) {
-        warning("Excluding non-numeric columns: ", paste(non_numeric, collapse = ", "))
-        col_names <- col_names[sapply(data[col_names], is.numeric)]
-      }
-    }
   } else {
-    stop("Column specification must be NULL, character vector, or numeric vector")
+    stop("Column specification must be NULL, character vector, numeric vector, or column range (col_a:col_b)")
   }
 
-  # Filter to numeric if requested (for character range selections)
-  if (numeric_only && exists("col_names")) {
+  # Filter to numeric if requested
+  if (numeric_only) {
     non_numeric <- col_names[!sapply(data[col_names], is.numeric)]
     if (length(non_numeric) > 0) {
       warning("Excluding non-numeric columns: ", paste(non_numeric, collapse = ", "))
@@ -378,8 +384,11 @@ descriptive_table <- function(data,
     stop("data must be a data frame")
   }
 
-  # Resolve Vars using flexible specification
-  Vars <- resolve_cols(data, Vars, numeric_only = TRUE, exclude = group_by)
+  # Capture Vars expression for NSE (e.g., col_a:col_b)
+  Vars_expr <- substitute(Vars)
+
+  # Resolve Vars using flexible specification (supports unquoted ranges)
+  Vars <- resolve_cols(data, Vars, cols_expr = Vars_expr, numeric_only = TRUE, exclude = group_by)
 
   # Validate stats
   valid_stats <- c("n", "missing", "missing_pct", "mean", "sd", "se", "var",

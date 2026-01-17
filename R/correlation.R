@@ -102,6 +102,9 @@ correlation_matrix <- function(data,
                                 interpret = FALSE,
                                 ...) {
 
+  # Capture Vars expression for NSE (e.g., col_a:col_b) - must be done early
+  Vars_expr <- substitute(Vars)
+
   # Match arguments
   type <- match.arg(type)
   method <- match.arg(method)
@@ -116,14 +119,29 @@ correlation_matrix <- function(data,
     stop("'data' must be a data frame")
   }
 
-  # If Vars is NULL, use all numeric variables
-  if (is.null(Vars)) {
-    Vars <- names(data)[sapply(data, is.numeric)]
-    if (length(Vars) < 2) {
-      stop("Data must contain at least 2 numeric variables")
+  # Resolve Vars using flexible specification (supports unquoted ranges)
+  # Need to source resolve_cols from descriptives.R (it's a package-internal function)
+  Vars <- tryCatch({
+    resolve_cols(data, Vars, cols_expr = Vars_expr, numeric_only = TRUE)
+  }, error = function(e) {
+    # Fallback to original logic if resolve_cols fails
+    if (is.null(Vars)) {
+      vars <- names(data)[sapply(data, is.numeric)]
+    } else if (is.character(Vars)) {
+      vars <- Vars
+    } else {
+      stop(e$message)
     }
-    cat(sprintf("Using all %d numeric variables: %s\n\n",
-                length(Vars), paste(Vars, collapse = ", ")))
+    vars
+  })
+
+  # Report auto-selected variables
+  if (is.null(substitute(Vars)) || (is.symbol(Vars_expr) && !exists(as.character(Vars_expr)))) {
+    n_vars <- length(Vars)
+    if (n_vars >= 2) {
+      cat(sprintf("Using all %d numeric variables: %s\n\n",
+                  n_vars, paste(Vars, collapse = ", ")))
+    }
   }
 
   if (length(Vars) < 2) {
@@ -135,20 +153,8 @@ correlation_matrix <- function(data,
     stop("Partial and semi-partial correlations require at least 3 variables")
   }
 
-  # Check that all variables exist
-  missing_vars <- setdiff(Vars, names(data))
-  if (length(missing_vars) > 0) {
-    stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
-  }
-
   # Subset data to requested variables
   data_subset <- data[, Vars, drop = FALSE]
-
-  # Check that all variables are numeric
-  non_numeric <- names(data_subset)[!sapply(data_subset, is.numeric)]
-  if (length(non_numeric) > 0) {
-    stop("All variables must be numeric. Non-numeric variables: ", paste(non_numeric, collapse = ", "))
-  }
 
   # Handle missing data
   # Partial/semi-partial always require complete cases
@@ -745,6 +751,9 @@ correlations <- function(data,
                          interpret = FALSE,
                          ...) {
 
+  # Capture Vars expression for NSE (e.g., col_a:col_b) - must be done early
+  Vars_expr <- substitute(Vars)
+
   # Match arguments
   type <- match.arg(type)
   method <- match.arg(method)
@@ -776,14 +785,28 @@ correlations <- function(data,
     stop("'data' must be a data frame")
   }
 
-  # If Vars is NULL, use all numeric variables
-  if (is.null(Vars)) {
-    Vars <- names(data)[sapply(data, is.numeric)]
-    if (length(Vars) < 2) {
-      stop("Data must contain at least 2 numeric variables")
+  # Resolve Vars using flexible specification (supports unquoted ranges)
+  Vars <- tryCatch({
+    resolve_cols(data, Vars, cols_expr = Vars_expr, numeric_only = TRUE)
+  }, error = function(e) {
+    # Fallback to original logic if resolve_cols fails
+    if (is.null(Vars)) {
+      vars <- names(data)[sapply(data, is.numeric)]
+    } else if (is.character(Vars)) {
+      vars <- Vars
+    } else {
+      stop(e$message)
     }
-    cat(sprintf("Using all %d numeric variables: %s\n\n",
-                length(Vars), paste(Vars, collapse = ", ")))
+    vars
+  })
+
+  # Report auto-selected variables
+  if (is.null(substitute(Vars)) || (is.symbol(Vars_expr) && as.character(Vars_expr) == "Vars")) {
+    n_vars <- length(Vars)
+    if (n_vars >= 2 && is.null(Vars_expr) || (is.symbol(Vars_expr) && as.character(Vars_expr) == "NULL")) {
+      cat(sprintf("Using all %d numeric variables: %s\n\n",
+                  n_vars, paste(Vars, collapse = ", ")))
+    }
   }
 
   if (length(Vars) < 2) {

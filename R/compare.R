@@ -605,6 +605,9 @@ compare_groups <- function(data, category, Vars = NULL,
   # Input Validation
   # ===========================================================================
 
+  # Capture Vars expression for NSE (e.g., col_a:col_b) - must be done early
+
+  Vars_expr <- substitute(Vars)
 
   # Check for ggstatsplot (optional dependency)
   has_ggstatsplot <- requireNamespace("ggstatsplot", quietly = TRUE)
@@ -735,7 +738,8 @@ compare_groups <- function(data, category, Vars = NULL,
   }
 
   # Resolve Vars using flexible specification (exclude category variables)
-  Vars <- resolve_cols(data, Vars, numeric_only = TRUE, exclude = category_vars_orig)
+  # Supports unquoted ranges like Vars = score1:score10
+  Vars <- resolve_cols(data, Vars, cols_expr = Vars_expr, numeric_only = TRUE, exclude = category_vars_orig)
 
   # Handle repeat_category variable(s) (expects character string or vector)
   repeat_category_vars <- NULL
