@@ -1125,17 +1125,19 @@ model_comparison_table <- function(results, sort_by = "bic", top_n = NULL,
       )
   }
 
-  # Color code delta columns (green = good, red = bad)
-  gt_table <- gt_table %>%
-    gt::data_color(
-      columns = c(delta_bic, delta_aic, delta_icl),
-      fn = function(x) {
-        scales::col_numeric(
-          palette = c("#E8F5E9", "#FFEBEE"),
-          domain = c(0, max(x, na.rm = TRUE))
-        )(x)
-      }
-    )
+  # Color code delta columns (green = good, red = bad) if scales is available
+  if (requireNamespace("scales", quietly = TRUE)) {
+    gt_table <- gt_table %>%
+      gt::data_color(
+        columns = c(delta_bic, delta_aic, delta_icl),
+        fn = function(x) {
+          scales::col_numeric(
+            palette = c("#E8F5E9", "#FFEBEE"),
+            domain = c(0, max(x, na.rm = TRUE))
+          )(x)
+        }
+      )
+  }
 
   return(gt_table)
 }

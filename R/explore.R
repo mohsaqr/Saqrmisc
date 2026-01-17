@@ -62,11 +62,11 @@ data_overview <- function(data,
         central <- paste0(mean_val, " (", sd_val, ")")
         range_str <- paste0("[", min_val, ", ", max_val, "]")
       } else {
-        central <- "—"
-        range_str <- "—"
+        central <- "-"
+        range_str <- "-"
         median_val <- NA
       }
-      levels_str <- "—"
+      levels_str <- "-"
     } else if (is.factor(x) || is.character(x)) {
       var_type <- if (is.factor(x)) "factor" else "character"
       x_clean <- na.omit(x)
@@ -82,10 +82,10 @@ data_overview <- function(data,
           levels_str <- paste0(n_unique, " levels")
         }
       } else {
-        central <- "—"
-        levels_str <- "—"
+        central <- "-"
+        levels_str <- "-"
       }
-      range_str <- "—"
+      range_str <- "-"
       median_val <- NA
     } else if (is.logical(x)) {
       var_type <- "logical"
@@ -95,9 +95,9 @@ data_overview <- function(data,
         pct_true <- round(n_true / length(x_clean) * 100, 1)
         central <- paste0("TRUE: ", pct_true, "%")
       } else {
-        central <- "—"
+        central <- "-"
       }
-      range_str <- "—"
+      range_str <- "-"
       levels_str <- "TRUE, FALSE"
       median_val <- NA
     } else if (inherits(x, "Date") || inherits(x, "POSIXct")) {
@@ -109,16 +109,16 @@ data_overview <- function(data,
         central <- as.character(median(x_clean))
         range_str <- paste0("[", min_date, ", ", max_date, "]")
       } else {
-        central <- "—"
-        range_str <- "—"
+        central <- "-"
+        range_str <- "-"
       }
-      levels_str <- "—"
+      levels_str <- "-"
       median_val <- NA
     } else {
       var_type <- class(x)[1]
-      central <- "—"
-      range_str <- "—"
-      levels_str <- "—"
+      central <- "-"
+      range_str <- "-"
+      levels_str <- "-"
       median_val <- NA
     }
 
@@ -241,8 +241,8 @@ normality_check <- function(data,
         Kurtosis = NA,
         Statistic = NA,
         p = NA,
-        Test = "—",
-        Normal = "—",
+        Test = "-",
+        Normal = "-",
         stringsAsFactors = FALSE
       ))
     }
@@ -268,7 +268,7 @@ normality_check <- function(data,
         stat_val <- test_result$statistic
         p_val <- test_result$p.value
       } else {
-        test_name <- "—"
+        test_name <- "-"
         stat_val <- NA
         p_val <- NA
       }
@@ -283,13 +283,13 @@ normality_check <- function(data,
           normal_interp <- "No"
         }
       } else {
-        normal_interp <- "—"
+        normal_interp <- "-"
       }
     } else {
-      test_name <- "—"
+      test_name <- "-"
       stat_val <- NA
       p_val <- NA
-      normal_interp <- "—"
+      normal_interp <- "-"
     }
 
     data.frame(
@@ -309,7 +309,7 @@ normality_check <- function(data,
 
   # Format p-values
   results_df$p_formatted <- sapply(results_df$p, function(p) {
-    if (is.na(p)) return("—")
+    if (is.na(p)) return("-")
     if (p < 0.001) return("< .001")
     return(sub("^0\\.", ".", formatC(p, format = "f", digits = 3)))
   })

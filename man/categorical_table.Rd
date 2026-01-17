@@ -79,8 +79,8 @@ Default: FALSE.}
 \item{theme}{Character. Visual theme: "default", "minimal", "dark",
 or "colorful". Default: "default".}
 
-\item{combine}{Logical. For single variables, combine n and % in one column?
-Default: TRUE. Shows as "n (%)".}
+\item{combine}{Logical. For single variables, combine n and percent in one column?
+Default: TRUE. Shows as "n (pct)".}
 
 \item{interpret}{Logical. Pass results to AI for automatic interpretation?
 Default FALSE. When TRUE, generates clean Methods and Results text using
@@ -170,5 +170,5 @@ categorical_table(
 }
 \seealso{
 \code{\link{descriptive_table}} for numeric variable summaries
-\code{\link{Mosaic}} for mosaic plot visualization with chi-square tests
+\code{\link{mosaic_analysis}} for mosaic plot visualization with chi-square tests
 }

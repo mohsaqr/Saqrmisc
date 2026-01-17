@@ -20,7 +20,6 @@ Depends:
     R (>= 4.1.0)
 Imports:
     MoEClust,
-    mclust,
     dplyr,
     ggplot2,
     vcd,
@@ -29,11 +28,6 @@ Imports:
     rlang,
     gridExtra,
     gt,
-    janitor,
-    prcr,
-    ggcharts,
-    MASS,
-    tidyverse,
     magrittr,
     tidyr,
     bootnet,
@@ -54,5 +48,7 @@ Suggests:
     kableExtra,
     TOSTER,
     httr2,
-    clipr
+    clipr,
+    scales,
+    NetworkComparisonTest
 VignetteBuilder: knitr

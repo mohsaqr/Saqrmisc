@@ -412,16 +412,23 @@ outlier_check <- function(data,
 #' df <- mtcars
 #'
 #' # Replace outliers beyond 2 SD with NA
-#' df_clean <- replace_outliers(df, Vars = "hp", detect = "zscore", threshold = 2, replace_with = "NA")
+#' df_clean <- replace_outliers(df, Vars = "hp",
+#'                              detect = "zscore", threshold = 2,
+#'                              replace_with = "NA")
 #'
 #' # Winsorize at 3 SD
-#' df_clean <- replace_outliers(df, Vars = "hp", detect = "zscore", threshold = 3, replace_with = "winsorize")
+#' df_clean <- replace_outliers(df, Vars = "hp",
+#'                              detect = "zscore", threshold = 3,
+#'                              replace_with = "winsorize")
 #'
 #' # Replace outliers at 5th/95th percentile with median
-#' df_clean <- replace_outliers(df, Vars = "hp", detect = "percentile", threshold = 0.05, replace_with = "median")
+#' df_clean <- replace_outliers(df, Vars = "hp",
+#'                              detect = "percentile", threshold = 0.05,
+#'                              replace_with = "median")
 #'
 #' # IQR-based winsorization
-#' df_clean <- replace_outliers(df, Vars = c("mpg", "hp"), detect = "iqr", replace_with = "winsorize")
+#' df_clean <- replace_outliers(df, Vars = c("mpg", "hp"),
+#'                              detect = "iqr", replace_with = "winsorize")
 #' }
 #'
 #' @importFrom stats sd IQR quantile median

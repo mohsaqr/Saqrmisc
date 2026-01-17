@@ -14,7 +14,7 @@
 #' @param triangle Which triangle to display: "lower" (default), "upper", or "full".
 #' @param diagonal What to show on the diagonal: "dash" (default), "one", or "names".
 #' @param show_n Logical. Show pairwise sample sizes? Default FALSE.
-#' @param show_ci Logical. Show 95% confidence intervals? Default FALSE. Only available for bivariate Pearson.
+#' @param show_ci Logical. Show 95 percent confidence intervals? Default FALSE. Only available for bivariate Pearson.
 #' @param show_p Logical. Show p-values below correlations? Default FALSE.
 #' @param p_adjust Method for p-value adjustment: "none" (default), "bonferroni", "holm", "fdr".
 #' @param stars Logical. Show significance stars? Default TRUE.
@@ -370,7 +370,7 @@ correlation_matrix <- function(data,
       if (i == j) {
         # Diagonal
         display_matrix[i, j] <- switch(diagonal,
-                                        "dash" = "—",
+                                        "dash" = "-",
                                         "one" = "1",
                                         "names" = Vars[i])
       } else {
@@ -1305,7 +1305,7 @@ correlations <- function(data,
   # Format CI
   if (method == "pearson") {
     display_df$`95% CI` <- mapply(function(low, high) {
-      if (is.na(low) || is.na(high)) return("—")
+      if (is.na(low) || is.na(high)) return("-")
       low_fmt <- sub("^0\\.", ".", sub("^-0\\.", "-.", formatC(low, format = "f", digits = digits)))
       high_fmt <- sub("^0\\.", ".", sub("^-0\\.", "-.", formatC(high, format = "f", digits = digits)))
       paste0("[", low_fmt, ", ", high_fmt, "]")
@@ -1324,7 +1324,7 @@ correlations <- function(data,
 
   # Format p
   display_df$p <- sapply(results_df$p, function(p) {
-    if (is.na(p)) return("—")
+    if (is.na(p)) return("-")
     if (p < 0.001) return("< .001")
     sub("^0\\.", ".", formatC(p, format = "f", digits = 3))
   })

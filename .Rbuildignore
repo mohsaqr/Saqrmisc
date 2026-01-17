@@ -10,4 +10,6 @@
 ^\.gitignore$
 ^build_prompt\.md$
 ^\.claude$
-^LICENSE\.md$ 
+^LICENSE\.md$ Rplots.pdf
+USAGE.md
+install.R

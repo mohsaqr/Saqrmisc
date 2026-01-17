@@ -95,7 +95,7 @@ in the output? Default FALSE.}
 "significant" (default), "all", "none".}
 
 \item{min_threshold}{Numeric. Minimum proportion (0-1) of total sample required
-to include a repeat_category level. Default: 0.05 (5%).}
+to include a repeat_category level. Default: 0.05 (5 percent).}
 
 \item{min_subcategory}{Integer. Minimum observations required per group.
 Groups with fewer observations are excluded from analysis. Default: 5.}

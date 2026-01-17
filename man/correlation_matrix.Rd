@@ -43,7 +43,7 @@ For partial/semi-partial, each pair is controlled for all other variables in Var
 
 \item{show_n}{Logical. Show pairwise sample sizes? Default FALSE.}
 
-\item{show_ci}{Logical. Show 95% confidence intervals? Default FALSE. Only available for bivariate Pearson.}
+\item{show_ci}{Logical. Show 95 percent confidence intervals? Default FALSE. Only available for bivariate Pearson.}
 
 \item{show_p}{Logical. Show p-values below correlations? Default FALSE.}
 

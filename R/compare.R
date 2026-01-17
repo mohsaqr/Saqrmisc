@@ -413,7 +413,7 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @param pairwise_display Which pairwise comparisons to show on plots? Options:
 #'   "significant" (default), "all", "none".
 #' @param min_threshold Numeric. Minimum proportion (0-1) of total sample required
-#'   to include a repeat_category level. Default: 0.05 (5%).
+#'   to include a repeat_category level. Default: 0.05 (5 percent).
 #' @param min_subcategory Integer. Minimum observations required per group.
 #'   Groups with fewer observations are excluded from analysis. Default: 5.
 #' @param colors Character vector of colors for groups. Default: NULL uses

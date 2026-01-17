@@ -1032,8 +1032,8 @@ descriptive_table <- function(data,
 #'   "plain" (data frame), "markdown", "latex", or "kable".
 #' @param theme Character. Visual theme: "default", "minimal", "dark",
 #'   or "colorful". Default: "default".
-#' @param combine Logical. For single variables, combine n and % in one column?
-#'   Default: TRUE. Shows as "n (%)".
+#' @param combine Logical. For single variables, combine n and percent in one column?
+#'   Default: TRUE. Shows as "n (pct)".
 #' @param interpret Logical. Pass results to AI for automatic interpretation?
 #'   Default FALSE. When TRUE, generates clean Methods and Results text using
 #'   AI. Requires API key setup (see \code{\link{set_api_key}}).
@@ -1114,7 +1114,7 @@ descriptive_table <- function(data,
 #'
 #' @seealso
 #' \code{\link{descriptive_table}} for numeric variable summaries
-#' \code{\link{Mosaic}} for mosaic plot visualization with chi-square tests
+#' \code{\link{mosaic_analysis}} for mosaic plot visualization with chi-square tests
 #'
 #' @importFrom dplyr group_by summarise n mutate arrange desc filter
 #' @importFrom stats chisq.test fisher.test

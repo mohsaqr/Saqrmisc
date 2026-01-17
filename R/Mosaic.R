@@ -208,15 +208,18 @@ interpret_cramers_v <- function(v, df) {
 #'                      replace = TRUE, prob = c(0.3, 0.4, 0.2, 0.1))
 #' )
 #'
-#' # Basic usage with unquoted variable names
-#' results <- mosaic_analysis(example_data, gender, education)
-#'
-#' # With quoted variable names
+#' # Basic usage with quoted variable names
 #' results <- mosaic_analysis(example_data, "gender", "education")
 #'
+#' # Access results
+#' results$cramers_v
+#' results$cramers_v_interpretation
+#' results$stats_summary
+#'
+#' \donttest{
 #' # With row percentages and custom labels
 #' results <- mosaic_analysis(
-#'   example_data, gender, education,
+#'   example_data, "gender", "education",
 #'   min_count = 5,
 #'   var1_label = "Gender",
 #'   var2_label = "Education Level",
@@ -225,15 +228,11 @@ interpret_cramers_v <- function(v, df) {
 #'
 #' # Using Fisher's exact test for small samples
 #' results <- mosaic_analysis(
-#'   example_data, gender, education,
+#'   example_data, "gender", "education",
 #'   use_fisher = TRUE,
 #'   verbose = FALSE
 #' )
-#'
-#' # Access results
-#' results$cramers_v
-#' results$cramers_v_interpretation
-#' results$stats_summary
+#' }
 #'
 #' @export
 mosaic_analysis <- function(data, var1, var2, min_count = 10,
