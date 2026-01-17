@@ -432,8 +432,8 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #'   `"significant"` (default), `"all"`, `"none"`.
 #' @param min_threshold Numeric. Minimum proportion (0-1) of total sample required
 #'   to include a repeat_category level. Default: `0.05` (5%).
-#' @param min_subcategory Integer. Minimum observations per group within
-#'   repeat_category levels. Default: `5`.
+#' @param min_subcategory Integer. Minimum observations required per group.
+#'   Groups with fewer observations are excluded from analysis. Default: `5`.
 #' @param colors Character vector of colors for groups. Default: `NULL` uses
 #'   a built-in palette.
 #' @param verbose Logical. Print progress messages? Default: `TRUE`.
@@ -825,9 +825,9 @@ compare_groups <- function(data, category, Vars,
     result <- list()
 
     # -------------------------------------------------------------------------
-    # Filter subcategories if needed
+    # Filter groups with too few observations
     # -------------------------------------------------------------------------
-    if (!is.null(repeat_category_name_str) && min_subcategory > 0) {
+    if (min_subcategory > 0) {
       subcategory_counts <- data_subset %>%
         dplyr::count(.data[[category_name_str]]) %>%
         dplyr::filter(n >= min_subcategory)
@@ -837,7 +837,7 @@ compare_groups <- function(data, category, Vars,
       excluded_subcats <- setdiff(original_subcats, kept_subcats)
 
       if (verbose && !silent && length(excluded_subcats) > 0) {
-        cat("  Excluded subcategories (<", min_subcategory, "obs):",
+        cat("  Excluded groups (<", min_subcategory, " obs):",
             paste(excluded_subcats, collapse = ", "), "\n")
       }
 
@@ -849,7 +849,7 @@ compare_groups <- function(data, category, Vars,
         return(list(
           plots = NULL, grid_plot = NULL, summary_table = NULL,
           summary_data = NULL, filtered_out = TRUE,
-          reason = "Insufficient subcategory data"
+          reason = "Insufficient group data after filtering"
         ))
       }
     }

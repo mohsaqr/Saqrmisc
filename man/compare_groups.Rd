@@ -106,8 +106,8 @@ Default: `TRUE`. Results include a comparison table and text report.}
 \item{min_threshold}{Numeric. Minimum proportion (0-1) of total sample required
 to include a repeat_category level. Default: `0.05` (5%).}
 
-\item{min_subcategory}{Integer. Minimum observations per group within
-repeat_category levels. Default: `5`.}
+\item{min_subcategory}{Integer. Minimum observations required per group.
+Groups with fewer observations are excluded from analysis. Default: `5`.}
 
 \item{colors}{Character vector of colors for groups. Default: `NULL` uses
 a built-in palette.}
