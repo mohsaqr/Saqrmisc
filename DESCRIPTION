@@ -53,5 +53,7 @@ Suggests:
     roxygen2,
     ggstatsplot,
     kableExtra,
-    TOSTER
+    TOSTER,
+    httr2,
+    clipr
 VignetteBuilder: knitr
