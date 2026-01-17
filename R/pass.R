@@ -24,7 +24,8 @@
 #'   \itemize{
 #'     \item `"scientific"` (default): APA-style for academic papers
 #'     \item `"simple"`: Plain language, no jargon
-#'     \item `"detailed"`: Comprehensive with all caveats
+#'     \item `"detailed"`: Comprehensive with assumptions, limitations, caveats
+#'       (default for `action = "write"`)
 #'     \item `"brief"`: Just the key takeaway
 #'   }
 #' @param output Output format:
@@ -117,11 +118,19 @@ pass <- function(x,
                  copy = FALSE,
                  quiet = FALSE) {
 
+  # Check if style was explicitly provided before match.arg
+style_missing <- missing(style)
+
   action <- match.arg(action)
   style <- match.arg(style)
   output <- match.arg(output)
   if (output == "md") output <- "markdown"  # Alias
   provider <- match.arg(provider)
+
+  # Default to "detailed" style for "write" action (unless user specified otherwise)
+  if (action == "write" && style_missing) {
+    style <- "detailed"
+  }
 
   # Check if using custom base_url (local server like LM Studio)
   use_local <- !is.null(base_url)

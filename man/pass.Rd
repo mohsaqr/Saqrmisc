@@ -39,7 +39,8 @@ pass(
 \itemize{
   \item `"scientific"` (default): APA-style for academic papers
   \item `"simple"`: Plain language, no jargon
-  \item `"detailed"`: Comprehensive with all caveats
+  \item `"detailed"`: Comprehensive with assumptions, limitations, caveats
+    (default for `action = "write"`)
   \item `"brief"`: Just the key takeaway
 }}
 
