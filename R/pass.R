@@ -171,6 +171,34 @@ print.saqr_result <- function(x, ...) {
   invisible(x)
 }
 
+#' Get R and package citations in BibTeX format
+#' @noRd
+get_citations_bibtex <- function(packages = NULL) {
+
+  citations <- c()
+
+
+  # Get R citation
+  r_cite <- utils::citation()
+  r_bibtex <- paste(utils::capture.output(print(r_cite, bibtex = TRUE)), collapse = "\n")
+  citations <- c(citations, "### R Citation", "", "```bibtex", r_bibtex, "```", "")
+
+  # Get package citations if specified
+  if (!is.null(packages) && length(packages) > 0) {
+    for (pkg in packages) {
+      tryCatch({
+        pkg_cite <- utils::citation(pkg)
+        pkg_bibtex <- paste(utils::capture.output(print(pkg_cite, bibtex = TRUE)), collapse = "\n")
+        citations <- c(citations, paste0("### ", pkg, " Citation"), "", "```bibtex", pkg_bibtex, "```", "")
+      }, error = function(e) {
+        # Skip if package citation not available
+      })
+    }
+  }
+
+  paste(citations, collapse = "\n")
+}
+
 #' Generate methods and results markdown for AI interpretation
 #'
 #' @description
@@ -201,44 +229,50 @@ generate_methods_results_md <- function(results, analysis_type = "analysis", met
         if (grepl("Mann-Whitney|Wilcox", test_type, ignore.case = TRUE)) {
           paste0("A Mann-Whitney U test (nonparametric) was used to compare groups on ",
                  if (is.character(variables)) paste(variables, collapse = ", ") else "the outcome variables",
-                 ". Effect sizes were calculated using rank-biserial correlation.")
+                 ". Effect sizes were calculated using rank-biserial correlation. ",
+                 "All analyses were conducted using R (R Core Team, 2024) with the Saqrmisc package.")
         } else if (grepl("t-test|t test", test_type, ignore.case = TRUE)) {
           paste0("Independent samples t-tests were conducted to compare groups on ",
                  if (is.character(variables)) paste(variables, collapse = ", ") else "the outcome variables",
-                 ". Cohen's d was calculated as the effect size measure.")
+                 ". Cohen's d was calculated as the effect size measure. ",
+                 "All analyses were conducted using R (R Core Team, 2024) with the Saqrmisc package.")
         } else {
-          paste0("A ", test_type, " was used to compare two groups.")
+          paste0("A ", test_type, " was used to compare two groups. ",
+                 "All analyses were conducted using R (R Core Team, 2024) with the Saqrmisc package.")
         }
       } else {
         if (grepl("Kruskal|nonparametric", test_type, ignore.case = TRUE)) {
           paste0("Kruskal-Wallis tests (nonparametric) were conducted to compare ",
                  n_groups, " groups on ",
                  if (is.character(variables)) paste(variables, collapse = ", ") else "the outcome variables",
-                 ". Epsilon-squared was calculated as the effect size. Post-hoc pairwise comparisons used Wilcoxon tests with Bonferroni correction.")
+                 ". Epsilon-squared was calculated as the effect size. Post-hoc pairwise comparisons used Wilcoxon tests with Bonferroni correction. ",
+                 "All analyses were conducted using R (R Core Team, 2024) with the Saqrmisc package.")
         } else {
           paste0("One-way ANOVAs were conducted to compare ",
                  n_groups, " groups on ",
                  if (is.character(variables)) paste(variables, collapse = ", ") else "the outcome variables",
                  ". Eta-squared was calculated as the effect size. Post-hoc comparisons used ",
                  metadata$posthoc_method %||% "Games-Howell",
-                 " tests.")
+                 " tests. All analyses were conducted using R (R Core Team, 2024) with the Saqrmisc package.")
         }
       }
     },
     "correlation" = {
       paste0("Correlation analysis was performed using ",
              metadata$method %||% "Pearson",
-             " correlation coefficients.")
+             " correlation coefficients. All analyses were conducted using R (R Core Team, 2024) with the Saqrmisc package.")
     },
     "categorical" = {
       paste0("Chi-square test of independence was used to examine the association ",
-             "between categorical variables. Cramer's V was calculated as the effect size.")
+             "between categorical variables. Cramer's V was calculated as the effect size. ",
+             "All analyses were conducted using R (R Core Team, 2024) with the Saqrmisc package.")
     },
     "descriptive" = {
-      "Descriptive statistics including means, standard deviations, and sample sizes were calculated."
+      paste0("Descriptive statistics including means, standard deviations, and sample sizes were calculated. ",
+             "All analyses were conducted using R (R Core Team, 2024) with the Saqrmisc package.")
     },
     # Default
-    paste0("Statistical analysis was conducted using R.")
+    paste0("Statistical analysis was conducted using R (R Core Team, 2024) with the Saqrmisc package.")
   )
 
   parts <- c(parts, methods_text, "")
@@ -319,6 +353,13 @@ generate_methods_results_md <- function(results, analysis_type = "analysis", met
       }
     }
   }
+
+  # === REFERENCES SECTION WITH BIBTEX ===
+  parts <- c(parts, "## References (BibTeX)", "")
+
+  # Add R citation
+  citations <- get_citations_bibtex(packages = c("effectsize", "BayesFactor"))
+  parts <- c(parts, citations)
 
   paste(parts, collapse = "\n")
 }
