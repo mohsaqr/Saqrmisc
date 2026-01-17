@@ -34,11 +34,11 @@
 #'     \item `"latex"`: LaTeX formatted for papers
 #'     \item `"html"`: HTML formatted
 #'   }
-#' @param provider AI provider: `"anthropic"` (default) or `"openai"`
-#' @param model Model to use. Default: `"claude-sonnet-4-20250514"` for Anthropic,
-#'   `"gpt-4o"` for OpenAI.
+#' @param provider AI provider: `"anthropic"` (default), `"openai"`, or `"gemini"`
+#' @param model Model to use. Defaults: `"claude-sonnet-4-20250514"` (Anthropic),
+#'   `"gpt-4o"` (OpenAI), `"gemini-2.5-flash"` (Gemini).
 #' @param api_key API key. If NULL, checks environment variables
-#'   (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`), then prompts interactively.
+#'   (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY`), then prompts interactively.
 #' @param context Optional context about your study (e.g., "This is a study on
 #'   student learning outcomes with N=500 participants")
 #' @param copy Logical. Copy result to clipboard? Default: FALSE
@@ -86,7 +86,7 @@ pass <- function(x,
                  action = c("interpret", "explain", "write", "summarize", "critique", "suggest"),
                  style = c("scientific", "simple", "detailed", "brief"),
                  output = c("text", "markdown", "md", "latex", "html"),
-                 provider = c("anthropic", "openai"),
+                 provider = c("anthropic", "openai", "gemini"),
                  model = NULL,
                  api_key = NULL,
                  context = NULL,
@@ -110,8 +110,12 @@ pass <- function(x,
   api_key <- get_api_key(provider, api_key, quiet)
 
   # Set default model
- if (is.null(model)) {
-    model <- if (provider == "anthropic") "claude-sonnet-4-20250514" else "gpt-4o"
+  if (is.null(model)) {
+    model <- switch(provider,
+      anthropic = "claude-sonnet-4-20250514",
+      openai = "gpt-4o",
+      gemini = "gemini-2.5-flash"
+    )
   }
 
   # Build the prompt
@@ -159,7 +163,11 @@ get_api_key <- function(provider, api_key = NULL, quiet = FALSE) {
   }
 
   # Check environment variable
- env_var <- if (provider == "anthropic") "ANTHROPIC_API_KEY" else "OPENAI_API_KEY"
+  env_var <- switch(provider,
+    anthropic = "ANTHROPIC_API_KEY",
+    openai = "OPENAI_API_KEY",
+    gemini = "GEMINI_API_KEY"
+  )
   key <- Sys.getenv(env_var)
 
   if (nzchar(key)) {
@@ -274,11 +282,11 @@ build_user_prompt <- function(output_text, obj_info, custom_prompt, context, act
 #' Call AI API
 #' @noRd
 call_ai_api <- function(provider, model, api_key, system_prompt, user_prompt) {
-  if (provider == "anthropic") {
-    call_anthropic(model, api_key, system_prompt, user_prompt)
-  } else {
-    call_openai(model, api_key, system_prompt, user_prompt)
-  }
+  switch(provider,
+    anthropic = call_anthropic(model, api_key, system_prompt, user_prompt),
+    openai = call_openai(model, api_key, system_prompt, user_prompt),
+    gemini = call_gemini(model, api_key, system_prompt, user_prompt)
+  )
 }
 
 #' Call Anthropic API
@@ -352,24 +360,75 @@ call_openai <- function(model, api_key, system_prompt, user_prompt) {
   result$choices[[1]]$message$content
 }
 
+#' Call Gemini API
+#' @noRd
+call_gemini <- function(model, api_key, system_prompt, user_prompt) {
+  if (!requireNamespace("httr2", quietly = TRUE)) {
+    stop("Package 'httr2' is required. Install with: install.packages('httr2')")
+  }
+
+  # Gemini API endpoint
+  url <- paste0(
+    "https://generativelanguage.googleapis.com/v1beta/models/",
+    model,
+    ":generateContent?key=",
+    api_key
+  )
+
+  body <- list(
+    system_instruction = list(
+      parts = list(list(text = system_prompt))
+    ),
+    contents = list(
+      list(
+        parts = list(list(text = user_prompt))
+      )
+    ),
+    generationConfig = list(
+      maxOutputTokens = 2048
+    )
+  )
+
+  req <- httr2::request(url) |>
+    httr2::req_headers(`Content-Type` = "application/json") |>
+    httr2::req_body_json(body) |>
+    httr2::req_error(is_error = function(resp) FALSE)
+
+  resp <- httr2::req_perform(req)
+
+  if (httr2::resp_status(resp) != 200) {
+    error_body <- httr2::resp_body_json(resp)
+    error_msg <- error_body$error$message %||% httr2::resp_status_desc(resp)
+    stop("API error: ", error_msg)
+  }
+
+  result <- httr2::resp_body_json(resp)
+  result$candidates[[1]]$content$parts[[1]]$text
+}
+
 #' Set API Key for Session
 #'
 #' @description
 #' Convenience function to set your API key for the current R session.
 #'
 #' @param key Your API key
-#' @param provider Provider name: "anthropic" or "openai"
+#' @param provider Provider name: "anthropic", "openai", or "gemini"
 #'
 #' @examples
 #' \dontrun{
 #' set_api_key("sk-ant-...", "anthropic")
 #' set_api_key("sk-...", "openai")
+#' set_api_key("AIza...", "gemini")
 #' }
 #'
 #' @export
-set_api_key <- function(key, provider = c("anthropic", "openai")) {
+set_api_key <- function(key, provider = c("anthropic", "openai", "gemini")) {
   provider <- match.arg(provider)
-  env_var <- if (provider == "anthropic") "ANTHROPIC_API_KEY" else "OPENAI_API_KEY"
+  env_var <- switch(provider,
+    anthropic = "ANTHROPIC_API_KEY",
+    openai = "OPENAI_API_KEY",
+    gemini = "GEMINI_API_KEY"
+  )
   do.call(Sys.setenv, setNames(list(key), env_var))
   message("API key set for ", provider, " (this session only)")
   invisible(TRUE)

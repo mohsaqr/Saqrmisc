@@ -4,12 +4,12 @@
 \alias{set_api_key}
 \title{Set API Key for Session}
 \usage{
-set_api_key(key, provider = c("anthropic", "openai"))
+set_api_key(key, provider = c("anthropic", "openai", "gemini"))
 }
 \arguments{
 \item{key}{Your API key}
 
-\item{provider}{Provider name: "anthropic" or "openai"}
+\item{provider}{Provider name: "anthropic", "openai", or "gemini"}
 }
 \description{
 Convenience function to set your API key for the current R session.
@@ -18,6 +18,7 @@ Convenience function to set your API key for the current R session.
 \dontrun{
 set_api_key("sk-ant-...", "anthropic")
 set_api_key("sk-...", "openai")
+set_api_key("AIza...", "gemini")
 }
 
 }

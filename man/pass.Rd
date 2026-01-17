@@ -10,7 +10,7 @@ pass(
   action = c("interpret", "explain", "write", "summarize", "critique", "suggest"),
   style = c("scientific", "simple", "detailed", "brief"),
   output = c("text", "markdown", "md", "latex", "html"),
-  provider = c("anthropic", "openai"),
+  provider = c("anthropic", "openai", "gemini"),
   model = NULL,
   api_key = NULL,
   context = NULL,
@@ -49,13 +49,13 @@ pass(
   \item `"html"`: HTML formatted
 }}
 
-\item{provider}{AI provider: `"anthropic"` (default) or `"openai"`}
+\item{provider}{AI provider: `"anthropic"` (default), `"openai"`, or `"gemini"`}
 
-\item{model}{Model to use. Default: `"claude-sonnet-4-20250514"` for Anthropic,
-`"gpt-4o"` for OpenAI.}
+\item{model}{Model to use. Defaults: `"claude-sonnet-4-20250514"` (Anthropic),
+`"gpt-4o"` (OpenAI), `"gemini-2.5-flash"` (Gemini).}
 
 \item{api_key}{API key. If NULL, checks environment variables
-(`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`), then prompts interactively.}
+(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY`), then prompts interactively.}
 
 \item{context}{Optional context about your study (e.g., "This is a study on
 student learning outcomes with N=500 participants")}
