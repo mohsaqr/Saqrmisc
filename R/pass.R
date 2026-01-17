@@ -39,7 +39,7 @@
 #'     \item `"html"`: HTML formatted
 #'   }
 #' @param provider AI provider: `"openai"` (default), `"anthropic"`, `"gemini"`, or `"openrouter"`.
-#' @param model Model to use. Defaults: `"gpt-4o"` (OpenAI), `"claude-sonnet-4-20250514"` (Anthropic),
+#' @param model Model to use. Defaults: `"gpt-4.1-nano"` (OpenAI), `"claude-sonnet-4-20250514"` (Anthropic),
 #'   `"gemini-2.5-flash"` (Gemini), `"anthropic/claude-sonnet-4"` (OpenRouter).
 #' @param base_url Custom API base URL for OpenAI-compatible servers (e.g., LM Studio,
 #'   Ollama, vLLM). Example: `"http://127.0.0.1:1234"` for LM Studio. When set,
@@ -175,7 +175,7 @@ style_missing <- missing(style)
       model <- "local-model"  # Placeholder, LM Studio uses loaded model
     } else {
       model <- switch(provider,
-        openai = "gpt-4o",
+        openai = "gpt-4.1-nano",
         anthropic = "claude-sonnet-4-20250514",
         gemini = "gemini-2.5-flash",
         openrouter = "anthropic/claude-sonnet-4"
@@ -700,4 +700,73 @@ set_api_key <- function(key, provider = c("openai", "anthropic", "gemini", "open
   do.call(Sys.setenv, setNames(list(key), env_var))
   message("API key set for ", provider, " (this session only)")
   invisible(TRUE)
+}
+
+#' Set OpenAI API Key
+#'
+#' @description
+#' Convenience alias for `set_api_key(key, "openai")`.
+#'
+#' @param key Your OpenAI API key
+#'
+#' @examples
+#' \dontrun{
+#' set_openai_key("sk-...")
+#' }
+#'
+#' @export
+set_openai_key <- function(key) {
+
+  set_api_key(key, "openai")
+}
+
+#' Set Anthropic (Claude) API Key
+#'
+#' @description
+#' Convenience alias for `set_api_key(key, "anthropic")`.
+#'
+#' @param key Your Anthropic API key
+#'
+#' @examples
+#' \dontrun{
+#' set_claude_key("sk-ant-...")
+#' }
+#'
+#' @export
+set_claude_key <- function(key) {
+  set_api_key(key, "anthropic")
+}
+
+#' Set Google Gemini API Key
+#'
+#' @description
+#' Convenience alias for `set_api_key(key, "gemini")`.
+#'
+#' @param key Your Gemini API key
+#'
+#' @examples
+#' \dontrun{
+#' set_gemini_key("AIza...")
+#' }
+#'
+#' @export
+set_gemini_key <- function(key) {
+  set_api_key(key, "gemini")
+}
+
+#' Set OpenRouter API Key
+#'
+#' @description
+#' Convenience alias for `set_api_key(key, "openrouter")`.
+#'
+#' @param key Your OpenRouter API key
+#'
+#' @examples
+#' \dontrun{
+#' set_openrouter_key("sk-or-...")
+#' }
+#'
+#' @export
+set_openrouter_key <- function(key) {
+  set_api_key(key, "openrouter")
 }

@@ -774,11 +774,14 @@ R Foundation for Statistical Computing. https://www.R-project.org/
 **Setup:**
 
 ```r
-# Set API key for session
-set_api_key("your-api-key", provider = "openai")      # OpenAI (default)
-set_api_key("your-api-key", provider = "anthropic")   # Anthropic
-set_api_key("your-api-key", provider = "gemini")      # Google Gemini
-set_api_key("your-api-key", provider = "openrouter")  # OpenRouter
+# Set API key for session (convenient aliases)
+set_openai_key("sk-...")           # OpenAI (default provider)
+set_claude_key("sk-ant-...")       # Anthropic Claude
+set_gemini_key("AIza...")          # Google Gemini
+set_openrouter_key("sk-or-...")    # OpenRouter
+
+# Or use the generic function
+set_api_key("your-api-key", provider = "openai")
 
 # Or use environment variables (recommended)
 # Add to .Renviron:

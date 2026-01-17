@@ -55,7 +55,7 @@ pass(
 
 \item{provider}{AI provider: `"openai"` (default), `"anthropic"`, `"gemini"`, or `"openrouter"`.}
 
-\item{model}{Model to use. Defaults: `"gpt-4o"` (OpenAI), `"claude-sonnet-4-20250514"` (Anthropic),
+\item{model}{Model to use. Defaults: `"gpt-4.1-nano"` (OpenAI), `"claude-sonnet-4-20250514"` (Anthropic),
 `"gemini-2.5-flash"` (Gemini), `"anthropic/claude-sonnet-4"` (OpenRouter).}
 
 \item{base_url}{Custom API base URL for OpenAI-compatible servers (e.g., LM Studio,
