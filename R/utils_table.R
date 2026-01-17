@@ -397,6 +397,150 @@ to_kable <- function(x,
 }
 
 
+#' Convert Table to GT Format
+#'
+#' @description
+#' Converts a data frame or matrix to a gt table object for publication-ready
+#' output. Provides a consistent interface matching other to_* functions.
+#'
+#' @param x A data frame or matrix to convert.
+#' @param title Optional title for the table.
+#' @param subtitle Optional subtitle for the table.
+#' @param digits Number of decimal places for numeric columns. Default 2.
+#' @param rowname_col Optional column name to use as row names.
+#' @param theme Character. Visual theme: "default" (clean scientific style),
+#'   "fancy" (blue headers), "minimal" (simple borders), "dark" (dark mode),
+#'   or "none" (no styling). Default "default".
+#'
+#' @return A gt table object.
+#'
+#' @examples
+#' \dontrun{
+#' # Convert a data frame to gt
+#' df <- data.frame(
+#'   Variable = c("Age", "Score"),
+#'   Mean = c(35.2, 78.5),
+#'   SD = c(10.1, 12.3)
+#' )
+#' to_gt(df)
+#' to_gt(df, title = "Descriptive Statistics", theme = "fancy")
+#'
+#' # With row names
+#' to_gt(mtcars[1:5, 1:3], rowname_col = NULL)
+#' }
+#'
+#' @export
+to_gt <- function(x,
+                  title = NULL,
+                  subtitle = NULL,
+                  digits = 2,
+                  rowname_col = NULL,
+                  theme = c("default", "fancy", "minimal", "dark", "none")) {
+
+ if (!requireNamespace("gt", quietly = TRUE)) {
+    stop("Package 'gt' is required for to_gt(). Install with: install.packages('gt')")
+  }
+
+  theme <- match.arg(theme)
+
+  # Convert input to data frame
+  df <- .to_dataframe(x, digits = digits)
+
+  # Create gt table
+  gt_table <- gt::gt(df, rowname_col = rowname_col)
+
+  # Add header if provided
+  if (!is.null(title)) {
+    gt_table <- gt_table %>%
+      gt::tab_header(
+        title = title,
+        subtitle = subtitle
+      )
+  }
+
+  # Apply theme
+ if (theme == "default") {
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = list(
+          gt::cell_text(weight = "bold"),
+          gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+          gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+        ),
+        locations = gt::cells_column_labels()
+      ) %>%
+      gt::tab_options(
+        table.border.top.width = gt::px(2),
+        table.border.top.color = "black",
+        table.border.bottom.width = gt::px(2),
+        table.border.bottom.color = "black",
+        column_labels.border.bottom.color = "black",
+        table_body.border.bottom.color = "black"
+      )
+    if (!is.null(title)) {
+      gt_table <- gt_table %>%
+        gt::tab_style(
+          style = gt::cell_text(weight = "bold"),
+          locations = gt::cells_title(groups = "title")
+        )
+    }
+
+  } else if (theme == "fancy") {
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = list(
+          gt::cell_fill(color = "#4472C4"),
+          gt::cell_text(color = "white", weight = "bold")
+        ),
+        locations = gt::cells_column_labels()
+      ) %>%
+      gt::tab_options(
+        table.border.top.width = gt::px(2),
+        table.border.top.color = "#4472C4",
+        table.border.bottom.width = gt::px(2),
+        table.border.bottom.color = "#4472C4"
+      )
+
+  } else if (theme == "minimal") {
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = list(
+          gt::cell_text(weight = "bold"),
+          gt::cell_borders(sides = "bottom", color = "#333333", weight = gt::px(2))
+        ),
+        locations = gt::cells_column_labels()
+      ) %>%
+      gt::tab_options(
+        table.border.top.style = "hidden",
+        table.border.bottom.style = "hidden"
+      )
+
+  } else if (theme == "dark") {
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = list(
+          gt::cell_fill(color = "#1a1a2e"),
+          gt::cell_text(color = "#eaeaea", weight = "bold")
+        ),
+        locations = gt::cells_column_labels()
+      ) %>%
+      gt::tab_style(
+        style = list(
+          gt::cell_fill(color = "#16213e"),
+          gt::cell_text(color = "#eaeaea")
+        ),
+        locations = gt::cells_body()
+      ) %>%
+      gt::tab_options(
+        table.background.color = "#0f0f23"
+      )
+  }
+  # theme == "none" - no styling applied
+
+  return(gt_table)
+}
+
+
 #' Convert Any Table to Data Frame
 #'
 #' @description
