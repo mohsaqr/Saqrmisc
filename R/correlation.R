@@ -27,6 +27,11 @@
 #'   "plain" (data frame), "markdown", "latex", or "kable".
 #' @param show_header Logical. Show title header? Default: `TRUE`.
 #'   Set to `FALSE` to hide the table header.
+#' @param interpret Logical. Pass results to AI for automatic interpretation?
+#'   Default FALSE. When TRUE, generates clean Methods and Results text using
+#'   AI. Requires API key setup (see \code{\link{set_api_key}}).
+#' @param ... Additional arguments passed to \code{\link{pass}} when
+#'   interpret = TRUE (e.g., provider, model, context, append_prompt).
 #'
 #' @return A list containing: table (gt table with formatted correlations),
 #'   correlation_matrix (numeric matrix), p_matrix (matrix of p-values),
@@ -93,7 +98,9 @@ correlation_matrix <- function(data,
                                 title = NULL,
                                 use = c("pairwise", "complete"),
                                 format = c("gt", "plain", "markdown", "latex", "kable"),
-                                show_header = TRUE) {
+                                show_header = TRUE,
+                                interpret = FALSE,
+                                ...) {
 
   # Match arguments
   type <- match.arg(type)
@@ -588,6 +595,22 @@ correlation_matrix <- function(data,
     result$heatmap <- heatmap_plot
   }
 
+  # ===========================================================================
+  # AI Interpretation (if requested)
+  # ===========================================================================
+  if (interpret) {
+    metadata <- list(
+      variables = Vars,
+      n_vars = n_vars,
+      total_n = n_obs,
+      correlation_type = type,
+      method = method,
+      p_adjustment = p_adjust
+    )
+
+    interpret_with_ai(result, analysis_type = "correlation", metadata = metadata, ...)
+  }
+
   invisible(result)
 }
 
@@ -631,6 +654,11 @@ correlation_matrix <- function(data,
 #'   "plain" (data frame), "markdown", "latex", or "kable".
 #' @param show_header Logical. Show title/subtitle header? Default TRUE.
 #'   Set to FALSE to hide the table header.
+#' @param interpret Logical. Pass results to AI for automatic interpretation?
+#'   Default FALSE. When TRUE, generates clean Methods and Results text using
+#'   AI. Requires API key setup (see \code{\link{set_api_key}}).
+#' @param ... Additional arguments passed to \code{\link{pass}} when
+#'   interpret = TRUE (e.g., provider, model, context, append_prompt).
 #'
 #' @return A list containing: table (formatted output), data (raw statistics),
 #'   display (formatted display data frame), n_pairs, n_significant,
@@ -713,7 +741,9 @@ correlations <- function(data,
                          digits = 3,
                          title = NULL,
                          format = c("gt", "plain", "markdown", "latex", "kable"),
-                         show_header = TRUE) {
+                         show_header = TRUE,
+                         interpret = FALSE,
+                         ...) {
 
   # Match arguments
   type <- match.arg(type)
@@ -1524,6 +1554,28 @@ correlations <- function(data,
     if (between && !is.null(between_df)) {
       result$between_data <- between_df
     }
+  }
+
+  # ===========================================================================
+  # AI Interpretation (if requested)
+  # ===========================================================================
+  if (interpret) {
+    metadata <- list(
+      variables = Vars,
+      n_pairs = nrow(results_df),
+      n_significant = n_significant,
+      correlation_type = type,
+      method = method,
+      p_adjustment = p_adjust,
+      multilevel = multilevel
+    )
+
+    if (multilevel) {
+      metadata$n_clusters <- n_clusters
+      metadata$id_var <- id_var
+    }
+
+    interpret_with_ai(result, analysis_type = "correlation", metadata = metadata, ...)
   }
 
   invisible(result)

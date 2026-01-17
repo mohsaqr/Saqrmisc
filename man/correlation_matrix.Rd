@@ -21,7 +21,9 @@ correlation_matrix(
   title = NULL,
   use = c("pairwise", "complete"),
   format = c("gt", "plain", "markdown", "latex", "kable"),
-  show_header = TRUE
+  show_header = TRUE,
+  interpret = FALSE,
+  ...
 )
 }
 \arguments{
@@ -63,6 +65,13 @@ Note: partial and semi-partial correlations always use complete cases.}
 
 \item{show_header}{Logical. Show title header? Default: `TRUE`.
 Set to `FALSE` to hide the table header.}
+
+\item{interpret}{Logical. Pass results to AI for automatic interpretation?
+Default FALSE. When TRUE, generates clean Methods and Results text using
+AI. Requires API key setup (see \code{\link{set_api_key}}).}
+
+\item{...}{Additional arguments passed to \code{\link{pass}} when
+interpret = TRUE (e.g., provider, model, context, append_prompt).}
 }
 \value{
 A list containing: table (gt table with formatted correlations),

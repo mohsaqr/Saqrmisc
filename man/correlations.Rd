@@ -23,7 +23,9 @@ correlations(
   digits = 3,
   title = NULL,
   format = c("gt", "plain", "markdown", "latex", "kable"),
-  show_header = TRUE
+  show_header = TRUE,
+  interpret = FALSE,
+  ...
 )
 }
 \arguments{
@@ -76,6 +78,13 @@ across all pairs, they are moved to the subtitle instead of shown as columns.}
 
 \item{show_header}{Logical. Show title/subtitle header? Default TRUE.
 Set to FALSE to hide the table header.}
+
+\item{interpret}{Logical. Pass results to AI for automatic interpretation?
+Default FALSE. When TRUE, generates clean Methods and Results text using
+AI. Requires API key setup (see \code{\link{set_api_key}}).}
+
+\item{...}{Additional arguments passed to \code{\link{pass}} when
+interpret = TRUE (e.g., provider, model, context, append_prompt).}
 }
 \value{
 A list containing: table (formatted output), data (raw statistics),
