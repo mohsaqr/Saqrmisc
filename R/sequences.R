@@ -9,11 +9,11 @@
 #'
 #' @param data A data frame.
 #' @param cols Column specification. Can be:
-#'   \itemize
+#'   \itemize{
 #'     \item NULL (default): uses all numeric columns
-#'     \item Character vector: column names (e.g., `c("a", "b", "c")`)
-#'     \item Numeric vector: column indices (e.g., `2:5` or `c(2,3,4)`)
-#'     \item Single number: columns from that index to last (e.g., `3` means cols 3 to end)
+#'     \item Character vector: column names, e.g., `c("a", "b", "c")`
+#'     \item Numeric vector: column indices, e.g., `2:5` or `c(2,3,4)`
+#'     \item Single number: from that column to end, e.g., `3` means cols 3 to last
 #'   }
 #' @param name Character. Name for the total column. Default: `"total"`.
 #' @param na.rm Logical. Remove NA values when summing? Default: `TRUE`.

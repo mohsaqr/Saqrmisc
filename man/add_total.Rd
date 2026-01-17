@@ -9,6 +9,14 @@ add_total(data, cols = NULL, name = "total", na.rm = TRUE)
 \arguments{
 \item{data}{A data frame.}
 
+\item{cols}{Column specification. Can be:
+\itemize{
+  \item NULL (default): uses all numeric columns
+  \item Character vector: column names, e.g., `c("a", "b", "c")`
+  \item Numeric vector: column indices, e.g., `2:5` or `c(2,3,4)`
+  \item Single number: from that column to end, e.g., `3` means cols 3 to last
+}}
+
 \item{name}{Character. Name for the total column. Default: `"total"`.}
 
 \item{na.rm}{Logical. Remove NA values when summing? Default: `TRUE`.}
