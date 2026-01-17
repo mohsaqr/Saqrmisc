@@ -37,8 +37,12 @@
 #' @param provider AI provider: `"anthropic"` (default), `"openai"`, or `"gemini"`
 #' @param model Model to use. Defaults: `"claude-sonnet-4-20250514"` (Anthropic),
 #'   `"gpt-4o"` (OpenAI), `"gemini-2.5-flash"` (Gemini).
+#' @param base_url Custom API base URL for OpenAI-compatible servers (e.g., LM Studio,
+#'   Ollama, vLLM). Example: `"http://127.0.0.1:1234"` for LM Studio. When set,
+#'   uses OpenAI-compatible format regardless of provider setting.
 #' @param api_key API key. If NULL, checks environment variables
 #'   (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY`), then prompts interactively.
+#'   For local servers like LM Studio, use `api_key = "none"` or any string.
 #' @param context Optional context about your study (e.g., "This is a study on
 #'   student learning outcomes with N=500 participants")
 #' @param copy Logical. Copy result to clipboard? Default: FALSE
@@ -88,6 +92,7 @@ pass <- function(x,
                  output = c("text", "markdown", "md", "latex", "html"),
                  provider = c("anthropic", "openai", "gemini"),
                  model = NULL,
+                 base_url = NULL,
                  api_key = NULL,
                  context = NULL,
                  copy = FALSE,
@@ -99,6 +104,9 @@ pass <- function(x,
   if (output == "md") output <- "markdown"  # Alias
   provider <- match.arg(provider)
 
+  # Check if using custom base_url (local server like LM Studio)
+  use_local <- !is.null(base_url)
+
   # Capture the R output as text
   output_text <- paste(utils::capture.output(print(x)), collapse = "\n")
 
@@ -106,16 +114,24 @@ pass <- function(x,
   obj_class <- paste(class(x), collapse = ", ")
   obj_info <- paste0("Object class: ", obj_class)
 
-  # Get API key
-  api_key <- get_api_key(provider, api_key, quiet)
+  # Get API key (skip for local servers if not provided)
+  if (use_local && is.null(api_key)) {
+    api_key <- "local"  # Placeholder for local servers
+  } else if (!use_local) {
+    api_key <- get_api_key(provider, api_key, quiet)
+  }
 
   # Set default model
   if (is.null(model)) {
-    model <- switch(provider,
-      anthropic = "claude-sonnet-4-20250514",
-      openai = "gpt-4o",
-      gemini = "gemini-2.5-flash"
-    )
+    if (use_local) {
+      model <- "local-model"  # Placeholder, LM Studio uses loaded model
+    } else {
+      model <- switch(provider,
+        anthropic = "claude-sonnet-4-20250514",
+        openai = "gpt-4o",
+        gemini = "gemini-2.5-flash"
+      )
+    }
   }
 
   # Build the prompt
@@ -123,17 +139,25 @@ pass <- function(x,
   user_prompt <- build_user_prompt(output_text, obj_info, prompt, context, action)
 
   if (!quiet) {
-    message("Sending to ", provider, " (", model, ")...")
+    if (use_local) {
+      message("Sending to local server (", base_url, ")...")
+    } else {
+      message("Sending to ", provider, " (", model, ")...")
+    }
   }
 
   # Call the API
-  response <- call_ai_api(
-    provider = provider,
-    model = model,
-    api_key = api_key,
-    system_prompt = system_prompt,
-    user_prompt = user_prompt
-  )
+  if (use_local) {
+    response <- call_local_openai(base_url, model, api_key, system_prompt, user_prompt)
+  } else {
+    response <- call_ai_api(
+      provider = provider,
+      model = model,
+      api_key = api_key,
+      system_prompt = system_prompt,
+      user_prompt = user_prompt
+    )
+  }
 
   # Print the response
   cat("\n", strrep("=", 60), "\n", sep = "")
@@ -353,6 +377,52 @@ call_openai <- function(model, api_key, system_prompt, user_prompt) {
 
   if (httr2::resp_status(resp) != 200) {
     error_body <- httr2::resp_body_json(resp)
+    stop("API error: ", error_body$error$message %||% httr2::resp_status_desc(resp))
+  }
+
+  result <- httr2::resp_body_json(resp)
+  result$choices[[1]]$message$content
+}
+
+#' Call Local OpenAI-compatible API (LM Studio, Ollama, vLLM, etc.)
+#' @noRd
+call_local_openai <- function(base_url, model, api_key, system_prompt, user_prompt) {
+  if (!requireNamespace("httr2", quietly = TRUE)) {
+    stop("Package 'httr2' is required. Install with: install.packages('httr2')")
+  }
+
+  # Ensure base_url ends without trailing slash
+  base_url <- sub("/$", "", base_url)
+  url <- paste0(base_url, "/v1/chat/completions")
+
+  # Build request body - model is optional for local servers
+  body <- list(
+    messages = list(
+      list(role = "system", content = system_prompt),
+      list(role = "user", content = user_prompt)
+    )
+  )
+  # Only add model if it's not the placeholder
+  if (model != "local-model") {
+    body$model <- model
+  }
+
+  req <- httr2::request(url) |>
+    httr2::req_headers(
+      Authorization = paste("Bearer", api_key),
+      `Content-Type` = "application/json"
+    ) |>
+    httr2::req_body_json(body) |>
+    httr2::req_timeout(300) |>  # 5 min timeout for local models
+    httr2::req_error(is_error = function(resp) FALSE)
+
+  resp <- httr2::req_perform(req)
+
+  if (httr2::resp_status(resp) != 200) {
+    error_body <- tryCatch(
+      httr2::resp_body_json(resp),
+      error = function(e) list(error = list(message = httr2::resp_status_desc(resp)))
+    )
     stop("API error: ", error_body$error$message %||% httr2::resp_status_desc(resp))
   }
 

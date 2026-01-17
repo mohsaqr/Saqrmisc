@@ -12,6 +12,7 @@ pass(
   output = c("text", "markdown", "md", "latex", "html"),
   provider = c("anthropic", "openai", "gemini"),
   model = NULL,
+  base_url = NULL,
   api_key = NULL,
   context = NULL,
   copy = FALSE,
@@ -54,8 +55,13 @@ pass(
 \item{model}{Model to use. Defaults: `"claude-sonnet-4-20250514"` (Anthropic),
 `"gpt-4o"` (OpenAI), `"gemini-2.5-flash"` (Gemini).}
 
+\item{base_url}{Custom API base URL for OpenAI-compatible servers (e.g., LM Studio,
+Ollama, vLLM). Example: `"http://127.0.0.1:1234"` for LM Studio. When set,
+uses OpenAI-compatible format regardless of provider setting.}
+
 \item{api_key}{API key. If NULL, checks environment variables
-(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY`), then prompts interactively.}
+(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY`), then prompts interactively.
+For local servers like LM Studio, use `api_key = "none"` or any string.}
 
 \item{context}{Optional context about your study (e.g., "This is a study on
 student learning outcomes with N=500 participants")}
