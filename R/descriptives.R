@@ -45,12 +45,33 @@ resolve_cols <- function(data, cols = NULL, numeric_only = TRUE, exclude = NULL)
       col_names <- names(data)
     }
   } else if (is.character(cols)) {
-    # Column names provided
-    missing <- setdiff(cols, names(data))
-    if (length(missing) > 0) {
-      stop("Columns not found: ", paste(missing, collapse = ", "))
+    # Check for range specification like "col_a:col_b"
+    if (length(cols) == 1 && grepl(":", cols)) {
+      range_parts <- strsplit(cols, ":")[[1]]
+      if (length(range_parts) == 2) {
+        start_col <- trimws(range_parts[1])
+        end_col <- trimws(range_parts[2])
+        all_names <- names(data)
+        start_idx <- match(start_col, all_names)
+        end_idx <- match(end_col, all_names)
+        if (is.na(start_idx)) stop("Column not found: ", start_col)
+        if (is.na(end_idx)) stop("Column not found: ", end_col)
+        if (start_idx > end_idx) {
+          # Swap if in wrong order
+          tmp <- start_idx; start_idx <- end_idx; end_idx <- tmp
+        }
+        col_names <- all_names[start_idx:end_idx]
+      } else {
+        stop("Invalid range specification: ", cols)
+      }
+    } else {
+      # Column names provided
+      missing <- setdiff(cols, names(data))
+      if (length(missing) > 0) {
+        stop("Columns not found: ", paste(missing, collapse = ", "))
+      }
+      col_names <- cols
     }
-    col_names <- cols
   } else if (is.numeric(cols)) {
     if (length(cols) == 1) {
       # Single number: from that column to end
@@ -75,6 +96,15 @@ resolve_cols <- function(data, cols = NULL, numeric_only = TRUE, exclude = NULL)
     }
   } else {
     stop("Column specification must be NULL, character vector, or numeric vector")
+  }
+
+  # Filter to numeric if requested (for character range selections)
+  if (numeric_only && exists("col_names")) {
+    non_numeric <- col_names[!sapply(data[col_names], is.numeric)]
+    if (length(non_numeric) > 0) {
+      warning("Excluding non-numeric columns: ", paste(non_numeric, collapse = ", "))
+      col_names <- col_names[sapply(data[col_names], is.numeric)]
+    }
   }
 
   # Exclude specified columns
