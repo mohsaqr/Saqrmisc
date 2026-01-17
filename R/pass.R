@@ -10,7 +10,7 @@
 capture_smart_output <- function(x) {
   obj_class <- class(x)
 
- # Handle Saqrmisc results (lists with $data, $display, or $table components)
+  # Handle Saqrmisc results (lists with $data, $display, or $table components)
   if (is.list(x) && !is.data.frame(x)) {
     parts <- c()
 
@@ -34,9 +34,46 @@ capture_smart_output <- function(x) {
       parts <- c(parts, "P-values:", paste(utils::capture.output(print(round(x$p_matrix, 4))), collapse = "\n"))
     }
 
+    # Check for n_matrix (sample sizes)
+    if (!is.null(x$n_matrix) && is.matrix(x$n_matrix)) {
+      parts <- c(parts, "Sample Sizes:", paste(utils::capture.output(print(x$n_matrix)), collapse = "\n"))
+    }
+
     # Check for summary_data (from compare_groups)
     if (!is.null(x$summary_data) && is.data.frame(x$summary_data)) {
       parts <- c(parts, "Summary Data:", paste(utils::capture.output(print(x$summary_data)), collapse = "\n"))
+    }
+
+    # Check for test results (chi-square, etc.)
+    if (!is.null(x$test_results)) {
+      if (is.list(x$test_results)) {
+        parts <- c(parts, "Test Results:", paste(utils::capture.output(print(x$test_results)), collapse = "\n"))
+      } else if (is.character(x$test_results)) {
+        parts <- c(parts, "Test Results:", x$test_results)
+      }
+    }
+
+    # Check for chi_square results
+    if (!is.null(x$chi_square)) {
+      parts <- c(parts, "Chi-Square Test:", paste(utils::capture.output(print(x$chi_square)), collapse = "\n"))
+    }
+
+    # Check for fisher results
+    if (!is.null(x$fisher)) {
+      parts <- c(parts, "Fisher's Exact Test:", paste(utils::capture.output(print(x$fisher)), collapse = "\n"))
+    }
+
+    # Check for effect size (Cramer's V, etc.)
+    if (!is.null(x$cramers_v)) {
+      parts <- c(parts, paste0("Cramer's V: ", round(x$cramers_v, 3)))
+    }
+
+    # Check for footnotes/notes (often contain test results)
+    if (!is.null(x$footnote) && is.character(x$footnote)) {
+      parts <- c(parts, "Note:", x$footnote)
+    }
+    if (!is.null(x$notes) && is.character(x$notes)) {
+      parts <- c(parts, "Notes:", paste(x$notes, collapse = "\n"))
     }
 
     # If we captured something useful, return it
@@ -465,31 +502,62 @@ build_system_prompt <- function(action, style, output, system_message = NULL) {
     "You are an expert statistician helping researchers interpret R output. ",
     "You can interpret ANY type of R output including: descriptive statistics tables, ",
     "correlation matrices, frequency tables, regression summaries, t-tests, ANOVAs, ",
-    "chi-square tests, data frames, and any other statistical output. ",
+    "chi-square tests, mixed models, data frames, and any other statistical output. ",
     "Even if there is no formal hypothesis test, you should describe and interpret ",
-    "what the numbers mean (e.g., means, standard deviations, correlations, frequencies). "
+    "what the numbers mean. Always identify the type of analysis first. "
+  )
+
+  # Core scientific writing guidelines (applies to all actions)
+  scientific_guidelines <- paste0(
+    "IMPORTANT GUIDELINES: ",
+    "1. Report means (M), standard deviations (SD), sample sizes (n/N), effect sizes, confidence intervals, and p-values when available, using APA conventions. ",
+    "2. Emphasize direction, magnitude, and practical relevance of effects, not only statistical significance. ",
+    "3. If effect sizes are small or results are limited, explicitly note this. ",
+    "4. Do NOT speculate beyond the data provided. ",
+    "5. Do NOT invent values, tests, or assumptions - treat content exactly as reported. ",
+    "6. Write in past tense with neutral, formal tone. "
   )
 
   # Action-specific instructions
   action_prompts <- list(
     interpret = paste0(
-      "Interpret the output, explaining what the numbers mean scientifically. ",
-      "For descriptive tables: discuss central tendency, variability, and any notable patterns. ",
-      "For correlations: discuss strength, direction, and significance of relationships. ",
-      "For frequency tables: discuss distributions and proportions. ",
-      "For tests: explain significance and effect sizes."
+      "Identify the type of analysis (descriptive statistics, group comparison, correlation, regression, etc.). ",
+      "Describe the main findings in formal scientific language. ",
+      "For descriptive tables: report central tendency (M), variability (SD), and sample sizes. ",
+      "For correlations: report r values, direction, strength (weak/moderate/strong), and significance. ",
+      "For group comparisons: report group means, effect sizes (Cohen's d, eta-squared), and test statistics. ",
+      "For frequency tables: report counts, percentages, and any association tests. "
     ),
-    explain = "Explain what this analysis shows and what the output means. Help the reader understand what was computed and why it matters.",
+    explain = paste0(
+      "Explain what this analysis shows and what the output means. ",
+      "Help the reader understand what was computed and why it matters. ",
+      "Define any technical terms used. "
+    ),
     write = paste0(
       "Write publication-ready text with clearly labeled **Methods** and **Results** sections. ",
-      "In Methods: describe what was computed (descriptive statistics, correlations, tests, etc.), cite R and relevant packages. ",
-      "In Results: report all statistics in APA format. For descriptive stats, report M, SD, ranges. ",
-      "For correlations, report r values with significance. For tests, include effect sizes. ",
-      "End with a **References** section citing R and any packages mentioned."
+      "In **Methods**: describe the statistical approach used, cite R (R Core Team, 2024) and relevant packages. ",
+      "In **Results**: write polished paragraphs (not bullet points) in past tense. ",
+      "Report all statistics in APA format: M = X.XX, SD = X.XX, t(df) = X.XX, p = .XXX, d = X.XX. ",
+      "For correlations: r(df) = .XX, p = .XXX. For ANOVA: F(df1, df2) = X.XX, p = .XXX, eta-sq = .XX. ",
+      "End with a **References** section citing R and packages used. "
     ),
-    summarize = "Provide a brief summary of the key findings. Focus on the most important takeaways from the numbers shown.",
-    critique = "Provide a critical evaluation of the analysis, including potential limitations, assumptions that may be violated, and alternative approaches.",
-    suggest = "Based on these results, suggest appropriate follow-up analyses or next steps for the research."
+    summarize = paste0(
+      "Provide a brief summary (2-4 sentences) of the key findings. ",
+      "Focus on the most important takeaways. ",
+      "Mention effect sizes and practical significance, not just p-values. "
+    ),
+    critique = paste0(
+      "Provide a critical evaluation including: ",
+      "1. Potential limitations of the analysis. ",
+      "2. Assumptions that may be violated. ",
+      "3. Alternative approaches that could be considered. ",
+      "4. What the results do NOT tell us. "
+    ),
+    suggest = paste0(
+      "Based on these results, suggest appropriate follow-up analyses. ",
+      "Consider: additional variables to examine, alternative statistical approaches, ",
+      "replication needs, or theoretical implications. "
+    )
   )
 
   # Style-specific instructions
@@ -508,10 +576,10 @@ build_system_prompt <- function(action, style, output, system_message = NULL) {
     html = "Format your response using HTML tags for structure and emphasis."
   )
 
-  # Build the prompt
-
+  # Build the prompt: base + guidelines + action + style + output
   result <- paste0(
     base,
+    scientific_guidelines,
     action_prompts[[action]], " ",
     style_prompts[[style]], " ",
     output_prompts[[output]]
@@ -614,8 +682,7 @@ call_openai <- function(model, api_key, system_prompt, user_prompt) {
     messages = list(
       list(role = "system", content = system_prompt),
       list(role = "user", content = user_prompt)
-    ),
-    max_tokens = 2048
+    )
   )
 
   req <- httr2::request("https://api.openai.com/v1/chat/completions") |>
@@ -741,8 +808,7 @@ call_openrouter <- function(model, api_key, system_prompt, user_prompt) {
     messages = list(
       list(role = "system", content = system_prompt),
       list(role = "user", content = user_prompt)
-    ),
-    max_tokens = 2048
+    )
   )
 
   req <- httr2::request("https://openrouter.ai/api/v1/chat/completions") |>

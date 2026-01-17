@@ -39,31 +39,31 @@ cross-tabulation. When provided, creates a contingency table.}
 Creates separate tables for each level of this variable.}
 
 \item{percentages}{Character vector specifying which percentages to include.
-Options: `"col"` (column), `"row"`, `"total"`, `"none"`.
-Default: `c("col")` for cross-tabs, `c("total")` for single variable.}
+Options: "col" (column), "row", "total", "none".
+Default: c("col") for cross-tabs, c("total") for single variable.}
 
-\item{show_n}{Logical. Show frequency counts? Default: `TRUE`.}
+\item{show_n}{Logical. Show frequency counts? Default: TRUE.}
 
-\item{show_total}{Logical. Include row/column totals? Default: `TRUE`.}
+\item{show_total}{Logical. Include row/column totals? Default: TRUE.}
 
 \item{show_missing}{Logical. Include missing values as a category?
-Default: `FALSE`.}
+Default: FALSE.}
 
-\item{show_header}{Logical. Show title/subtitle header? Default: `TRUE`.
-Set to `FALSE` to hide the table header.}
+\item{show_header}{Logical. Show title/subtitle header? Default: TRUE.
+Set to FALSE to hide the table header.}
 
 \item{chi_square}{Logical. Compute chi-square test for cross-tabulations?
-Default: `TRUE`.}
+Default: TRUE.}
 
 \item{fisher}{Logical. Also compute Fisher's exact test (for small samples)?
-Default: `FALSE`.}
+Default: FALSE.}
 
-\item{cramers_v}{Logical. Compute Cramer's V effect size? Default: `TRUE`.}
+\item{cramers_v}{Logical. Compute Cramer's V effect size? Default: TRUE.}
 
-\item{digits}{Integer. Decimal places for percentages. Default: `1`.}
+\item{digits}{Integer. Decimal places for percentages. Default: 1.}
 
-\item{sort_by}{How to sort categories: `"none"` (original order),
-`"frequency"` (descending), `"alphabetical"`. Default: `"none"`.}
+\item{sort_by}{How to sort categories: "none" (original order),
+"frequency" (descending), "alphabetical". Default: "none".}
 
 \item{labels}{Optional named character vector for category labels.}
 
@@ -78,7 +78,7 @@ Default: `FALSE`.}
 or "colorful". Default: "default".}
 
 \item{combine}{Logical. For single variables, combine n and % in one column?
-Default: `TRUE`. Shows as "n (%)".}
+Default: TRUE. Shows as "n (%)".}
 }
 \value{
 A gt table object (default) or data frame with frequencies and percentages.

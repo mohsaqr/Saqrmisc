@@ -28,14 +28,9 @@
 #' @param show_header Logical. Show title header? Default: `TRUE`.
 #'   Set to `FALSE` to hide the table header.
 #'
-#' @return A list containing:
-#' \itemize{
-#'   \item \code{table}: A gt table with formatted correlations
-#'   \item \code{correlation_matrix}: Numeric correlation matrix
-#'   \item \code{p_matrix}: Matrix of p-values
-#'   \item \code{n_matrix}: Matrix of pairwise sample sizes
-#'   \item \code{heatmap}: ggplot heatmap (if requested)
-#' }
+#' @return A list containing: table (gt table with formatted correlations),
+#'   correlation_matrix (numeric matrix), p_matrix (matrix of p-values),
+#'   n_matrix (pairwise sample sizes), and heatmap (ggplot if requested).
 #'
 #' @examples
 #' \dontrun{

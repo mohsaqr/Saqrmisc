@@ -65,14 +65,9 @@ Note: partial and semi-partial correlations always use complete cases.}
 Set to `FALSE` to hide the table header.}
 }
 \value{
-A list containing:
-\itemize{
-  \item \code{table}: A gt table with formatted correlations
-  \item \code{correlation_matrix}: Numeric correlation matrix
-  \item \code{p_matrix}: Matrix of p-values
-  \item \code{n_matrix}: Matrix of pairwise sample sizes
-  \item \code{heatmap}: ggplot heatmap (if requested)
-}
+A list containing: table (gt table with formatted correlations),
+  correlation_matrix (numeric matrix), p_matrix (matrix of p-values),
+  n_matrix (pairwise sample sizes), and heatmap (ggplot if requested).
 }
 \description{
 Creates a formatted correlation matrix with significance stars, optional

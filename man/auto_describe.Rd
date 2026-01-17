@@ -43,7 +43,7 @@ Default: `"default"`.}
 
 \item{format}{Output format: `"gt"` or `"data.frame"`. Default: `"gt"`.}
 
-\item{print}{Logical. Print tables to console? Default: `TRUE`.}
+\item{print}{Logical. Print tables to console? Default: TRUE.}
 }
 \value{
 A list with:

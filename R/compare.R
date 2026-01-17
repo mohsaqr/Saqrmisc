@@ -367,31 +367,21 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' the ggstatsplot package with automatic test selection based on the number
 #' of groups:
 #'
-#' \itemize{
-#'   \item **2 groups**: t-test (parametric) or Mann-Whitney U (nonparametric)
-#'   \item **3+ groups**: ANOVA (parametric) or Kruskal-Wallis (nonparametric)
-#'     with post-hoc pairwise comparisons
-#' }
-#'
-#' The function also supports Bayesian analysis, equivalence testing (TOST),
-#' and stratified analyses using `repeat_category`.
+#' For 2 groups: t-test (parametric) or Mann-Whitney U (nonparametric).
+#' For 3+ groups: ANOVA (parametric) or Kruskal-Wallis (nonparametric)
+#' with post-hoc pairwise comparisons.
+#' Also supports Bayesian analysis, equivalence testing (TOST),
+#' and stratified analyses using repeat_category.
 #'
 #' @param data A data frame containing the variables to analyze.
-#' @param category Character. Name(s) of the grouping variable(s). Can be:
-#'   \itemize{
-#'     \item Single variable: `"gender"` - compare groups defined by gender
-#'     \item Multiple variables: `c("gender", "treatment")` - compare interaction
-#'       groups (e.g., "Male | Treatment", "Female | Control")
-#'   }
+#' @param category Character. Name(s) of the grouping variable(s). Can be a single
+#'   variable (e.g., "gender") or multiple variables for interaction groups
+#'   (e.g., c("gender", "treatment") creates "Male | Treatment", etc.).
 #' @param category_sep Character. Separator for combined group labels when
-#'   multiple variables are passed to `category`. Default: `" | "`.
-#' @param Vars Column specification for variables to compare. Can be:
-#'   \itemize{
-#'     \item NULL (default): all numeric columns
-#'     \item Character vector: column names, e.g., `c("score1", "score2")`
-#'     \item Numeric vector: column indices, e.g., `2:5`
-#'     \item Single number: from that column to end, e.g., `2` means cols 2 to last
-#'   }
+#'   multiple variables are passed to category. Default: " | ".
+#' @param Vars Column specification for variables to compare. Can be NULL
+#'   (default, all numeric columns), a character vector of column names,
+#'   a numeric vector of column indices, or a single number (from that column to end).
 #' @param repeat_category Optional character. Name of a stratification variable.
 #'   When provided, separate analyses are performed for each level (e.g., analyze
 #'   gender differences separately for each country).
@@ -401,35 +391,32 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @param table Logical. Generate summary statistics table? Default TRUE.
 #' @param type Character. Type of statistical test: "auto" (default), "parametric"/"p",
 #'   "nonparametric"/"np", "kw" (Kruskal-Wallis), "mw" (Mann-Whitney), or "bayes"/"bf".
-#' @param bayesian Logical. Compute Bayesian t-tests with Bayes Factors? Default: `FALSE`.
+#' @param bayesian Logical. Compute Bayesian t-tests with Bayes Factors? Default: FALSE.
 #'   Requires the BayesFactor package. Can also use `type = "bayes"`.
-#' @param equivalence Logical. Perform equivalence testing (TOST)? Default: `FALSE`.
+#' @param equivalence Logical. Perform equivalence testing (TOST)? Default: FALSE.
 #'   Requires the TOSTER package.
 #' @param equivalence_bounds Numeric vector of length 2. Equivalence bounds in
-#'   Cohen's d units for TOST. Default: `c(-0.5, 0.5)`.
-#' @param nonparametric Logical. Use nonparametric tests? Default: `FALSE`.
+#'   Cohen's d units for TOST. Default: c(-0.5, 0.5).
+#' @param nonparametric Logical. Use nonparametric tests? Default: FALSE.
 #'   When TRUE, uses Mann-Whitney U (2 groups) or Kruskal-Wallis (3+ groups).
 #' @param p_adjust_method Method for multiple comparison correction. Options:
-#'   `"none"`, `"bonferroni"`, `"holm"`, `"hochberg"`, `"BH"`, `"BY"`, `"fdr"`.
-#'   Default: `"none"`. Applied to both tables and post-hoc tests.
+#'   "none", "bonferroni", "holm", "hochberg", "BH", "BY", "fdr".
+#'   Default: "none". Applied to both tables and post-hoc tests.
 #' @param posthoc Logical. Compute post-hoc pairwise comparisons for 3+ groups?
-#'   Default: `TRUE`. Results include a comparison table and text report.
-#' @param posthoc_method Method for post-hoc comparisons. Options:
-#'   \itemize{
-#'     \item `"games-howell"` (default): Does not assume equal variances
-#'     \item `"tukey"`: Tukey's HSD, assumes equal variances
-#'   }
+#'   Default: TRUE. Results include a comparison table and text report.
+#' @param posthoc_method Method for post-hoc comparisons: "games-howell" (default,
+#'   does not assume equal variances) or "tukey" (Tukey's HSD, assumes equal variances).
 #' @param pairwise_display Which pairwise comparisons to show on plots? Options:
-#'   `"significant"` (default), `"all"`, `"none"`.
+#'   "significant" (default), "all", "none".
 #' @param min_threshold Numeric. Minimum proportion (0-1) of total sample required
-#'   to include a repeat_category level. Default: `0.05` (5%).
+#'   to include a repeat_category level. Default: 0.05 (5%).
 #' @param min_subcategory Integer. Minimum observations required per group.
-#'   Groups with fewer observations are excluded from analysis. Default: `5`.
-#' @param colors Character vector of colors for groups. Default: `NULL` uses
+#'   Groups with fewer observations are excluded from analysis. Default: 5.
+#' @param colors Character vector of colors for groups. Default: NULL uses
 #'   a built-in palette.
-#' @param verbose Logical. Print progress messages? Default: `TRUE`.
+#' @param verbose Logical. Print progress messages? Default: TRUE.
 #' @param combined_table Logical. When `repeat_category` is used, combine all
-#'   results into a single table? Default: `TRUE`. The combined table shows
+#'   results into a single table? Default: TRUE. The combined table shows
 #'   all repeat_category levels together with bold highest means and red
 #'   significant p-values.
 #' @param format Character. Output format for tables: "gt" (default, publication-ready),
@@ -437,15 +424,11 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @param show_header Logical. Show title/subtitle header? Default TRUE.
 #'   Set to FALSE to hide the table header.
 #'
-#' @return A list with class "comparison_results" containing:
-#' \itemize{
-#'   \item plots: Named list of ggplot objects, one per variable
-#'   \item grid_plot: Combined plot grid (if multiple variables)
-#'   \item summary_table: Formatted gt table with statistics
-#'   \item summary_data: Data frame with raw statistics
-#' }
-#' For stratified analysis (with repeat_category), returns a named list
-#' where each element corresponds to a level of repeat_category.
+#' @return A list with class "comparison_results" containing: plots (named list
+#'   of ggplot objects), grid_plot (combined plot grid if multiple variables),
+#'   summary_table (formatted gt table), and summary_data (data frame with raw
+#'   statistics). For stratified analysis (with repeat_category), returns a named
+#'   list where each element corresponds to a level of repeat_category.
 #'
 #' @examples
 #' \dontrun{

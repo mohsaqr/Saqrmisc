@@ -36,23 +36,16 @@ compare_groups(
 \arguments{
 \item{data}{A data frame containing the variables to analyze.}
 
-\item{category}{Character. Name(s) of the grouping variable(s). Can be:
-\itemize{
-  \item Single variable: `"gender"` - compare groups defined by gender
-  \item Multiple variables: `c("gender", "treatment")` - compare interaction
-    groups (e.g., "Male | Treatment", "Female | Control")
-}}
+\item{category}{Character. Name(s) of the grouping variable(s). Can be a single
+variable (e.g., "gender") or multiple variables for interaction groups
+(e.g., c("gender", "treatment") creates "Male | Treatment", etc.).}
 
-\item{Vars}{Column specification for variables to compare. Can be:
-\itemize{
-  \item NULL (default): all numeric columns
-  \item Character vector: column names, e.g., `c("score1", "score2")`
-  \item Numeric vector: column indices, e.g., `2:5`
-  \item Single number: from that column to end, e.g., `2` means cols 2 to last
-}}
+\item{Vars}{Column specification for variables to compare. Can be NULL
+(default, all numeric columns), a character vector of column names,
+a numeric vector of column indices, or a single number (from that column to end).}
 
 \item{category_sep}{Character. Separator for combined group labels when
-multiple variables are passed to `category`. Default: `" | "`.}
+multiple variables are passed to category. Default: " | ".}
 
 \item{repeat_category}{Optional character. Name of a stratification variable.
 When provided, separate analyses are performed for each level (e.g., analyze
@@ -68,47 +61,44 @@ gender differences separately for each country).}
 \item{type}{Character. Type of statistical test: "auto" (default), "parametric"/"p",
 "nonparametric"/"np", "kw" (Kruskal-Wallis), "mw" (Mann-Whitney), or "bayes"/"bf".}
 
-\item{bayesian}{Logical. Compute Bayesian t-tests with Bayes Factors? Default: `FALSE`.
+\item{bayesian}{Logical. Compute Bayesian t-tests with Bayes Factors? Default: FALSE.
 Requires the BayesFactor package. Can also use `type = "bayes"`.}
 
-\item{equivalence}{Logical. Perform equivalence testing (TOST)? Default: `FALSE`.
+\item{equivalence}{Logical. Perform equivalence testing (TOST)? Default: FALSE.
 Requires the TOSTER package.}
 
 \item{equivalence_bounds}{Numeric vector of length 2. Equivalence bounds in
-Cohen's d units for TOST. Default: `c(-0.5, 0.5)`.}
+Cohen's d units for TOST. Default: c(-0.5, 0.5).}
 
-\item{nonparametric}{Logical. Use nonparametric tests? Default: `FALSE`.
+\item{nonparametric}{Logical. Use nonparametric tests? Default: FALSE.
 When TRUE, uses Mann-Whitney U (2 groups) or Kruskal-Wallis (3+ groups).}
 
 \item{p_adjust_method}{Method for multiple comparison correction. Options:
-`"none"`, `"bonferroni"`, `"holm"`, `"hochberg"`, `"BH"`, `"BY"`, `"fdr"`.
-Default: `"none"`. Applied to both tables and post-hoc tests.}
+"none", "bonferroni", "holm", "hochberg", "BH", "BY", "fdr".
+Default: "none". Applied to both tables and post-hoc tests.}
 
 \item{posthoc}{Logical. Compute post-hoc pairwise comparisons for 3+ groups?
-Default: `TRUE`. Results include a comparison table and text report.}
+Default: TRUE. Results include a comparison table and text report.}
 
-\item{posthoc_method}{Method for post-hoc comparisons. Options:
-\itemize{
-  \item `"games-howell"` (default): Does not assume equal variances
-  \item `"tukey"`: Tukey's HSD, assumes equal variances
-}}
+\item{posthoc_method}{Method for post-hoc comparisons: "games-howell" (default,
+does not assume equal variances) or "tukey" (Tukey's HSD, assumes equal variances).}
 
 \item{pairwise_display}{Which pairwise comparisons to show on plots? Options:
-`"significant"` (default), `"all"`, `"none"`.}
+"significant" (default), "all", "none".}
 
 \item{min_threshold}{Numeric. Minimum proportion (0-1) of total sample required
-to include a repeat_category level. Default: `0.05` (5%).}
+to include a repeat_category level. Default: 0.05 (5%).}
 
 \item{min_subcategory}{Integer. Minimum observations required per group.
-Groups with fewer observations are excluded from analysis. Default: `5`.}
+Groups with fewer observations are excluded from analysis. Default: 5.}
 
-\item{colors}{Character vector of colors for groups. Default: `NULL` uses
+\item{colors}{Character vector of colors for groups. Default: NULL uses
 a built-in palette.}
 
-\item{verbose}{Logical. Print progress messages? Default: `TRUE`.}
+\item{verbose}{Logical. Print progress messages? Default: TRUE.}
 
 \item{combined_table}{Logical. When `repeat_category` is used, combine all
-results into a single table? Default: `TRUE`. The combined table shows
+results into a single table? Default: TRUE. The combined table shows
 all repeat_category levels together with bold highest means and red
 significant p-values.}
 
@@ -119,15 +109,11 @@ significant p-values.}
 Set to FALSE to hide the table header.}
 }
 \value{
-A list with class "comparison_results" containing:
-\itemize{
-  \item plots: Named list of ggplot objects, one per variable
-  \item grid_plot: Combined plot grid (if multiple variables)
-  \item summary_table: Formatted gt table with statistics
-  \item summary_data: Data frame with raw statistics
-}
-For stratified analysis (with repeat_category), returns a named list
-where each element corresponds to a level of repeat_category.
+A list with class "comparison_results" containing: plots (named list
+  of ggplot objects), grid_plot (combined plot grid if multiple variables),
+  summary_table (formatted gt table), and summary_data (data frame with raw
+  statistics). For stratified analysis (with repeat_category), returns a named
+  list where each element corresponds to a level of repeat_category.
 }
 \description{
 A comprehensive function for comparing groups using publication-ready
@@ -135,14 +121,11 @@ visualizations and statistical tests. Creates `ggbetweenstats` plots from
 the ggstatsplot package with automatic test selection based on the number
 of groups:
 
-\itemize{
-  \item **2 groups**: t-test (parametric) or Mann-Whitney U (nonparametric)
-  \item **3+ groups**: ANOVA (parametric) or Kruskal-Wallis (nonparametric)
-    with post-hoc pairwise comparisons
-}
-
-The function also supports Bayesian analysis, equivalence testing (TOST),
-and stratified analyses using `repeat_category`.
+For 2 groups: t-test (parametric) or Mann-Whitney U (nonparametric).
+For 3+ groups: ANOVA (parametric) or Kruskal-Wallis (nonparametric)
+with post-hoc pairwise comparisons.
+Also supports Bayesian analysis, equivalence testing (TOST),
+and stratified analyses using repeat_category.
 }
 \examples{
 \dontrun{

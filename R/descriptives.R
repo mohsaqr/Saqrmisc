@@ -188,13 +188,9 @@ calculate_stat <- function(x, stat, digits = 2) {
 #' outputs beautifully formatted gt tables.
 #'
 #' @param data A data frame containing the variables to summarize.
-#' @param Vars Column specification for variables to describe. Can be:
-#'   \itemize{
-#'     \item NULL (default): all numeric columns
-#'     \item Character vector: column names, e.g., `c("age", "score")`
-#'     \item Numeric vector: column indices, e.g., `2:5`
-#'     \item Single number: from that column to end, e.g., `2` means cols 2 to last
-#'   }
+#' @param Vars Column specification for variables to describe. Can be NULL
+#'   (default, all numeric columns), a character vector of column names,
+#'   a numeric vector of column indices, or a single number (from that column to end).
 #' @param group_by Optional character. Name of a grouping variable for
 #'   stratified statistics. When provided, statistics are calculated separately
 #'   for each group level.
@@ -211,27 +207,21 @@ calculate_stat <- function(x, stat, digits = 2) {
 #'   Default: `"Descriptive Statistics"`.
 #' @param subtitle Optional character string for table subtitle.
 #' @param overall Logical. When `group_by` is specified, also include
-#'   overall (ungrouped) statistics? Default: `TRUE`.
+#'   overall (ungrouped) statistics? Default: TRUE.
 #' @param transpose Logical. Transpose the table so variables are columns
-#'   and statistics are rows? Default: `FALSE`.
+#'   and statistics are rows? Default: FALSE.
 #' @param format Character. Output format: "gt" (default, publication-ready gt table),
 #'   "plain" (data frame), "markdown", "latex", or "kable".
 #' @param show_header Logical. Show title/subtitle header? Default TRUE.
 #'   Set to FALSE to hide the table header.
-#' @param theme Character. Visual theme for gt table. Default: `"default"`.
-#'   Options:
-#'   \itemize{
-#'     \item `"default"`: Clean scientific paper style (black/white, simple borders)
-#'     \item `"fancy"`: Blue colorful theme with striped rows
-#'     \item `"minimal"`: Minimalist with bottom border only
-#'     \item `"dark"`: Dark background theme
-#'     \item `"colorful"`: Purple accent theme
-#'   }
+#' @param theme Character. Visual theme for gt table: "default" (clean scientific
+#'   style), "fancy" (blue with striped rows), "minimal" (bottom border only),
+#'   "dark" (dark background), or "colorful" (purple accents). Default: "default".
 #' @param compare Logical. When `group_by` is specified, run statistical tests
 #'   (t-test for 2 groups, ANOVA for 3+ groups) and report p-values and effect
-#'   sizes? Default: `FALSE`.
+#'   sizes? Default: FALSE.
 #' @param bold_highest Logical. When `group_by` is specified, bold the highest
-#'   mean for each variable? Default: `TRUE` when compare is `TRUE`.
+#'   mean for each variable? Default: TRUE when compare is `TRUE`.
 #' @param sig_color Character. Color for significant p-values (< 0.05).
 #'   Default: `"red"`. Set to `NULL` to disable coloring.
 #'
@@ -239,13 +229,8 @@ calculate_stat <- function(x, stat, digits = 2) {
 #'   a markdown string, a LaTeX string, or a knitr::kable object.
 #'
 #' @section Exporting Tables:
-#' The gt output can be exported to various formats:
-#' \itemize{
-#'   \item HTML: `gtsave(table, "descriptives.html")`
-#'   \item Word: `gtsave(table, "descriptives.docx")`
-#'   \item PDF: `gtsave(table, "descriptives.pdf")`
-#'   \item PNG: `gtsave(table, "descriptives.png")`
-#' }
+#' The gt output can be exported using gtsave(): HTML (.html), Word (.docx),
+#' PDF (.pdf), or PNG (.png). Example: gtsave(table, "descriptives.html").
 #'
 #' @examples
 #' \dontrun{
@@ -990,22 +975,22 @@ descriptive_table <- function(data,
 #' @param group_by Optional character. Name of a stratification variable.
 #'   Creates separate tables for each level of this variable.
 #' @param percentages Character vector specifying which percentages to include.
-#'   Options: `"col"` (column), `"row"`, `"total"`, `"none"`.
-#'   Default: `c("col")` for cross-tabs, `c("total")` for single variable.
-#' @param show_n Logical. Show frequency counts? Default: `TRUE`.
-#' @param show_total Logical. Include row/column totals? Default: `TRUE`.
+#'   Options: "col" (column), "row", "total", "none".
+#'   Default: c("col") for cross-tabs, c("total") for single variable.
+#' @param show_n Logical. Show frequency counts? Default: TRUE.
+#' @param show_total Logical. Include row/column totals? Default: TRUE.
 #' @param show_missing Logical. Include missing values as a category?
-#'   Default: `FALSE`.
-#' @param show_header Logical. Show title/subtitle header? Default: `TRUE`.
-#'   Set to `FALSE` to hide the table header.
+#'   Default: FALSE.
+#' @param show_header Logical. Show title/subtitle header? Default: TRUE.
+#'   Set to FALSE to hide the table header.
 #' @param chi_square Logical. Compute chi-square test for cross-tabulations?
-#'   Default: `TRUE`.
+#'   Default: TRUE.
 #' @param fisher Logical. Also compute Fisher's exact test (for small samples)?
-#'   Default: `FALSE`.
-#' @param cramers_v Logical. Compute Cramer's V effect size? Default: `TRUE`.
-#' @param digits Integer. Decimal places for percentages. Default: `1`.
-#' @param sort_by How to sort categories: `"none"` (original order),
-#'   `"frequency"` (descending), `"alphabetical"`. Default: `"none"`.
+#'   Default: FALSE.
+#' @param cramers_v Logical. Compute Cramer's V effect size? Default: TRUE.
+#' @param digits Integer. Decimal places for percentages. Default: 1.
+#' @param sort_by How to sort categories: "none" (original order),
+#'   "frequency" (descending), "alphabetical". Default: "none".
 #' @param labels Optional named character vector for category labels.
 #' @param title Optional character string for table title.
 #' @param subtitle Optional character string for table subtitle.
@@ -1014,7 +999,7 @@ descriptive_table <- function(data,
 #' @param theme Character. Visual theme: "default", "minimal", "dark",
 #'   or "colorful". Default: "default".
 #' @param combine Logical. For single variables, combine n and % in one column?
-#'   Default: `TRUE`. Shows as "n (%)".
+#'   Default: TRUE. Shows as "n (%)".
 #'
 #' @return A gt table object (default) or data frame with frequencies and percentages.
 #' For cross-tabulations with chi_square = TRUE, includes test statistics.
@@ -1676,7 +1661,7 @@ categorical_table <- function(data,
 #' @param theme Visual theme: `"default"`, `"minimal"`, `"dark"`, `"colorful"`.
 #'   Default: `"default"`.
 #' @param format Output format: `"gt"` or `"data.frame"`. Default: `"gt"`.
-#' @param print Logical. Print tables to console? Default: `TRUE`.
+#' @param print Logical. Print tables to console? Default: TRUE.
 #'
 #' @return A list with:
 #' \itemize{

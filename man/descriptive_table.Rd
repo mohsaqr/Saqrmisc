@@ -26,13 +26,9 @@ descriptive_table(
 \arguments{
 \item{data}{A data frame containing the variables to summarize.}
 
-\item{Vars}{Column specification for variables to describe. Can be:
-\itemize{
-  \item NULL (default): all numeric columns
-  \item Character vector: column names, e.g., `c("age", "score")`
-  \item Numeric vector: column indices, e.g., `2:5`
-  \item Single number: from that column to end, e.g., `2` means cols 2 to last
-}}
+\item{Vars}{Column specification for variables to describe. Can be NULL
+(default, all numeric columns), a character vector of column names,
+a numeric vector of column indices, or a single number (from that column to end).}
 
 \item{group_by}{Optional character. Name of a grouping variable for
 stratified statistics. When provided, statistics are calculated separately
@@ -56,10 +52,10 @@ Default: `"Descriptive Statistics"`.}
 \item{subtitle}{Optional character string for table subtitle.}
 
 \item{overall}{Logical. When `group_by` is specified, also include
-overall (ungrouped) statistics? Default: `TRUE`.}
+overall (ungrouped) statistics? Default: TRUE.}
 
 \item{transpose}{Logical. Transpose the table so variables are columns
-and statistics are rows? Default: `FALSE`.}
+and statistics are rows? Default: FALSE.}
 
 \item{format}{Character. Output format: "gt" (default, publication-ready gt table),
 "plain" (data frame), "markdown", "latex", or "kable".}
@@ -67,22 +63,16 @@ and statistics are rows? Default: `FALSE`.}
 \item{show_header}{Logical. Show title/subtitle header? Default TRUE.
 Set to FALSE to hide the table header.}
 
-\item{theme}{Character. Visual theme for gt table. Default: `"default"`.
-Options:
-\itemize{
-  \item `"default"`: Clean scientific paper style (black/white, simple borders)
-  \item `"fancy"`: Blue colorful theme with striped rows
-  \item `"minimal"`: Minimalist with bottom border only
-  \item `"dark"`: Dark background theme
-  \item `"colorful"`: Purple accent theme
-}}
+\item{theme}{Character. Visual theme for gt table: "default" (clean scientific
+style), "fancy" (blue with striped rows), "minimal" (bottom border only),
+"dark" (dark background), or "colorful" (purple accents). Default: "default".}
 
 \item{compare}{Logical. When `group_by` is specified, run statistical tests
 (t-test for 2 groups, ANOVA for 3+ groups) and report p-values and effect
-sizes? Default: `FALSE`.}
+sizes? Default: FALSE.}
 
 \item{bold_highest}{Logical. When `group_by` is specified, bold the highest
-mean for each variable? Default: `TRUE` when compare is `TRUE`.}
+mean for each variable? Default: TRUE when compare is `TRUE`.}
 
 \item{sig_color}{Character. Color for significant p-values (< 0.05).
 Default: `"red"`. Set to `NULL` to disable coloring.}
@@ -98,13 +88,8 @@ outputs beautifully formatted gt tables.
 }
 \section{Exporting Tables}{
 
-The gt output can be exported to various formats:
-\itemize{
-  \item HTML: `gtsave(table, "descriptives.html")`
-  \item Word: `gtsave(table, "descriptives.docx")`
-  \item PDF: `gtsave(table, "descriptives.pdf")`
-  \item PNG: `gtsave(table, "descriptives.png")`
-}
+The gt output can be exported using gtsave(): HTML (.html), Word (.docx),
+PDF (.pdf), or PNG (.png). Example: gtsave(table, "descriptives.html").
 }
 
 \examples{
