@@ -30,7 +30,9 @@ compare_groups(
   verbose = TRUE,
   combined_table = TRUE,
   format = c("gt", "plain", "markdown", "latex", "kable"),
-  show_header = TRUE
+  show_header = TRUE,
+  interpret = FALSE,
+  ...
 )
 }
 \arguments{
@@ -107,6 +109,13 @@ significant p-values.}
 
 \item{show_header}{Logical. Show title/subtitle header? Default TRUE.
 Set to FALSE to hide the table header.}
+
+\item{interpret}{Logical. Pass results to AI for automatic interpretation?
+Default FALSE. When TRUE, generates clean Methods and Results text using
+AI. Requires API key setup (see \code{\link{set_api_key}}).}
+
+\item{...}{Additional arguments passed to \code{\link{pass}} when
+interpret = TRUE (e.g., provider, model, context).}
 }
 \value{
 A list with class "comparison_results" containing: plots (named list

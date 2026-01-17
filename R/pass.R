@@ -171,6 +171,194 @@ print.saqr_result <- function(x, ...) {
   invisible(x)
 }
 
+#' Generate methods and results markdown for AI interpretation
+#'
+#' @description
+#' Creates a clean, structured markdown output emphasizing statistical methods
+#' and results. Designed for AI interpretation - no junk, just the essentials.
+#'
+#' @param results Results object from Saqrmisc function
+#' @param analysis_type Type of analysis (e.g., "group_comparison", "correlation")
+#' @param metadata List with analysis metadata (test_type, variables, groups, etc.)
+#'
+#' @return Character string with clean markdown
+#' @noRd
+generate_methods_results_md <- function(results, analysis_type = "analysis", metadata = list()) {
+  parts <- c()
+
+  # === METHODS SECTION ===
+  parts <- c(parts, "## Methods", "")
+
+  # Build methods description based on analysis type and metadata
+  methods_text <- switch(analysis_type,
+    "group_comparison" = {
+      test_type <- metadata$test_type %||% "statistical test"
+      n_groups <- metadata$n_groups %||% 2
+      variables <- metadata$variables %||% "outcome variables"
+      grouping_var <- metadata$grouping_var %||% "grouping variable"
+
+      if (n_groups == 2) {
+        if (grepl("Mann-Whitney|Wilcox", test_type, ignore.case = TRUE)) {
+          paste0("A Mann-Whitney U test (nonparametric) was used to compare groups on ",
+                 if (is.character(variables)) paste(variables, collapse = ", ") else "the outcome variables",
+                 ". Effect sizes were calculated using rank-biserial correlation.")
+        } else if (grepl("t-test|t test", test_type, ignore.case = TRUE)) {
+          paste0("Independent samples t-tests were conducted to compare groups on ",
+                 if (is.character(variables)) paste(variables, collapse = ", ") else "the outcome variables",
+                 ". Cohen's d was calculated as the effect size measure.")
+        } else {
+          paste0("A ", test_type, " was used to compare two groups.")
+        }
+      } else {
+        if (grepl("Kruskal|nonparametric", test_type, ignore.case = TRUE)) {
+          paste0("Kruskal-Wallis tests (nonparametric) were conducted to compare ",
+                 n_groups, " groups on ",
+                 if (is.character(variables)) paste(variables, collapse = ", ") else "the outcome variables",
+                 ". Epsilon-squared was calculated as the effect size. Post-hoc pairwise comparisons used Wilcoxon tests with Bonferroni correction.")
+        } else {
+          paste0("One-way ANOVAs were conducted to compare ",
+                 n_groups, " groups on ",
+                 if (is.character(variables)) paste(variables, collapse = ", ") else "the outcome variables",
+                 ". Eta-squared was calculated as the effect size. Post-hoc comparisons used ",
+                 metadata$posthoc_method %||% "Games-Howell",
+                 " tests.")
+        }
+      }
+    },
+    "correlation" = {
+      paste0("Correlation analysis was performed using ",
+             metadata$method %||% "Pearson",
+             " correlation coefficients.")
+    },
+    "categorical" = {
+      paste0("Chi-square test of independence was used to examine the association ",
+             "between categorical variables. Cramer's V was calculated as the effect size.")
+    },
+    "descriptive" = {
+      "Descriptive statistics including means, standard deviations, and sample sizes were calculated."
+    },
+    # Default
+    paste0("Statistical analysis was conducted using R.")
+  )
+
+  parts <- c(parts, methods_text, "")
+
+  # === RESULTS SECTION ===
+  parts <- c(parts, "## Results", "")
+
+  # Add sample size info if available
+  if (!is.null(metadata$total_n)) {
+    parts <- c(parts, paste0("**Sample:** N = ", metadata$total_n), "")
+  }
+
+  # Add groups info if available
+  if (!is.null(metadata$groups) && length(metadata$groups) > 0) {
+    parts <- c(parts, paste0("**Groups:** ", paste(metadata$groups, collapse = ", ")), "")
+  }
+
+  # Generate results table - prioritize clean data
+  if (!is.null(results$summary_data) && inherits(results$summary_data, "data.frame")) {
+    df <- as.data.frame(results$summary_data)
+
+    # Select only key statistical columns for clean output
+    key_cols <- c(
+      "variable", "Variable",
+      "category", "group", "Group", "LLM",
+      "n", "N",
+      "mean", "Mean",
+      "sd", "SD",
+      "p_value", "p",
+      "efsz", "ES", "effect_size",
+      "ef_type", "test_type"
+    )
+
+    keep_cols <- intersect(key_cols, names(df))
+    if (length(keep_cols) > 0) {
+      df_clean <- df[, keep_cols, drop = FALSE]
+      md_table <- df_to_markdown(df_clean, digits = 3)
+      if (!is.null(md_table) && nchar(md_table) > 0) {
+        parts <- c(parts, "### Summary Statistics", "", md_table, "")
+      }
+    }
+  }
+
+  # Add significant findings summary if available
+  if (!is.null(results$summary_data) && "p_value" %in% names(results$summary_data)) {
+    df <- as.data.frame(results$summary_data)
+    sig_results <- df[!is.na(df$p_value) & df$p_value < 0.05, , drop = FALSE]
+
+    if (nrow(sig_results) > 0) {
+      # Get unique significant variables
+      if ("variable" %in% names(sig_results)) {
+        sig_vars <- unique(sig_results$variable)
+        parts <- c(parts, "### Significant Findings", "")
+
+        for (var in sig_vars) {
+          var_data <- sig_results[sig_results$variable == var, , drop = FALSE]
+          p_val <- min(var_data$p_value, na.rm = TRUE)
+          ef_val <- var_data$efsz[1]
+          ef_type <- var_data$ef_type[1]
+
+          p_str <- if (p_val < 0.001) "p < .001" else sprintf("p = %.3f", p_val)
+          ef_str <- if (!is.na(ef_val)) sprintf(", %s = %.3f", ef_type %||% "effect size", ef_val) else ""
+
+          parts <- c(parts, paste0("- **", var, "**: ", p_str, ef_str))
+        }
+        parts <- c(parts, "")
+      }
+    }
+
+    # Note non-significant findings
+    nonsig_results <- df[is.na(df$p_value) | df$p_value >= 0.05, , drop = FALSE]
+    if (nrow(nonsig_results) > 0 && "variable" %in% names(nonsig_results)) {
+      nonsig_vars <- unique(nonsig_results$variable)
+      if (length(nonsig_vars) > 0) {
+        parts <- c(parts, "### Non-significant Findings", "")
+        parts <- c(parts, paste0("No significant differences were found for: ",
+                                 paste(nonsig_vars, collapse = ", "), "."), "")
+      }
+    }
+  }
+
+  paste(parts, collapse = "\n")
+}
+
+#' Internal function to interpret results using AI
+#'
+#' @description
+#' Takes analysis results and passes them to AI for interpretation.
+#' Used internally by Saqrmisc functions when pass = TRUE.
+#'
+#' @param results Results object from analysis function
+#' @param analysis_type Type of analysis
+#' @param metadata List with analysis metadata
+#' @param ... Additional arguments passed to pass()
+#'
+#' @return The AI interpretation (invisibly)
+#' @noRd
+interpret_with_ai <- function(results, analysis_type = "analysis", metadata = list(), ...) {
+  # Generate clean methods/results markdown
+
+  md_content <- generate_methods_results_md(results, analysis_type, metadata)
+
+  # Create a minimal object for pass()
+  pass_obj <- list(
+    markdown = md_content,
+    type = analysis_type
+  )
+  class(pass_obj) <- c("saqr_result", "list")
+
+  # Call pass with the clean markdown
+  interpretation <- pass(
+    pass_obj,
+    action = "write",
+    style = "scientific",
+    ...
+  )
+
+  invisible(interpretation)
+}
+
 #' Smart output capture for different object types
 #' @noRd
 capture_smart_output <- function(x) {

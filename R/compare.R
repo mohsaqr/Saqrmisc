@@ -423,6 +423,11 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #'   "plain" (data frame), "markdown", "latex", or "kable".
 #' @param show_header Logical. Show title/subtitle header? Default TRUE.
 #'   Set to FALSE to hide the table header.
+#' @param interpret Logical. Pass results to AI for automatic interpretation?
+#'   Default FALSE. When TRUE, generates clean Methods and Results text using
+#'   AI. Requires API key setup (see \code{\link{set_api_key}}).
+#' @param ... Additional arguments passed to \code{\link{pass}} when
+#'   interpret = TRUE (e.g., provider, model, context).
 #'
 #' @return A list with class "comparison_results" containing: plots (named list
 #'   of ggplot objects), grid_plot (combined plot grid if multiple variables),
@@ -588,7 +593,9 @@ compare_groups <- function(data, category, Vars = NULL,
                                       colors = NULL, verbose = TRUE,
                                       combined_table = TRUE,
                                       format = c("gt", "plain", "markdown", "latex", "kable"),
-                                      show_header = TRUE) {
+                                      show_header = TRUE,
+                                      interpret = FALSE,
+                                      ...) {
 
   # ===========================================================================
   # Input Validation
@@ -1542,7 +1549,31 @@ compare_groups <- function(data, category, Vars = NULL,
   # ===========================================================================
   if (is.null(repeat_category_name_str)) {
     # No repeat category - single analysis
-    return(run_single_analysis(data))
+    result <- run_single_analysis(data)
+
+    # AI interpretation if requested
+    if (interpret) {
+      n_groups <- length(unique(data[[category_name_str]]))
+      test_type_str <- if (nonparametric) {
+        if (n_groups == 2) "Mann-Whitney U" else "Kruskal-Wallis"
+      } else {
+        if (n_groups == 2) "t-test" else "ANOVA"
+      }
+
+      metadata <- list(
+        test_type = test_type_str,
+        n_groups = n_groups,
+        variables = comparison_categories,
+        grouping_var = category_name_str,
+        groups = unique(data[[category_name_str]]),
+        total_n = nrow(data),
+        posthoc_method = posthoc_method
+      )
+
+      interpret_with_ai(result, analysis_type = "group_comparison", metadata = metadata, ...)
+    }
+
+    return(result)
   } else {
     # Stratified analysis
     total_n <- nrow(data)
@@ -1994,6 +2025,33 @@ compare_groups <- function(data, category, Vars = NULL,
       equivalence_bounds = if (equivalence) equivalence_bounds else NULL,
       p_adjust_method = p_adjust_method
     )
+
+    # AI interpretation if requested (for stratified analysis)
+    if (interpret && !is.null(results_by_group$combined_data)) {
+      n_groups <- length(unique(data[[category_name_str]]))
+      test_type_str <- if (nonparametric) {
+        if (n_groups == 2) "Mann-Whitney U" else "Kruskal-Wallis"
+      } else {
+        if (n_groups == 2) "t-test" else "ANOVA"
+      }
+
+      # Create results object for interpretation
+      interp_results <- list(summary_data = results_by_group$combined_data)
+
+      metadata <- list(
+        test_type = test_type_str,
+        n_groups = n_groups,
+        variables = comparison_categories,
+        grouping_var = category_name_str,
+        groups = unique(data[[category_name_str]]),
+        total_n = total_n,
+        posthoc_method = posthoc_method,
+        stratified_by = repeat_category_name_str,
+        strata = categories_to_include
+      )
+
+      interpret_with_ai(interp_results, analysis_type = "group_comparison", metadata = metadata, ...)
+    }
 
     return(results_by_group)
   }
