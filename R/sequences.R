@@ -29,7 +29,7 @@
 #' )
 #'
 #' # Count events per student
-#' count_events(events, id = "student", event = "action")
+#' counts(events, id = "student", event = "action")
 #'
 #' # Multiple ID columns
 #' events2 <- data.frame(
@@ -38,13 +38,13 @@
 #'   action = c("view", "submit", "view", "view", "view", "submit")
 #' )
 #'
-#' count_events(events2, id = c("student", "course"), event = "action")
+#' counts(events2, id = c("student", "course"), event = "action")
 #' }
 #'
 #' @importFrom dplyr count all_of
 #' @importFrom tidyr pivot_wider
 #' @export
-count_events <- function(data,
+counts <- function(data,
                          id = NULL,
                          event = NULL,
                          na_values = NULL) {
