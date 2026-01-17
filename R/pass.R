@@ -10,57 +10,89 @@
 capture_smart_output <- function(x) {
   obj_class <- class(x)
 
+  # Helper to check if object is data frame or tibble
+  is_df_like <- function(obj) {
+    inherits(obj, "data.frame") || inherits(obj, "tbl_df") || inherits(obj, "tbl")
+  }
+
+  # Helper to safely print data frame/tibble
+  safe_print_df <- function(obj, label) {
+    if (is.null(obj)) return(NULL)
+    if (!is_df_like(obj)) return(NULL)
+    if (nrow(obj) == 0) return(NULL)
+
+    # Convert tibble to data frame for cleaner printing
+    if (inherits(obj, "tbl_df")) {
+      output <- paste(utils::capture.output(print(as.data.frame(obj))), collapse = "\n")
+    } else {
+      output <- paste(utils::capture.output(print(obj)), collapse = "\n")
+    }
+
+    if (nchar(trimws(output)) > 0) {
+      return(paste0(label, "\n", output))
+    }
+    NULL
+  }
+
   # Handle Saqrmisc results (lists with $data, $display, or $table components)
-  if (is.list(x) && !is.data.frame(x)) {
+  if (is.list(x) && !is.data.frame(x) && !inherits(x, "tbl_df")) {
     parts <- c()
 
-    # Check for display data frame (formatted for viewing)
-    if (!is.null(x$display) && is.data.frame(x$display)) {
-      parts <- c(parts, "Display Table:", paste(utils::capture.output(print(x$display)), collapse = "\n"))
+    # Check for summary_data first (from compare_groups) - most common
+    captured <- safe_print_df(x$summary_data, "Summary Data:")
+    if (!is.null(captured)) parts <- c(parts, captured)
+
+    # Check for summary_table (gt table data)
+    if (!is.null(x$summary_table)) {
+      if (inherits(x$summary_table, "gt_tbl") && !is.null(x$summary_table$`_data`)) {
+        captured <- safe_print_df(x$summary_table$`_data`, "Summary Table:")
+        if (!is.null(captured)) parts <- c(parts, captured)
+      } else if (is_df_like(x$summary_table)) {
+        captured <- safe_print_df(x$summary_table, "Summary Table:")
+        if (!is.null(captured)) parts <- c(parts, captured)
+      }
     }
 
+    # Check for display data frame (formatted for viewing)
+    captured <- safe_print_df(x$display, "Display Table:")
+    if (!is.null(captured)) parts <- c(parts, captured)
+
     # Check for raw data
-    if (!is.null(x$data) && is.data.frame(x$data)) {
-      parts <- c(parts, "Data:", paste(utils::capture.output(print(x$data)), collapse = "\n"))
-    }
+    captured <- safe_print_df(x$data, "Data:")
+    if (!is.null(captured)) parts <- c(parts, captured)
 
     # Check for correlation matrix
     if (!is.null(x$correlation_matrix) && is.matrix(x$correlation_matrix)) {
-      parts <- c(parts, "Correlation Matrix:", paste(utils::capture.output(print(round(x$correlation_matrix, 3))), collapse = "\n"))
+      parts <- c(parts, paste0("Correlation Matrix:\n", paste(utils::capture.output(print(round(x$correlation_matrix, 3))), collapse = "\n")))
     }
 
     # Check for p-values matrix
     if (!is.null(x$p_matrix) && is.matrix(x$p_matrix)) {
-      parts <- c(parts, "P-values:", paste(utils::capture.output(print(round(x$p_matrix, 4))), collapse = "\n"))
+      parts <- c(parts, paste0("P-values:\n", paste(utils::capture.output(print(round(x$p_matrix, 4))), collapse = "\n")))
     }
 
     # Check for n_matrix (sample sizes)
     if (!is.null(x$n_matrix) && is.matrix(x$n_matrix)) {
-      parts <- c(parts, "Sample Sizes:", paste(utils::capture.output(print(x$n_matrix)), collapse = "\n"))
-    }
-
-    # Check for summary_data (from compare_groups)
-    if (!is.null(x$summary_data) && is.data.frame(x$summary_data)) {
-      parts <- c(parts, "Summary Data:", paste(utils::capture.output(print(x$summary_data)), collapse = "\n"))
+      parts <- c(parts, paste0("Sample Sizes:\n", paste(utils::capture.output(print(x$n_matrix)), collapse = "\n")))
     }
 
     # Check for test results (chi-square, etc.)
     if (!is.null(x$test_results)) {
       if (is.list(x$test_results)) {
-        parts <- c(parts, "Test Results:", paste(utils::capture.output(print(x$test_results)), collapse = "\n"))
+        parts <- c(parts, paste0("Test Results:\n", paste(utils::capture.output(print(x$test_results)), collapse = "\n")))
       } else if (is.character(x$test_results)) {
-        parts <- c(parts, "Test Results:", x$test_results)
+        parts <- c(parts, paste0("Test Results: ", x$test_results))
       }
     }
 
     # Check for chi_square results
     if (!is.null(x$chi_square)) {
-      parts <- c(parts, "Chi-Square Test:", paste(utils::capture.output(print(x$chi_square)), collapse = "\n"))
+      parts <- c(parts, paste0("Chi-Square Test:\n", paste(utils::capture.output(print(x$chi_square)), collapse = "\n")))
     }
 
     # Check for fisher results
     if (!is.null(x$fisher)) {
-      parts <- c(parts, "Fisher's Exact Test:", paste(utils::capture.output(print(x$fisher)), collapse = "\n"))
+      parts <- c(parts, paste0("Fisher's Exact Test:\n", paste(utils::capture.output(print(x$fisher)), collapse = "\n")))
     }
 
     # Check for effect size (Cramer's V, etc.)
@@ -70,13 +102,24 @@ capture_smart_output <- function(x) {
 
     # Check for footnotes/notes (often contain test results)
     if (!is.null(x$footnote) && is.character(x$footnote)) {
-      parts <- c(parts, "Note:", x$footnote)
+      parts <- c(parts, paste0("Note: ", x$footnote))
     }
     if (!is.null(x$notes) && is.character(x$notes)) {
-      parts <- c(parts, "Notes:", paste(x$notes, collapse = "\n"))
+      parts <- c(parts, paste0("Notes: ", paste(x$notes, collapse = "\n")))
     }
 
     # If we captured something useful, return it
+    if (length(parts) > 0) {
+      return(paste(parts, collapse = "\n\n"))
+    }
+
+    # Fallback: try to print all data frame elements in the list
+    for (nm in names(x)) {
+      if (is_df_like(x[[nm]]) && nrow(x[[nm]]) > 0) {
+        captured <- safe_print_df(x[[nm]], paste0(nm, ":"))
+        if (!is.null(captured)) parts <- c(parts, captured)
+      }
+    }
     if (length(parts) > 0) {
       return(paste(parts, collapse = "\n\n"))
     }
