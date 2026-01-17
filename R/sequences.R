@@ -2,6 +2,97 @@
 #
 # Functions for converting and analyzing sequence data.
 
+#' Add Row Totals to Data Frame
+#'
+#' @description
+#' Computes row totals across specified columns and adds them as a new column.
+#'
+#' @param data A data frame.
+#' @param cols Column specification. Can be:
+#'   \itemize
+#'     \item NULL (default): uses all numeric columns
+#'     \item Character vector: column names (e.g., `c("a", "b", "c")`)
+#'     \item Numeric vector: column indices (e.g., `2:5` or `c(2,3,4)`)
+#'     \item Single number: columns from that index to last (e.g., `3` means cols 3 to end)
+#'   }
+#' @param name Character. Name for the total column. Default: `"total"`.
+#' @param na.rm Logical. Remove NA values when summing? Default: `TRUE`.
+#'
+#' @return The original data frame with an added total column.
+#'
+#' @examples
+#' \dontrun{
+#' df <- data.frame(id = 1:3, a = c(1,2,3), b = c(4,5,6), c = c(7,8,9))
+#'
+#' # All numeric columns
+#' add_total(df)
+#'
+#' # Specific columns by name
+#' add_total(df, cols = c("a", "b"))
+#'
+#' # Columns by index range
+#' add_total(df, cols = 2:4)
+#'
+#' # From column 2 to end
+#' add_total(df, cols = 2)
+#'
+#' # Custom name
+#' add_total(df, cols = c("a", "b"), name = "sum_ab")
+#' }
+#'
+#' @export
+add_total <- function(data, cols = NULL, name = "total", na.rm = TRUE) {
+
+  if (!is.data.frame(data)) {
+    stop("'data' must be a data frame")
+ }
+
+  if (nrow(data) == 0) {
+    stop("'data' has no rows")
+  }
+
+  # Determine which columns to sum
+  if (is.null(cols)) {
+    # All numeric columns
+    cols_idx <- which(sapply(data, is.numeric))
+    if (length(cols_idx) == 0) {
+      stop("No numeric columns found")
+    }
+  } else if (is.character(cols)) {
+    # Column names
+    missing <- setdiff(cols, names(data))
+    if (length(missing) > 0) {
+      stop("Columns not found: ", paste(missing, collapse = ", "))
+    }
+    cols_idx <- match(cols, names(data))
+  } else if (is.numeric(cols)) {
+    if (length(cols) == 1) {
+      # Single number: from that column to end
+      cols_idx <- cols:ncol(data)
+    } else {
+      # Vector of indices
+      cols_idx <- cols
+    }
+    # Validate indices
+    if (any(cols_idx < 1) || any(cols_idx > ncol(data))) {
+      stop("Column indices out of range (1 to ", ncol(data), ")")
+    }
+  } else {
+    stop("'cols' must be NULL, character vector, or numeric vector")
+  }
+
+  # Check that selected columns are numeric
+  non_numeric <- names(data)[cols_idx][!sapply(data[cols_idx], is.numeric)]
+  if (length(non_numeric) > 0) {
+    stop("Non-numeric columns selected: ", paste(non_numeric, collapse = ", "))
+  }
+
+  # Calculate row sums
+  data[[name]] <- rowSums(data[, cols_idx, drop = FALSE], na.rm = na.rm)
+
+  return(data)
+}
+
 #' Count Events per ID
 #'
 #' @description
