@@ -39,6 +39,9 @@ install.packages(c(
 
 # Optional (for full functionality)
 install.packages(c("ggstatsplot", "TOSTER", "kableExtra"))
+
+# For AI interpretation (pass function)
+install.packages("httr2")
 ```
 
 ---
@@ -56,6 +59,7 @@ install.packages(c("ggstatsplot", "TOSTER", "kableExtra"))
 | **Clustering** | `clustering()`, `assess_cluster_stability()` | Model-based clustering with 14 models |
 | **Networks** | `estimate_single_network()`, `compare_networks()` | Psychological network analysis |
 | **Categorical** | `mosaic_analysis()` | Mosaic plots, chi-square, Cramer's V |
+| **AI Interpretation** | `pass()` | Pipe R output to AI for scientific interpretation |
 
 ---
 
@@ -573,6 +577,137 @@ summary(results)     # Detailed summary
 results$plot         # Mosaic plot
 results$chi_test     # Chi-square test results
 results$cramers_v    # Effect size
+```
+
+---
+
+## 11. AI Interpretation
+
+### `pass()` - Pipe R Output to AI
+
+Pass any R output (test results, model summaries, tables) to an AI model for publication-ready scientific interpretation.
+
+```r
+# Basic usage - pipe test results to AI
+t.test(mpg ~ am, data = mtcars) |> pass()
+
+# Regression with equation and references
+lm(mpg ~ wt + hp, data = mtcars) |> summary() |> pass(action = "write")
+
+# Correlation interpretation
+cor.test(mtcars$mpg, mtcars$wt) |> pass(action = "write")
+
+# ANOVA with post-hoc interpretation
+aov(mpg ~ factor(cyl), data = mtcars) |> summary() |> pass(action = "write")
+```
+
+**Providers:**
+
+```r
+# Cloud providers
+pass(result, provider = "anthropic")  # Claude (default)
+pass(result, provider = "openai")     # GPT-4
+pass(result, provider = "gemini")     # Gemini
+
+# Local servers (LM Studio, Ollama, vLLM)
+pass(result, base_url = "http://127.0.0.1:1234")
+```
+
+**Actions:**
+
+```r
+pass(result, action = "interpret")  # Interpret results (default)
+pass(result, action = "explain")    # Explain methodology
+pass(result, action = "write")      # Publication-ready Methods & Results
+pass(result, action = "summarize")  # Brief summary
+pass(result, action = "critique")   # Critical evaluation
+pass(result, action = "suggest")    # Suggest follow-up analyses
+```
+
+**Styles:**
+
+```r
+pass(result, style = "scientific")  # APA-style (default)
+pass(result, style = "simple")      # Plain language
+pass(result, style = "detailed")    # Comprehensive (default for action="write")
+pass(result, style = "brief")       # Key takeaway only
+```
+
+**Output Formats:**
+
+```r
+pass(result, output = "text")      # Plain text (default)
+pass(result, output = "markdown")  # Markdown formatted
+pass(result, output = "latex")     # LaTeX for papers
+pass(result, output = "html")      # HTML formatted
+```
+
+**Customization:**
+
+```r
+# Add study context
+t.test(score ~ group, data = mydata) |>
+  pass(context = "RCT comparing drug vs placebo, N=200 patients")
+
+# Custom AI instructions
+result |> pass(system_message = "Focus on clinical implications")
+
+# Specific request
+result |> pass(prompt = "Explain the interaction effect")
+
+# Combine all
+lm(outcome ~ treatment * age, data = mydata) |> summary() |>
+  pass(
+    action = "write",
+    output = "latex",
+    context = "Phase 3 clinical trial for hypertension",
+    system_message = "Emphasize clinical significance",
+    prompt = "Focus on the treatment-age interaction"
+  )
+```
+
+**Example Output (action = "write"):**
+
+```
+**Methods**
+
+A multiple linear regression was conducted to examine the relationship between
+miles per gallon (mpg) and two predictor variables: vehicle weight (wt) and
+horsepower (hp). The analysis was performed in R (R Core Team, 2024) using the
+base `lm()` function. The regression equation is:
+
+  mpg = β₀ + β₁(wt) + β₂(hp) + ε
+
+**Results**
+
+The regression model was statistically significant, F(2, 29) = 69.21, p < .001.
+The model explained 82.7% of variance in mpg (R² = .827, Adjusted R² = .815).
+
+| Predictor | Estimate | SE   | t      | p      |
+|-----------|----------|------|--------|--------|
+| Intercept | 37.23    | 1.60 | 23.29  | < .001 |
+| wt        | –3.88    | 0.63 | –6.13  | < .001 |
+| hp        | –0.032   | 0.009| –3.52  | .001   |
+
+**References**
+
+R Core Team. (2024). R: A language and environment for statistical computing.
+R Foundation for Statistical Computing. https://www.R-project.org/
+```
+
+**Setup:**
+
+```r
+# Set API key for session
+set_api_key("your-api-key", provider = "anthropic")
+set_api_key("your-api-key", provider = "openai")
+set_api_key("your-api-key", provider = "gemini")
+
+# Or use environment variables (recommended)
+# Add to .Renviron:
+# ANTHROPIC_API_KEY=your-key
+# OPENAI_API_KEY=your-key
+# GEMINI_API_KEY=your-key
 ```
 
 ---
