@@ -48,6 +48,9 @@
 #'   student learning outcomes with N=500 participants")
 #' @param system_message Optional custom instructions for the AI (e.g., "Focus on
 #'   clinical implications", "Be more concise", "Emphasize effect sizes")
+#' @param auto_local Logical. Automatically detect and use local AI servers
+#'   (LM Studio on port 1234, Ollama on port 11434)? Default: TRUE.
+#'   Set to FALSE to force using cloud providers.
 #' @param copy Logical. Copy result to clipboard? Default: FALSE
 #' @param quiet Logical. Suppress messages? Default: FALSE
 #'
@@ -115,6 +118,7 @@ pass <- function(x,
                  api_key = NULL,
                  context = NULL,
                  system_message = NULL,
+                 auto_local = TRUE,
                  copy = FALSE,
                  quiet = FALSE) {
 
@@ -132,7 +136,15 @@ style_missing <- missing(style)
     style <- "detailed"
   }
 
-  # Check if using custom base_url (local server like LM Studio)
+  # Auto-detect local servers if base_url not provided and auto_local is TRUE
+  if (is.null(base_url) && auto_local) {
+    available_servers <- detect_local_servers()
+    if (length(available_servers) > 0) {
+      base_url <- select_local_server(available_servers, quiet)
+    }
+  }
+
+  # Check if using local server
   use_local <- !is.null(base_url)
 
   # Capture the R output as text
@@ -216,6 +228,87 @@ style_missing <- missing(style)
   }
 
   invisible(response)
+}
+
+#' Check if a local server is running
+#' @noRd
+check_local_server <- function(url) {
+  if (!requireNamespace("httr2", quietly = TRUE)) {
+    return(FALSE)
+  }
+  tryCatch({
+    req <- httr2::request(paste0(url, "/v1/models")) |>
+      httr2::req_timeout(2)
+    resp <- httr2::req_perform(req)
+    httr2::resp_status(resp) == 200
+  }, error = function(e) FALSE)
+}
+
+#' Detect available local servers (LM Studio, Ollama)
+#' @noRd
+detect_local_servers <- function() {
+  servers <- list(
+    lmstudio = list(name = "LM Studio", url = "http://127.0.0.1:1234"),
+    ollama = list(name = "Ollama", url = "http://127.0.0.1:11434")
+  )
+
+  available <- list()
+  for (id in names(servers)) {
+    if (check_local_server(servers[[id]]$url)) {
+      available[[id]] <- servers[[id]]
+    }
+  }
+  available
+}
+
+#' Prompt user to select a local server
+#' @noRd
+select_local_server <- function(available, quiet = FALSE) {
+  if (length(available) == 0) {
+    return(NULL)
+  }
+
+  if (length(available) == 1) {
+    server <- available[[1]]
+    if (!quiet) {
+      message("Found ", server$name, " running locally. Using it.")
+      message("(To use a cloud provider instead, set provider explicitly or use base_url = NULL)")
+    }
+    return(server$url)
+  }
+
+  # Multiple servers found - ask user
+  if (!interactive()) {
+    # Non-interactive: use first available
+    server <- available[[1]]
+    if (!quiet) message("Using ", server$name, " (first available local server)")
+    return(server$url)
+  }
+
+  # Interactive: let user choose
+  if (!quiet) {
+    message("\n", strrep("=", 50))
+    message("Multiple local AI servers detected!")
+    message(strrep("=", 50))
+    for (i in seq_along(available)) {
+      message(i, ". ", available[[i]]$name, " (", available[[i]]$url, ")")
+    }
+    message(length(available) + 1, ". Use cloud provider instead")
+    message(strrep("=", 50))
+  }
+
+  choice <- readline(prompt = "Select server [1]: ")
+  choice <- if (nzchar(choice)) as.integer(choice) else 1L
+
+  if (is.na(choice) || choice < 1 || choice > length(available) + 1) {
+    choice <- 1L
+  }
+
+  if (choice > length(available)) {
+    return(NULL)  # User chose cloud provider
+  }
+
+  available[[choice]]$url
 }
 
 #' Get or prompt for API key

@@ -16,6 +16,7 @@ pass(
   api_key = NULL,
   context = NULL,
   system_message = NULL,
+  auto_local = TRUE,
   copy = FALSE,
   quiet = FALSE
 )
@@ -70,6 +71,10 @@ student learning outcomes with N=500 participants")}
 
 \item{system_message}{Optional custom instructions for the AI (e.g., "Focus on
 clinical implications", "Be more concise", "Emphasize effect sizes")}
+
+\item{auto_local}{Logical. Automatically detect and use local AI servers
+(LM Studio on port 1234, Ollama on port 11434)? Default: TRUE.
+Set to FALSE to force using cloud providers.}
 
 \item{copy}{Logical. Copy result to clipboard? Default: FALSE}
 
