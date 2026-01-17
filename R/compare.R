@@ -446,6 +446,16 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #'   results into a single table? Default: `TRUE`. The combined table shows
 #'   all repeat_category levels together with bold highest means and red
 #'   significant p-values.
+#' @param format Character. Output format for tables:
+#'   \describe{
+#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
+#'     \item{`"plain"`}{Plain data frame}
+#'     \item{`"markdown"`}{Markdown-formatted table}
+#'     \item{`"latex"`}{LaTeX tabular format}
+#'     \item{`"kable"`}{knitr::kable format}
+#'   }
+#' @param show_header Logical. Show title/subtitle header? Default: `TRUE`.
+#'   Set to `FALSE` to hide the table header.
 #'
 #' @return A list with class "comparison_results" containing:
 #' \itemize{
@@ -613,7 +623,9 @@ compare_groups <- function(data, category, Vars = NULL,
                                       pairwise_display = "significant",
                                       min_threshold = 0.05, min_subcategory = 5,
                                       colors = NULL, verbose = TRUE,
-                                      combined_table = TRUE) {
+                                      combined_table = TRUE,
+                                      format = c("gt", "plain", "markdown", "latex", "kable"),
+                                      show_header = TRUE) {
 
   # ===========================================================================
   # Input Validation
@@ -632,6 +644,9 @@ compare_groups <- function(data, category, Vars = NULL,
   if (!is.data.frame(data)) {
     stop("data must be a data frame")
   }
+
+  # Validate format parameter
+  format <- match.arg(format)
 
   # Vars will be resolved after category is determined (to exclude it)
 
@@ -1450,71 +1465,104 @@ compare_groups <- function(data, category, Vars = NULL,
         } else {
           paste0("Summary: ", category_name_str, " (", group_label, ")")
         }
+        table_subtitle <- paste(subtitle_parts, collapse = " | ")
 
-        # Create gt table
-        gt_table <- final_table %>%
-          dplyr::select(-is_highest) %>%
-          gt::gt() %>%
-          gt::tab_header(
-            title = table_title,
-            subtitle = paste(subtitle_parts, collapse = " | ")
-          ) %>%
-          gt::tab_style(
-            style = gt::cell_text(weight = "bold"),
-            locations = gt::cells_column_labels()
-          ) %>%
-          gt::tab_style(
-            style = gt::cell_text(weight = "bold"),
-            locations = gt::cells_body(columns = "Variable")
-          ) %>%
-          gt::cols_align(align = "center") %>%
-          gt::tab_options(
-            table.font.size = gt::px(12),
-            heading.title.font.size = gt::px(14),
-            heading.subtitle.font.size = gt::px(11),
-            column_labels.font.weight = "bold"
+        # Prepare display table (without internal columns)
+        display_table <- final_table %>% dplyr::select(-is_highest)
+
+        # ==================================================================
+        # Handle non-GT formats using format_table utility
+        # ==================================================================
+        if (format %in% c("plain", "markdown", "latex", "kable")) {
+          result$summary_table <- format_table(
+            df = display_table,
+            format = format,
+            title = if (show_header) table_title else NULL,
+            subtitle = if (show_header) table_subtitle else NULL,
+            show_header = show_header,
+            bold_cols = "Variable",
+            align_left = "Variable"
           )
 
-        # Highlight significant p-values
-        if ("P-value" %in% names(final_table)) {
-          sig_rows <- which(
-            final_table$`P-value` == "< 0.001" |
-              (suppressWarnings(as.numeric(final_table$`P-value`)) < 0.05 &
-                 !is.na(suppressWarnings(as.numeric(final_table$`P-value`))))
-          )
-          if (length(sig_rows) > 0) {
+          if (verbose && !silent) {
+            cat("\n")
+            print(result$summary_table)
+            cat("\n")
+          }
+        } else {
+          # ==================================================================
+          # Create gt table (default)
+          # ==================================================================
+          gt_table <- display_table %>%
+            gt::gt()
+
+          # Add header (respecting show_header)
+          if (show_header) {
             gt_table <- gt_table %>%
-              gt::tab_style(
-                style = gt::cell_text(color = "red"),
-                locations = gt::cells_body(columns = "P-value", rows = sig_rows)
+              gt::tab_header(
+                title = table_title,
+                subtitle = table_subtitle
               )
           }
-        }
 
-        # Highlight highest means
-        highest_rows <- which(final_table$is_highest)
-        if (length(highest_rows) > 0) {
-          # Get columns that exist in the table for highlighting
-          highlight_cols <- intersect(c(category_name_str, "Mean", "SD", "N"),
-                                      names(final_table))
-          if (length(highlight_cols) > 0) {
-            gt_table <- gt_table %>%
-              gt::tab_style(
-                style = gt::cell_text(weight = "bold"),
-                locations = gt::cells_body(
-                  columns = highlight_cols,
-                  rows = highest_rows
+          gt_table <- gt_table %>%
+            gt::tab_style(
+              style = gt::cell_text(weight = "bold"),
+              locations = gt::cells_column_labels()
+            ) %>%
+            gt::tab_style(
+              style = gt::cell_text(weight = "bold"),
+              locations = gt::cells_body(columns = "Variable")
+            ) %>%
+            gt::cols_align(align = "center") %>%
+            gt::tab_options(
+              table.font.size = gt::px(12),
+              heading.title.font.size = gt::px(14),
+              heading.subtitle.font.size = gt::px(11),
+              column_labels.font.weight = "bold"
+            )
+
+          # Highlight significant p-values
+          if ("P-value" %in% names(final_table)) {
+            sig_rows <- which(
+              final_table$`P-value` == "< 0.001" |
+                (suppressWarnings(as.numeric(final_table$`P-value`)) < 0.05 &
+                   !is.na(suppressWarnings(as.numeric(final_table$`P-value`))))
+            )
+            if (length(sig_rows) > 0) {
+              gt_table <- gt_table %>%
+                gt::tab_style(
+                  style = gt::cell_text(color = "red"),
+                  locations = gt::cells_body(columns = "P-value", rows = sig_rows)
                 )
-              )
+            }
           }
-        }
 
-        result$summary_table <- gt_table
+          # Highlight highest means
+          highest_rows <- which(final_table$is_highest)
+          if (length(highest_rows) > 0) {
+            # Get columns that exist in the table for highlighting
+            highlight_cols <- intersect(c(category_name_str, "Mean", "SD", "N"),
+                                        names(final_table))
+            if (length(highlight_cols) > 0) {
+              gt_table <- gt_table %>%
+                gt::tab_style(
+                  style = gt::cell_text(weight = "bold"),
+                  locations = gt::cells_body(
+                    columns = highlight_cols,
+                    rows = highest_rows
+                  )
+                )
+            }
+          }
 
-        if (verbose && !silent) {
-          cat("\n")
-          print(result$summary_table)
-          cat("\n")
+          result$summary_table <- gt_table
+
+          if (verbose && !silent) {
+            cat("\n")
+            print(result$summary_table)
+            cat("\n")
+          }
         }
       }, error = function(e) {
         warning("Error creating table: ", e$message)

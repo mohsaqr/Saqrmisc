@@ -253,6 +253,14 @@ results <- compare_groups(
 # Access stratified results
 results$`4`$summary_data
 results$`6`$plots$am_vs_mpg
+
+# Different output formats
+compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"), format = "plain")
+compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"), format = "markdown")
+compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"), format = "latex")
+
+# Hide header
+compare_groups(mtcars, category = "am", Vars = c("mpg"), show_header = FALSE)
 ```
 
 **Parameters:**
@@ -267,6 +275,8 @@ results$`6`$plots$am_vs_mpg
 | `posthoc_method` | `"games-howell"` or `"tukey"` | `"games-howell"` |
 | `bayesian` | Compute Bayes Factors? | `FALSE` |
 | `equivalence` | Perform TOST? | `FALSE` |
+| `format` | `"gt"`, `"plain"`, `"markdown"`, `"latex"`, `"kable"` | `"gt"` |
+| `show_header` | Show table title/subtitle? | `TRUE` |
 
 ---
 
