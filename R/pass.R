@@ -45,6 +45,8 @@
 #'   For local servers like LM Studio, use `api_key = "none"` or any string.
 #' @param context Optional context about your study (e.g., "This is a study on
 #'   student learning outcomes with N=500 participants")
+#' @param system_message Optional custom instructions for the AI (e.g., "Focus on
+#'   clinical implications", "Be more concise", "Emphasize effect sizes")
 #' @param copy Logical. Copy result to clipboard? Default: FALSE
 #' @param quiet Logical. Suppress messages? Default: FALSE
 #'
@@ -80,8 +82,24 @@
 #' # Critique an analysis
 #' lm(mpg ~ ., data = mtcars) |> summary() |> pass(action = "critique")
 #'
-#' # Custom prompt overrides action
-#' my_results |> pass(prompt = "Explain this to a non-technical audience")
+#' # Custom prompt (specific request to the AI)
+#' my_results |> pass(prompt = "Focus only on the interaction effects")
+#'
+#' # Custom context (about your study)
+#' t.test(score ~ group, data = mydata) |>
+#'   pass(context = "RCT comparing drug vs placebo, N=200 patients with diabetes")
+#'
+#' # Custom system message (instructions for the AI)
+#' my_results |> pass(system_message = "Focus on clinical implications and effect sizes")
+#'
+#' # Combine all customizations
+#' lm(outcome ~ treatment * age, data = mydata) |> summary() |>
+#'   pass(
+#'     action = "write",
+#'     context = "Phase 3 clinical trial for hypertension medication",
+#'     system_message = "Emphasize clinical significance over statistical significance",
+#'     prompt = "Pay special attention to the treatment-age interaction"
+#'   )
 #' }
 #'
 #' @export
@@ -95,6 +113,7 @@ pass <- function(x,
                  base_url = NULL,
                  api_key = NULL,
                  context = NULL,
+                 system_message = NULL,
                  copy = FALSE,
                  quiet = FALSE) {
 
@@ -135,7 +154,7 @@ pass <- function(x,
   }
 
   # Build the prompt
-  system_prompt <- build_system_prompt(action, style, output)
+  system_prompt <- build_system_prompt(action, style, output, system_message)
   user_prompt <- build_user_prompt(output_text, obj_info, prompt, context, action)
 
   if (!quiet) {
@@ -234,9 +253,9 @@ get_api_key <- function(provider, api_key = NULL, quiet = FALSE) {
   return(key)
 }
 
-#' Build system prompt based on action, style, and output
+#' Build system prompt based on action, style, output, and custom message
 #' @noRd
-build_system_prompt <- function(action, style, output) {
+build_system_prompt <- function(action, style, output, system_message = NULL) {
   base <- "You are an expert statistician helping researchers interpret their R output. "
 
   # Action-specific instructions
@@ -271,12 +290,21 @@ build_system_prompt <- function(action, style, output) {
     html = "Format your response using HTML tags for structure and emphasis."
   )
 
-  paste0(
+  # Build the prompt
+
+  result <- paste0(
     base,
     action_prompts[[action]], " ",
     style_prompts[[style]], " ",
     output_prompts[[output]]
   )
+
+  # Add custom system message if provided
+  if (!is.null(system_message) && nzchar(system_message)) {
+    result <- paste0(result, " IMPORTANT: ", system_message)
+  }
+
+  result
 }
 
 #' Build user prompt

@@ -15,6 +15,7 @@ pass(
   base_url = NULL,
   api_key = NULL,
   context = NULL,
+  system_message = NULL,
   copy = FALSE,
   quiet = FALSE
 )
@@ -66,6 +67,9 @@ For local servers like LM Studio, use `api_key = "none"` or any string.}
 \item{context}{Optional context about your study (e.g., "This is a study on
 student learning outcomes with N=500 participants")}
 
+\item{system_message}{Optional custom instructions for the AI (e.g., "Focus on
+clinical implications", "Be more concise", "Emphasize effect sizes")}
+
 \item{copy}{Logical. Copy result to clipboard? Default: FALSE}
 
 \item{quiet}{Logical. Suppress messages? Default: FALSE}
@@ -108,8 +112,24 @@ aov(mpg ~ factor(cyl), data = mtcars) |> summary() |>
 # Critique an analysis
 lm(mpg ~ ., data = mtcars) |> summary() |> pass(action = "critique")
 
-# Custom prompt overrides action
-my_results |> pass(prompt = "Explain this to a non-technical audience")
+# Custom prompt (specific request to the AI)
+my_results |> pass(prompt = "Focus only on the interaction effects")
+
+# Custom context (about your study)
+t.test(score ~ group, data = mydata) |>
+  pass(context = "RCT comparing drug vs placebo, N=200 patients with diabetes")
+
+# Custom system message (instructions for the AI)
+my_results |> pass(system_message = "Focus on clinical implications and effect sizes")
+
+# Combine all customizations
+lm(outcome ~ treatment * age, data = mydata) |> summary() |>
+  pass(
+    action = "write",
+    context = "Phase 3 clinical trial for hypertension medication",
+    system_message = "Emphasize clinical significance over statistical significance",
+    prompt = "Pay special attention to the treatment-age interaction"
+  )
 }
 
 }
