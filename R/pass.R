@@ -140,7 +140,11 @@ style_missing <- missing(style)
   if (is.null(base_url) && auto_local) {
     available_servers <- detect_local_servers()
     if (length(available_servers) > 0) {
-      base_url <- select_local_server(available_servers, quiet)
+      selected <- select_local_server(available_servers, quiet)
+      if (!is.null(selected) && selected != "USE_CLOUD") {
+        base_url <- selected
+      }
+      # If "USE_CLOUD" or NULL, base_url stays NULL and cloud provider will be used
     }
   }
 
@@ -293,7 +297,7 @@ select_local_server <- function(available, quiet = FALSE) {
     for (i in seq_along(available)) {
       message(i, ". ", available[[i]]$name, " (", available[[i]]$url, ")")
     }
-    message(length(available) + 1, ". Use cloud provider instead")
+    message(length(available) + 1, ". Use cloud provider (enter API key)")
     message(strrep("=", 50))
   }
 
@@ -305,7 +309,8 @@ select_local_server <- function(available, quiet = FALSE) {
   }
 
   if (choice > length(available)) {
-    return(NULL)  # User chose cloud provider
+    # User chose cloud provider - return special marker
+    return("USE_CLOUD")
   }
 
   available[[choice]]$url
