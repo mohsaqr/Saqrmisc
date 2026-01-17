@@ -305,6 +305,44 @@ categorical_table(
 )
 ```
 
+### Table Output Formats
+
+Both `descriptive_table()` and `categorical_table()` support multiple output formats:
+
+```r
+# Publication-ready gt table (default)
+descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "gt")
+
+# Plain data frame
+descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "plain")
+
+# Markdown table (for reports/documents)
+descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "markdown")
+
+# LaTeX table (for academic papers)
+descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "latex")
+
+# knitr::kable format
+descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "kable")
+
+# Hide title/subtitle header
+descriptive_table(mtcars, Vars = c("mpg", "hp"), show_header = FALSE)
+
+# Combine format options
+descriptive_table(mtcars, Vars = c("mpg", "hp"),
+                  format = "markdown", show_header = FALSE)
+```
+
+**Available Formats:**
+
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| `"gt"` | Publication-ready gt table | Default, interactive reports |
+| `"plain"` | Raw data frame | Further processing |
+| `"markdown"` | Markdown table | R Markdown, GitHub |
+| `"latex"` | LaTeX tabular | Academic papers |
+| `"kable"` | knitr::kable | R Markdown documents |
+
 ### `auto_describe()` - Automatic Description
 
 Automatically detects and describes all variables in a data frame.

@@ -89,6 +89,119 @@ resolve_cols <- function(data, cols = NULL, numeric_only = TRUE, exclude = NULL)
   return(col_names)
 }
 
+#' Format Table Output
+#'
+#' @description
+#' Internal helper that formats a data frame into various table styles.
+#'
+#' @param df A data frame to format.
+#' @param style Output style: "gt", "plain", "markdown", "latex", "kable".
+#' @param title Optional title for the table.
+#' @param subtitle Optional subtitle for the table.
+#' @param show_header Logical. Show title/subtitle header?
+#' @param digits Number of decimal places for numeric columns.
+#' @return Formatted table or data frame.
+#' @noRd
+format_table_output <- function(df,
+                                style = c("gt", "plain", "markdown", "latex", "kable"),
+                                title = NULL,
+                                subtitle = NULL,
+                                show_header = TRUE,
+                                digits = 2) {
+  style <- match.arg(style)
+
+  if (style == "plain") {
+    return(df)
+  }
+
+  if (style == "markdown") {
+    # Convert to markdown table
+    header <- paste("|", paste(names(df), collapse = " | "), "|")
+    sep <- paste("|", paste(rep("---", ncol(df)), collapse = " | "), "|")
+    rows <- apply(df, 1, function(row) {
+      paste("|", paste(row, collapse = " | "), "|")
+    })
+    md <- paste(c(header, sep, rows), collapse = "\n")
+    if (show_header && !is.null(title)) {
+      md <- paste0("## ", title, "\n\n", md)
+      if (!is.null(subtitle)) {
+        md <- sub("\n\n", paste0("\n*", subtitle, "*\n\n"), md)
+      }
+    }
+    class(md) <- c("markdown_table", "character")
+    return(md)
+  }
+
+  if (style == "latex") {
+    # Convert to LaTeX tabular
+    header <- paste(names(df), collapse = " & ")
+    rows <- apply(df, 1, function(row) paste(row, collapse = " & "))
+    align <- paste(rep("l", ncol(df)), collapse = "")
+    latex <- paste0(
+      "\\begin{tabular}{", align, "}\n",
+      "\\hline\n",
+      header, " \\\\\n",
+      "\\hline\n",
+      paste(rows, "\\\\", collapse = "\n"), "\n",
+      "\\hline\n",
+      "\\end{tabular}"
+    )
+    if (show_header && !is.null(title)) {
+      latex <- paste0("% ", title, "\n", latex)
+    }
+    class(latex) <- c("latex_table", "character")
+    return(latex)
+  }
+
+  if (style == "kable") {
+    if (!requireNamespace("knitr", quietly = TRUE)) {
+      warning("knitr not available, returning plain data frame")
+      return(df)
+    }
+    tbl <- knitr::kable(df, digits = digits, format = "pipe")
+    if (show_header && !is.null(title)) {
+      tbl <- c(paste0("## ", title), "", tbl)
+    }
+    return(tbl)
+  }
+
+  # Default: gt table
+  if (!requireNamespace("gt", quietly = TRUE)) {
+    warning("gt not available, returning plain data frame")
+    return(df)
+  }
+
+  tbl <- gt::gt(df)
+
+  if (show_header && (!is.null(title) || !is.null(subtitle))) {
+    tbl <- tbl |> gt::tab_header(title = title, subtitle = subtitle)
+  }
+
+  # Format numeric columns
+  numeric_cols <- names(df)[sapply(df, is.numeric)]
+  if (length(numeric_cols) > 0) {
+    tbl <- tbl |> gt::fmt_number(columns = all_of(numeric_cols), decimals = digits)
+  }
+
+  return(tbl)
+}
+
+#' Print method for markdown tables
+#' @export
+#' @noRd
+print.markdown_table <- function(x, ...) {
+  cat(x, "\n")
+  invisible(x)
+}
+
+#' Print method for latex tables
+#' @export
+#' @noRd
+print.latex_table <- function(x, ...) {
+  cat(x, "\n")
+  invisible(x)
+}
+
 #' Calculate skewness
 #'
 #' @param x Numeric vector
@@ -232,8 +345,16 @@ calculate_stat <- function(x, stat, digits = 2) {
 #'   overall (ungrouped) statistics? Default: `TRUE`.
 #' @param transpose Logical. Transpose the table so variables are columns
 #'   and statistics are rows? Default: `FALSE`.
-#' @param format Character. Output format: `"gt"` (default) for gt table,
-#'   `"data.frame"` for raw data frame, or `"kable"` for kableExtra HTML table.
+#' @param format Character. Output format:
+#'   \describe{
+#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
+#'     \item{`"plain"`}{Plain data frame (same as old `"data.frame"`)}
+#'     \item{`"markdown"`}{Markdown-formatted table}
+#'     \item{`"latex"`}{LaTeX tabular format}
+#'     \item{`"kable"`}{knitr::kable or kableExtra format}
+#'   }
+#' @param show_header Logical. Show title/subtitle header? Default: `TRUE`.
+#'   Set to `FALSE` to hide the table header.
 #' @param theme Character. Visual theme for gt table. Default: `"default"`.
 #'   Options:
 #'   \itemize{
@@ -254,7 +375,10 @@ calculate_stat <- function(x, stat, digits = 2) {
 #' @return Depending on `format`:
 #' \describe{
 #'   \item{`"gt"`}{A gt table object that can be printed or exported}
-#'   \item{`"data.frame"`}{A data frame with computed statistics}
+#'   \item{`"plain"`}{A data frame with computed statistics}
+#'   \item{`"markdown"`}{A character string with markdown table}
+#'   \item{`"latex"`}{A character string with LaTeX tabular}
+#'   \item{`"kable"`}{A knitr::kable object}
 #' }
 #'
 #' @section Exporting Tables:
@@ -351,7 +475,8 @@ descriptive_table <- function(data,
                               subtitle = NULL,
                               overall = TRUE,
                               transpose = FALSE,
-                              format = "gt",
+                              format = c("gt", "plain", "markdown", "latex", "kable"),
+                              show_header = TRUE,
                               theme = "default",
                               compare = FALSE,
                               bold_highest = NULL,
@@ -378,9 +503,9 @@ descriptive_table <- function(data,
   }
 
   # Validate format
-  if (!format %in% c("gt", "data.frame", "kable")) {
-    stop("format must be 'gt', 'data.frame', or 'kable'")
-  }
+  format <- match.arg(format)
+  # Alias: "plain" is same as old "data.frame"
+  if (format == "plain") format_internal <- "data.frame" else format_internal <- format
 
   # Set default for bold_highest
   if (is.null(bold_highest)) {
@@ -536,13 +661,39 @@ descriptive_table <- function(data,
   }
 
   # ===========================================================================
-  # Return Data Frame if Requested
+  # Return Non-GT Formats
   # ===========================================================================
-  if (format == "data.frame") {
-    if (!is.null(test_results) && nrow(test_results) > 0) {
-      attr(desc_data, "test_results") <- test_results
+  if (format %in% c("plain", "markdown", "latex", "kable") && (is.null(group_by_str) || format != "kable")) {
+    # kable with group_by has special handling below
+    if (format == "kable" && is.null(group_by_str)) {
+      result <- format_table_output(
+        df = desc_data,
+        style = format,
+        title = if (show_header) title else NULL,
+        subtitle = if (show_header) subtitle else NULL,
+        show_header = show_header,
+        digits = digits
+      )
+      if (!is.null(test_results) && nrow(test_results) > 0) {
+        attr(result, "test_results") <- test_results
+      }
+      return(result)
     }
-    return(desc_data)
+
+    if (format %in% c("plain", "markdown", "latex")) {
+      result <- format_table_output(
+        df = desc_data,
+        style = format,
+        title = if (show_header) title else NULL,
+        subtitle = if (show_header) subtitle else NULL,
+        show_header = show_header,
+        digits = digits
+      )
+      if (!is.null(test_results) && nrow(test_results) > 0) {
+        attr(result, "test_results") <- test_results
+      }
+      return(result)
+    }
   }
 
   # ===========================================================================
@@ -716,8 +867,8 @@ descriptive_table <- function(data,
   # Create gt table
   gt_table <- gt::gt(desc_data)
 
-  # Add header
-  if (!is.null(title)) {
+  # Add header (respecting show_header parameter)
+  if (show_header && !is.null(title)) {
     gt_table <- gt_table %>%
       gt::tab_header(
         title = title,
@@ -988,6 +1139,8 @@ descriptive_table <- function(data,
 #' @param show_total Logical. Include row/column totals? Default: `TRUE`.
 #' @param show_missing Logical. Include missing values as a category?
 #'   Default: `FALSE`.
+#' @param show_header Logical. Show title/subtitle header? Default: `TRUE`.
+#'   Set to `FALSE` to hide the table header.
 #' @param chi_square Logical. Compute chi-square test for cross-tabulations?
 #'   Default: `TRUE`.
 #' @param fisher Logical. Also compute Fisher's exact test (for small samples)?
@@ -999,7 +1152,14 @@ descriptive_table <- function(data,
 #' @param labels Optional named character vector for category labels.
 #' @param title Optional character string for table title.
 #' @param subtitle Optional character string for table subtitle.
-#' @param format Character. Output format: `"gt"` (default) or `"data.frame"`.
+#' @param format Character. Output format:
+#'   \describe{
+#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
+#'     \item{`"plain"`}{Plain data frame (same as old `"data.frame"`)}
+#'     \item{`"markdown"`}{Markdown-formatted table}
+#'     \item{`"latex"`}{LaTeX tabular format}
+#'     \item{`"kable"`}{knitr::kable format}
+#'   }
 #' @param theme Character. Visual theme: `"default"`, `"minimal"`, `"dark"`,
 #'   `"colorful"`. Default: `"default"`.
 #' @param combine Logical. For single variables, combine n and % in one column?
@@ -1094,6 +1254,7 @@ categorical_table <- function(data,
                               show_n = TRUE,
                               show_total = TRUE,
                               show_missing = FALSE,
+                              show_header = TRUE,
                               chi_square = TRUE,
                               fisher = FALSE,
                               cramers_v = TRUE,
@@ -1102,7 +1263,7 @@ categorical_table <- function(data,
                               labels = NULL,
                               title = NULL,
                               subtitle = NULL,
-                              format = "gt",
+                              format = c("gt", "plain", "markdown", "latex", "kable"),
                               theme = "default",
                               combine = TRUE) {
 
@@ -1152,10 +1313,8 @@ categorical_table <- function(data,
     percentages <- if (is.null(by_str)) "total" else "col"
   }
 
-  # Validate inputs
-  if (!format %in% c("gt", "data.frame")) {
-    stop("format must be 'gt' or 'data.frame'")
-  }
+  # Validate format
+  format <- match.arg(format)
 
   if (!theme %in% c("default", "fancy", "minimal", "dark", "colorful")) {
     stop("theme must be 'default', 'fancy', 'minimal', 'dark', or 'colorful'")
@@ -1269,8 +1428,20 @@ categorical_table <- function(data,
     }
 
     # Select columns for output
-    if (format == "data.frame") {
+    if (format == "plain") {
       return(freq_data)
+    }
+
+    # Handle non-GT formats
+    if (format %in% c("markdown", "latex", "kable")) {
+      return(format_table_output(
+        df = freq_data,
+        style = format,
+        title = if (show_header) title else NULL,
+        subtitle = if (show_header) subtitle else NULL,
+        show_header = show_header,
+        digits = digits
+      ))
     }
 
     # Build GT table
@@ -1401,9 +1572,23 @@ categorical_table <- function(data,
       result_df <- rbind(result_df, total_row)
     }
 
-    if (format == "data.frame") {
+    if (format == "plain") {
       attr(result_df, "test_results") <- test_results
       return(result_df)
+    }
+
+    # Handle non-GT formats
+    if (format %in% c("markdown", "latex", "kable")) {
+      output <- format_table_output(
+        df = result_df,
+        style = format,
+        title = if (show_header) title else NULL,
+        subtitle = if (show_header) subtitle else NULL,
+        show_header = show_header,
+        digits = digits
+      )
+      attr(output, "test_results") <- test_results
+      return(output)
     }
 
     # Build GT table
@@ -1452,11 +1637,13 @@ categorical_table <- function(data,
   # Apply Header and Theme
   # ===========================================================================
 
-  gt_table <- gt_table %>%
-    gt::tab_header(
-      title = title,
-      subtitle = subtitle
-    )
+  if (show_header && !is.null(title)) {
+    gt_table <- gt_table %>%
+      gt::tab_header(
+        title = title,
+        subtitle = subtitle
+      )
+  }
 
   # Rename Category column
   gt_table <- gt_table %>%
