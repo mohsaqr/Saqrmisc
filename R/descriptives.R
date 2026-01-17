@@ -1000,6 +1000,11 @@ descriptive_table <- function(data,
 #'   or "colorful". Default: "default".
 #' @param combine Logical. For single variables, combine n and % in one column?
 #'   Default: TRUE. Shows as "n (%)".
+#' @param interpret Logical. Pass results to AI for automatic interpretation?
+#'   Default FALSE. When TRUE, generates clean Methods and Results text using
+#'   AI. Requires API key setup (see \code{\link{set_api_key}}).
+#' @param ... Additional arguments passed to \code{\link{pass}} when
+#'   interpret = TRUE (e.g., provider, model, context).
 #'
 #' @return A gt table object (default) or data frame with frequencies and percentages.
 #' For cross-tabulations with chi_square = TRUE, includes test statistics.
@@ -1101,7 +1106,9 @@ categorical_table <- function(data,
                               subtitle = NULL,
                               format = c("gt", "plain", "markdown", "latex", "kable"),
                               theme = "default",
-                              combine = TRUE) {
+                              combine = TRUE,
+                              interpret = FALSE,
+                              ...) {
 
   # ===========================================================================
   # Input Validation
@@ -1629,6 +1636,38 @@ categorical_table <- function(data,
           locations = gt::cells_body(rows = n_rows)
         )
     }
+  }
+
+  # ===========================================================================
+  # AI Interpretation (if requested)
+  # ===========================================================================
+  if (interpret) {
+    # Build metadata for the interpretation
+    metadata <- list(
+      primary_var = var_str,
+      total_n = nrow(work_data),
+      analysis_type = if (is.null(by_str)) "frequency_table" else "cross_tabulation"
+    )
+
+    if (!is.null(by_str)) {
+      metadata$by_var <- by_str
+      metadata$chi_square_performed <- chi_square
+
+      # Include test results if available
+      if (!is.null(test_results)) {
+        metadata$chi_sq <- test_results$chi_sq
+        metadata$df <- test_results$df
+        metadata$p_value <- test_results$p_value
+        metadata$cramers_v <- test_results$cramers_v
+        metadata$effect_interpretation <- test_results$v_interp
+        if (fisher && !is.na(test_results$fisher_p)) {
+          metadata$fisher_p <- test_results$fisher_p
+        }
+      }
+    }
+
+    # Call the interpretation function
+    interpret_with_ai(gt_table, analysis_type = "categorical_analysis", metadata = metadata, ...)
   }
 
   return(gt_table)

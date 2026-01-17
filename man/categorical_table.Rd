@@ -24,7 +24,9 @@ categorical_table(
   subtitle = NULL,
   format = c("gt", "plain", "markdown", "latex", "kable"),
   theme = "default",
-  combine = TRUE
+  combine = TRUE,
+  interpret = FALSE,
+  ...
 )
 }
 \arguments{
@@ -79,6 +81,13 @@ or "colorful". Default: "default".}
 
 \item{combine}{Logical. For single variables, combine n and % in one column?
 Default: TRUE. Shows as "n (%)".}
+
+\item{interpret}{Logical. Pass results to AI for automatic interpretation?
+Default FALSE. When TRUE, generates clean Methods and Results text using
+AI. Requires API key setup (see \code{\link{set_api_key}}).}
+
+\item{...}{Additional arguments passed to \code{\link{pass}} when
+interpret = TRUE (e.g., provider, model, context).}
 }
 \value{
 A gt table object (default) or data frame with frequencies and percentages.
