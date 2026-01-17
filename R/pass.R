@@ -627,9 +627,9 @@ capture_smart_output <- function(x) {
 #' @param prompt Custom prompt to use. If NULL, builds from action and style.
 #' @param action What to do with the output:
 #'   \itemize{
-#'     \item `"interpret"` (default): Interpret the statistical results
+#'     \item `"write"` (default): Write publication-ready text (methods/results)
+#'     \item `"interpret"`: Interpret the statistical results
 #'     \item `"explain"`: Explain what the analysis does and means
-#'     \item `"write"`: Write publication-ready text (methods/results)
 #'     \item `"summarize"`: Brief summary of key findings
 #'     \item `"critique"`: Critical evaluation with limitations
 #'     \item `"suggest"`: Suggest follow-up analyses
@@ -639,7 +639,6 @@ capture_smart_output <- function(x) {
 #'     \item `"scientific"` (default): APA-style for academic papers
 #'     \item `"simple"`: Plain language, no jargon
 #'     \item `"detailed"`: Comprehensive with assumptions, limitations, caveats
-#'       (default for `action = "write"`)
 #'     \item `"brief"`: Just the key takeaway
 #'   }
 #' @param output Output format:
@@ -724,7 +723,7 @@ capture_smart_output <- function(x) {
 #' @export
 pass <- function(x,
                  prompt = NULL,
-                 action = c("interpret", "explain", "write", "summarize", "critique", "suggest"),
+                 action = c("write", "interpret", "explain", "summarize", "critique", "suggest"),
                  style = c("scientific", "simple", "detailed", "brief"),
                  output = c("text", "markdown", "md", "latex", "html"),
                  provider = c("openai", "anthropic", "gemini", "openrouter"),
@@ -737,19 +736,11 @@ pass <- function(x,
                  copy = FALSE,
                  quiet = FALSE) {
 
-  # Check if style was explicitly provided before match.arg
-style_missing <- missing(style)
-
   action <- match.arg(action)
   style <- match.arg(style)
   output <- match.arg(output)
   if (output == "md") output <- "markdown"  # Alias
   provider <- match.arg(provider)
-
-  # Default to "detailed" style for "write" action (unless user specified otherwise)
-  if (action == "write" && style_missing) {
-    style <- "detailed"
-  }
 
   # Auto-detect local servers if base_url not provided and auto_local is TRUE
   if (is.null(base_url) && auto_local) {

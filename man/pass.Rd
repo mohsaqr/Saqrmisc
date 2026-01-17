@@ -7,7 +7,7 @@
 pass(
   x,
   prompt = NULL,
-  action = c("interpret", "explain", "write", "summarize", "critique", "suggest"),
+  action = c("write", "interpret", "explain", "summarize", "critique", "suggest"),
   style = c("scientific", "simple", "detailed", "brief"),
   output = c("text", "markdown", "md", "latex", "html"),
   provider = c("openai", "anthropic", "gemini", "openrouter"),
@@ -28,9 +28,9 @@ pass(
 
 \item{action}{What to do with the output:
 \itemize{
-  \item `"interpret"` (default): Interpret the statistical results
+  \item `"write"` (default): Write publication-ready text (methods/results)
+  \item `"interpret"`: Interpret the statistical results
   \item `"explain"`: Explain what the analysis does and means
-  \item `"write"`: Write publication-ready text (methods/results)
   \item `"summarize"`: Brief summary of key findings
   \item `"critique"`: Critical evaluation with limitations
   \item `"suggest"`: Suggest follow-up analyses
@@ -41,7 +41,6 @@ pass(
   \item `"scientific"` (default): APA-style for academic papers
   \item `"simple"`: Plain language, no jargon
   \item `"detailed"`: Comprehensive with assumptions, limitations, caveats
-    (default for `action = "write"`)
   \item `"brief"`: Just the key takeaway
 }}
 
