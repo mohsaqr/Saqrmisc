@@ -945,7 +945,7 @@ descriptive_table <- function(data,
       )
   }
 
-  # Highlight "Overall" row if present
+  # Demarcate "Overall" row with thick top border if present
   if (!is.null(group_by_str) && overall) {
     overall_rows <- which(desc_data$Group == "Overall")
     if (length(overall_rows) > 0) {
@@ -953,7 +953,7 @@ descriptive_table <- function(data,
         gt::tab_style(
           style = list(
             gt::cell_text(weight = "bold"),
-            gt::cell_fill(color = "#FFF3CD")
+            gt::cell_borders(sides = "top", color = "black", weight = gt::px(2))
           ),
           locations = gt::cells_body(rows = overall_rows)
         )
