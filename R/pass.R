@@ -192,7 +192,18 @@ style_missing <- missing(style)
   cat("AI ", tools::toTitleCase(action), " (", style, " style, ", output, " format)\n", sep = "")
   cat(strrep("=", 60), "\n\n", sep = "")
   cat(response, "\n")
-  cat("\n", strrep("=", 60), "\n", sep = "")
+
+  # Add disclaimer
+  cat("\n", strrep("-", 60), "\n", sep = "")
+  cat("IMPORTANT: AI-generated interpretations may contain errors.\n")
+  cat("Always verify statistics against the original output below.\n")
+  cat(strrep("-", 60), "\n", sep = "")
+
+ # Print original R output for verification
+  cat("\nORIGINAL R OUTPUT (for verification):\n")
+  cat(strrep("-", 40), "\n", sep = "")
+  cat(output_text, "\n")
+  cat(strrep("=", 60), "\n", sep = "")
 
   # Copy to clipboard if requested
   if (copy) {
