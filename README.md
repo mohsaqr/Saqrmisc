@@ -129,6 +129,25 @@ correlations(mtcars, Vars = c("mpg", "hp", "wt"),
 - p-value with significance stars
 - Sample size (n)
 
+**Output Formats:**
+
+```r
+# Publication-ready gt table (default)
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), format = "gt")
+
+# Plain data frame
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), format = "plain")
+
+# Markdown table
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), format = "markdown")
+
+# LaTeX table
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), format = "latex")
+
+# Hide header
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), show_header = FALSE)
+```
+
 ### `correlation_matrix()` - Correlation Matrix
 
 Creates a publication-ready correlation matrix with significance stars and optional heatmap.
@@ -152,6 +171,14 @@ correlation_matrix(mtcars,
                   title = "Motor Trend Car Variables",
                   digits = 2,
                   theme = "colorful")
+
+# Different output formats
+correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), format = "plain")
+correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), format = "markdown")
+correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), format = "latex")
+
+# Hide header
+correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), show_header = FALSE)
 ```
 
 ---

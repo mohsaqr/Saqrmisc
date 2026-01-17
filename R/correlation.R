@@ -23,6 +23,16 @@
 #' @param title Optional title for the table.
 #' @param use Method for handling missing data: "pairwise" (default) or "complete".
 #'   Note: partial and semi-partial correlations always use complete cases.
+#' @param format Character. Output format:
+#'   \describe{
+#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
+#'     \item{`"plain"`}{Plain data frame (the correlation matrix)}
+#'     \item{`"markdown"`}{Markdown-formatted table}
+#'     \item{`"latex"`}{LaTeX tabular format}
+#'     \item{`"kable"`}{knitr::kable format}
+#'   }
+#' @param show_header Logical. Show title header? Default: `TRUE`.
+#'   Set to `FALSE` to hide the table header.
 #'
 #' @return A list containing:
 #' \itemize{
@@ -92,8 +102,9 @@ correlation_matrix <- function(data,
                                 heatmap = FALSE,
                                 digits = 2,
                                 title = NULL,
-                                use = c("pairwise", "complete")) {
-
+                                use = c("pairwise", "complete"),
+                                format = c("gt", "plain", "markdown", "latex", "kable"),
+                                show_header = TRUE) {
 
   # Match arguments
   type <- match.arg(type)
@@ -102,6 +113,7 @@ correlation_matrix <- function(data,
   diagonal <- match.arg(diagonal)
   p_adjust <- match.arg(p_adjust)
   use <- match.arg(use)
+  format <- match.arg(format)
 
   # Validate inputs
   if (!is.data.frame(data)) {
@@ -390,7 +402,129 @@ correlation_matrix <- function(data,
   display_df <- cbind(Variable = rownames(display_df), display_df)
   rownames(display_df) <- NULL
 
+  # Build default title
+  type_label <- switch(type,
+                       "bivariate" = "",
+                       "partial" = "Partial ",
+                       "semi-partial" = "Semi-partial ")
+  default_title <- paste0(type_label, "Correlation Matrix")
+  final_title <- if (!is.null(title)) title else default_title
+
+  # ===========================================================================
+  # Return Non-GT Formats
+  # ===========================================================================
+  if (format %in% c("plain", "markdown", "latex", "kable")) {
+    # Build base result
+    base_result <- list(
+      correlation_matrix = cor_matrix,
+      p_matrix = p_matrix,
+      n_matrix = n_matrix,
+      type = type,
+      method = method
+    )
+
+    if (show_ci && method == "pearson") {
+      base_result$ci_lower <- ci_lower
+      base_result$ci_upper <- ci_upper
+    }
+
+    # Plain format - return data frame
+    if (format == "plain") {
+      base_result$display = display_df
+      print(display_df)
+      return(invisible(base_result))
+    }
+
+    # Markdown format
+    if (format == "markdown") {
+      header <- paste("|", paste(names(display_df), collapse = " | "), "|")
+      separator <- paste("|", paste(rep("---", ncol(display_df)), collapse = " | "), "|")
+
+      rows <- apply(display_df, 1, function(row) {
+        paste("|", paste(row, collapse = " | "), "|")
+      })
+
+      if (show_header) {
+        md_table <- paste(c(
+          paste0("## ", final_title),
+          "",
+          header, separator, rows,
+          "",
+          if (stars) "\\* p < .05, \\*\\* p < .01, \\*\\*\\* p < .001" else NULL
+        ), collapse = "\n")
+      } else {
+        md_table <- paste(c(header, separator, rows), collapse = "\n")
+      }
+
+      class(md_table) <- c("markdown_table", "character")
+      base_result$table <- md_table
+      base_result$display <- display_df
+      print(md_table)
+      return(invisible(base_result))
+    }
+
+    # LaTeX format
+    if (format == "latex") {
+      col_align <- paste(rep("l", ncol(display_df)), collapse = "")
+      header <- paste(names(display_df), collapse = " & ")
+
+      rows <- apply(display_df, 1, function(row) {
+        paste(row, collapse = " & ")
+      })
+
+      if (show_header) {
+        latex_table <- paste(c(
+          paste0("% ", final_title),
+          paste0("\\begin{tabular}{", col_align, "}"),
+          "\\hline",
+          paste0(header, " \\\\"),
+          "\\hline",
+          paste0(rows, " \\\\"),
+          "\\hline",
+          "\\end{tabular}"
+        ), collapse = "\n")
+      } else {
+        latex_table <- paste(c(
+          paste0("\\begin{tabular}{", col_align, "}"),
+          "\\hline",
+          paste0(header, " \\\\"),
+          "\\hline",
+          paste0(rows, " \\\\"),
+          "\\hline",
+          "\\end{tabular}"
+        ), collapse = "\n")
+      }
+
+      class(latex_table) <- c("latex_table", "character")
+      base_result$table <- latex_table
+      base_result$display <- display_df
+      print(latex_table)
+      return(invisible(base_result))
+    }
+
+    # Kable format
+    if (format == "kable") {
+      if (requireNamespace("knitr", quietly = TRUE)) {
+        kable_out <- knitr::kable(display_df, format = "markdown", digits = digits)
+        if (show_header) {
+          kable_out <- c(paste0("## ", final_title), "", kable_out)
+        }
+        base_result$table <- kable_out
+        base_result$display <- display_df
+        print(kable_out)
+        return(invisible(base_result))
+      } else {
+        warning("knitr not available, returning plain format")
+        base_result$display <- display_df
+        print(display_df)
+        return(invisible(base_result))
+      }
+    }
+  }
+
+  # ===========================================================================
   # Create gt table
+  # ===========================================================================
   gt_table <- gt::gt(display_df) |>
     gt::cols_align(align = "center", columns = -1) |>
     gt::cols_align(align = "left", columns = 1) |>
@@ -399,10 +533,10 @@ correlation_matrix <- function(data,
       locations = gt::cells_body(columns = 1)
     )
 
-  # Add title if provided
-  if (!is.null(title)) {
+  # Add title if provided (respecting show_header)
+  if (show_header && !is.null(final_title)) {
     gt_table <- gt_table |>
-      gt::tab_header(title = title)
+      gt::tab_header(title = final_title)
   }
 
   # Add footnote for stars
@@ -414,10 +548,6 @@ correlation_matrix <- function(data,
   }
 
   # Add method note
-  type_label <- switch(type,
-                       "bivariate" = "",
-                       "partial" = "Partial ",
-                       "semi-partial" = "Semi-partial ")
   method_note <- paste0(type_label, "Correlation method: ",
                         switch(method,
                                "pearson" = "Pearson",
@@ -584,6 +714,16 @@ correlation_matrix <- function(data,
 #'   across all pairs, they are moved to the subtitle instead of shown as columns.
 #' @param digits Number of decimal places. Default 3.
 #' @param title Optional title for the table.
+#' @param format Character. Output format:
+#'   \describe{
+#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
+#'     \item{`"plain"`}{Plain data frame}
+#'     \item{`"markdown"`}{Markdown-formatted table}
+#'     \item{`"latex"`}{LaTeX tabular format}
+#'     \item{`"kable"`}{knitr::kable format}
+#'   }
+#' @param show_header Logical. Show title/subtitle header? Default: `TRUE`.
+#'   Set to `FALSE` to hide the table header.
 #'
 #' @return A list containing:
 #' \itemize{
@@ -671,13 +811,15 @@ correlations <- function(data,
                          exclude = NULL,
                          auto_consolidate = TRUE,
                          digits = 3,
-                         title = NULL) {
+                         title = NULL,
+                         format = c("gt", "plain", "markdown", "latex", "kable"),
+                         show_header = TRUE) {
 
   # Match arguments
   type <- match.arg(type)
-
   method <- match.arg(method)
   p_adjust <- match.arg(p_adjust)
+  format <- match.arg(format)
 
   # Validate include/exclude
   valid_stats <- c("r", "ci", "stat", "df", "p", "n", "sig")
@@ -1309,19 +1451,9 @@ correlations <- function(data,
     }
   }
 
-  # Create gt table
-  left_cols <- c("Variable1", "Variable2")
-  if (multilevel && "Level" %in% names(display_df)) left_cols <- c(left_cols, "Level")
-
-  gt_table <- gt::gt(display_df) |>
-    gt::cols_align(align = "left", columns = left_cols) |>
-    gt::cols_align(align = "center", columns = setdiff(names(display_df), left_cols)) |>
-    gt::tab_style(
-      style = gt::cell_text(weight = "bold"),
-      locations = gt::cells_body(columns = c("Variable1", "Variable2"))
-    )
-
-  # Title
+  # ===========================================================================
+  # Build title and subtitle strings
+  # ===========================================================================
   type_label <- switch(type,
                        "bivariate" = "",
                        "partial" = "Partial ",
@@ -1354,11 +1486,158 @@ correlations <- function(data,
     }
   }
 
-  gt_table <- gt_table |>
-    gt::tab_header(
-      title = if (!is.null(title)) title else default_title,
-      subtitle = subtitle
+  final_title <- if (!is.null(title)) title else default_title
+
+  # ===========================================================================
+  # Return Non-GT Formats
+  # ===========================================================================
+  if (format %in% c("plain", "markdown", "latex", "kable")) {
+    # Plain format - return data frame
+    if (format == "plain") {
+      result <- list(
+        data = results_df,
+        display = display_df,
+        n_pairs = nrow(results_df),
+        n_significant = n_significant,
+        type = type,
+        method = method,
+        p_adjust = p_adjust,
+        consolidated = consolidated_info
+      )
+      if (multilevel) {
+        result$multilevel <- TRUE
+        result$n_clusters <- n_clusters
+        result$id_var <- id_var
+        if (between && !is.null(between_df)) {
+          result$between_data <- between_df
+        }
+      }
+      print(display_df)
+      return(invisible(result))
+    }
+
+    # Markdown format
+    if (format == "markdown") {
+      # Build markdown table
+      header <- paste("|", paste(names(display_df), collapse = " | "), "|")
+      separator <- paste("|", paste(rep("---", ncol(display_df)), collapse = " | "), "|")
+
+      rows <- apply(display_df, 1, function(row) {
+        paste("|", paste(row, collapse = " | "), "|")
+      })
+
+      if (show_header) {
+        md_table <- paste(c(
+          paste0("## ", final_title),
+          paste0("*", subtitle, "*"),
+          "",
+          header, separator, rows,
+          "",
+          "\\* p < .05, \\*\\* p < .01, \\*\\*\\* p < .001"
+        ), collapse = "\n")
+      } else {
+        md_table <- paste(c(header, separator, rows), collapse = "\n")
+      }
+
+      class(md_table) <- c("markdown_table", "character")
+      print(md_table)
+      return(invisible(list(
+        table = md_table,
+        data = results_df,
+        display = display_df,
+        n_pairs = nrow(results_df),
+        n_significant = n_significant
+      )))
+    }
+
+    # LaTeX format
+    if (format == "latex") {
+      col_align <- paste(rep("l", ncol(display_df)), collapse = "")
+      header <- paste(names(display_df), collapse = " & ")
+
+      rows <- apply(display_df, 1, function(row) {
+        paste(row, collapse = " & ")
+      })
+
+      if (show_header) {
+        latex_table <- paste(c(
+          paste0("% ", final_title),
+          "\\begin{tabular}{", col_align, "}",
+          "\\hline",
+          paste0(header, " \\\\"),
+          "\\hline",
+          paste0(rows, " \\\\"),
+          "\\hline",
+          "\\end{tabular}",
+          paste0("% ", subtitle)
+        ), collapse = "\n")
+      } else {
+        latex_table <- paste(c(
+          "\\begin{tabular}{", col_align, "}",
+          "\\hline",
+          paste0(header, " \\\\"),
+          "\\hline",
+          paste0(rows, " \\\\"),
+          "\\hline",
+          "\\end{tabular}"
+        ), collapse = "\n")
+      }
+
+      class(latex_table) <- c("latex_table", "character")
+      print(latex_table)
+      return(invisible(list(
+        table = latex_table,
+        data = results_df,
+        display = display_df,
+        n_pairs = nrow(results_df),
+        n_significant = n_significant
+      )))
+    }
+
+    # Kable format
+    if (format == "kable") {
+      if (requireNamespace("knitr", quietly = TRUE)) {
+        kable_out <- knitr::kable(display_df, format = "markdown", digits = digits)
+        if (show_header) {
+          kable_out <- c(paste0("## ", final_title), "", kable_out)
+        }
+        print(kable_out)
+        return(invisible(list(
+          table = kable_out,
+          data = results_df,
+          display = display_df,
+          n_pairs = nrow(results_df),
+          n_significant = n_significant
+        )))
+      } else {
+        warning("knitr not available, returning markdown format")
+        format <- "markdown"
+      }
+    }
+  }
+
+  # ===========================================================================
+  # Create gt table
+  # ===========================================================================
+  left_cols <- c("Variable1", "Variable2")
+  if (multilevel && "Level" %in% names(display_df)) left_cols <- c(left_cols, "Level")
+
+  gt_table <- gt::gt(display_df) |>
+    gt::cols_align(align = "left", columns = left_cols) |>
+    gt::cols_align(align = "center", columns = setdiff(names(display_df), left_cols)) |>
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_body(columns = c("Variable1", "Variable2"))
     )
+
+  # Add header (respecting show_header parameter)
+  if (show_header) {
+    gt_table <- gt_table |>
+      gt::tab_header(
+        title = final_title,
+        subtitle = subtitle
+      )
+  }
 
   # Footnotes
   footnote <- "* p < .05, ** p < .01, *** p < .001"
