@@ -2,6 +2,9 @@
 #
 # Functions for passing R output to AI for interpretation.
 
+# Null coalescing operator (if not from rlang)
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
 #' Pass R Output to AI for Interpretation
 #'
 #' @description
@@ -35,14 +38,15 @@
 #'     \item `"latex"`: LaTeX formatted for papers
 #'     \item `"html"`: HTML formatted
 #'   }
-#' @param provider AI provider: `"anthropic"` (default), `"openai"`, or `"gemini"`
-#' @param model Model to use. Defaults: `"claude-sonnet-4-20250514"` (Anthropic),
-#'   `"gpt-4o"` (OpenAI), `"gemini-2.5-flash"` (Gemini).
+#' @param provider AI provider: `"openai"` (default), `"anthropic"`, `"gemini"`, or `"openrouter"`.
+#' @param model Model to use. Defaults: `"gpt-4o"` (OpenAI), `"claude-sonnet-4-20250514"` (Anthropic),
+#'   `"gemini-2.5-flash"` (Gemini), `"anthropic/claude-sonnet-4"` (OpenRouter).
 #' @param base_url Custom API base URL for OpenAI-compatible servers (e.g., LM Studio,
 #'   Ollama, vLLM). Example: `"http://127.0.0.1:1234"` for LM Studio. When set,
 #'   uses OpenAI-compatible format regardless of provider setting.
 #' @param api_key API key. If NULL, checks environment variables
-#'   (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY`), then prompts interactively.
+#'   (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY`),
+#'   then prompts interactively.
 #'   For local servers like LM Studio, use `api_key = "none"` or any string.
 #' @param context Optional context about your study (e.g., "This is a study on
 #'   student learning outcomes with N=500 participants")
@@ -112,7 +116,7 @@ pass <- function(x,
                  action = c("interpret", "explain", "write", "summarize", "critique", "suggest"),
                  style = c("scientific", "simple", "detailed", "brief"),
                  output = c("text", "markdown", "md", "latex", "html"),
-                 provider = c("anthropic", "openai", "gemini"),
+                 provider = c("openai", "anthropic", "gemini", "openrouter"),
                  model = NULL,
                  base_url = NULL,
                  api_key = NULL,
@@ -171,9 +175,10 @@ style_missing <- missing(style)
       model <- "local-model"  # Placeholder, LM Studio uses loaded model
     } else {
       model <- switch(provider,
-        anthropic = "claude-sonnet-4-20250514",
         openai = "gpt-4o",
-        gemini = "gemini-2.5-flash"
+        anthropic = "claude-sonnet-4-20250514",
+        gemini = "gemini-2.5-flash",
+        openrouter = "anthropic/claude-sonnet-4"
       )
     }
   }
@@ -325,9 +330,10 @@ get_api_key <- function(provider, api_key = NULL, quiet = FALSE) {
 
   # Check environment variable
   env_var <- switch(provider,
-    anthropic = "ANTHROPIC_API_KEY",
     openai = "OPENAI_API_KEY",
-    gemini = "GEMINI_API_KEY"
+    anthropic = "ANTHROPIC_API_KEY",
+    gemini = "GEMINI_API_KEY",
+    openrouter = "OPENROUTER_API_KEY"
   )
   key <- Sys.getenv(env_var)
 
@@ -459,9 +465,10 @@ build_user_prompt <- function(output_text, obj_info, custom_prompt, context, act
 #' @noRd
 call_ai_api <- function(provider, model, api_key, system_prompt, user_prompt) {
   switch(provider,
-    anthropic = call_anthropic(model, api_key, system_prompt, user_prompt),
     openai = call_openai(model, api_key, system_prompt, user_prompt),
-    gemini = call_gemini(model, api_key, system_prompt, user_prompt)
+    anthropic = call_anthropic(model, api_key, system_prompt, user_prompt),
+    gemini = call_gemini(model, api_key, system_prompt, user_prompt),
+    openrouter = call_openrouter(model, api_key, system_prompt, user_prompt)
   )
 }
 
@@ -628,28 +635,67 @@ call_gemini <- function(model, api_key, system_prompt, user_prompt) {
   result$candidates[[1]]$content$parts[[1]]$text
 }
 
+#' Call OpenRouter API
+#' @noRd
+call_openrouter <- function(model, api_key, system_prompt, user_prompt) {
+  if (!requireNamespace("httr2", quietly = TRUE)) {
+    stop("Package 'httr2' is required. Install with: install.packages('httr2')")
+  }
+
+  body <- list(
+    model = model,
+    messages = list(
+      list(role = "system", content = system_prompt),
+      list(role = "user", content = user_prompt)
+    ),
+    max_tokens = 2048
+  )
+
+  req <- httr2::request("https://openrouter.ai/api/v1/chat/completions") |>
+    httr2::req_headers(
+      Authorization = paste("Bearer", api_key),
+      `Content-Type` = "application/json",
+      `HTTP-Referer` = "https://github.com/mohsaqr/Saqrmisc",
+      `X-Title` = "Saqrmisc R Package"
+    ) |>
+    httr2::req_body_json(body) |>
+    httr2::req_error(is_error = function(resp) FALSE)
+
+  resp <- httr2::req_perform(req)
+
+  if (httr2::resp_status(resp) != 200) {
+    error_body <- httr2::resp_body_json(resp)
+    stop("API error: ", error_body$error$message %||% httr2::resp_status_desc(resp))
+  }
+
+  result <- httr2::resp_body_json(resp)
+  result$choices[[1]]$message$content
+}
+
 #' Set API Key for Session
 #'
 #' @description
 #' Convenience function to set your API key for the current R session.
 #'
 #' @param key Your API key
-#' @param provider Provider name: "anthropic", "openai", or "gemini"
+#' @param provider Provider name: "openai" (default), "anthropic", "gemini", or "openrouter"
 #'
 #' @examples
 #' \dontrun{
-#' set_api_key("sk-ant-...", "anthropic")
 #' set_api_key("sk-...", "openai")
+#' set_api_key("sk-ant-...", "anthropic")
 #' set_api_key("AIza...", "gemini")
+#' set_api_key("sk-or-...", "openrouter")
 #' }
 #'
 #' @export
-set_api_key <- function(key, provider = c("anthropic", "openai", "gemini")) {
+set_api_key <- function(key, provider = c("openai", "anthropic", "gemini", "openrouter")) {
   provider <- match.arg(provider)
   env_var <- switch(provider,
-    anthropic = "ANTHROPIC_API_KEY",
     openai = "OPENAI_API_KEY",
-    gemini = "GEMINI_API_KEY"
+    anthropic = "ANTHROPIC_API_KEY",
+    gemini = "GEMINI_API_KEY",
+    openrouter = "OPENROUTER_API_KEY"
   )
   do.call(Sys.setenv, setNames(list(key), env_var))
   message("API key set for ", provider, " (this session only)")

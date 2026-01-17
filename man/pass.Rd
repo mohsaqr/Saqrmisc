@@ -10,7 +10,7 @@ pass(
   action = c("interpret", "explain", "write", "summarize", "critique", "suggest"),
   style = c("scientific", "simple", "detailed", "brief"),
   output = c("text", "markdown", "md", "latex", "html"),
-  provider = c("anthropic", "openai", "gemini"),
+  provider = c("openai", "anthropic", "gemini", "openrouter"),
   model = NULL,
   base_url = NULL,
   api_key = NULL,
@@ -53,17 +53,18 @@ pass(
   \item `"html"`: HTML formatted
 }}
 
-\item{provider}{AI provider: `"anthropic"` (default), `"openai"`, or `"gemini"`}
+\item{provider}{AI provider: `"openai"` (default), `"anthropic"`, `"gemini"`, or `"openrouter"`.}
 
-\item{model}{Model to use. Defaults: `"claude-sonnet-4-20250514"` (Anthropic),
-`"gpt-4o"` (OpenAI), `"gemini-2.5-flash"` (Gemini).}
+\item{model}{Model to use. Defaults: `"gpt-4o"` (OpenAI), `"claude-sonnet-4-20250514"` (Anthropic),
+`"gemini-2.5-flash"` (Gemini), `"anthropic/claude-sonnet-4"` (OpenRouter).}
 
 \item{base_url}{Custom API base URL for OpenAI-compatible servers (e.g., LM Studio,
 Ollama, vLLM). Example: `"http://127.0.0.1:1234"` for LM Studio. When set,
 uses OpenAI-compatible format regardless of provider setting.}
 
 \item{api_key}{API key. If NULL, checks environment variables
-(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY`), then prompts interactively.
+(`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY`),
+then prompts interactively.
 For local servers like LM Studio, use `api_key = "none"` or any string.}
 
 \item{context}{Optional context about your study (e.g., "This is a study on

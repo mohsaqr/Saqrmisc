@@ -680,9 +680,10 @@ aov(mpg ~ factor(cyl), data = mtcars) |> summary() |> pass(action = "write")
 
 ```r
 # Cloud providers
-pass(result, provider = "anthropic")  # Claude (default)
-pass(result, provider = "openai")     # GPT-4
-pass(result, provider = "gemini")     # Gemini
+pass(result, provider = "openai")      # GPT-4 (default)
+pass(result, provider = "anthropic")   # Claude
+pass(result, provider = "gemini")      # Gemini
+pass(result, provider = "openrouter")  # OpenRouter (access to many models)
 
 # Local servers (LM Studio, Ollama, vLLM)
 pass(result, base_url = "http://127.0.0.1:1234")
@@ -774,15 +775,17 @@ R Foundation for Statistical Computing. https://www.R-project.org/
 
 ```r
 # Set API key for session
-set_api_key("your-api-key", provider = "anthropic")
-set_api_key("your-api-key", provider = "openai")
-set_api_key("your-api-key", provider = "gemini")
+set_api_key("your-api-key", provider = "openai")      # OpenAI (default)
+set_api_key("your-api-key", provider = "anthropic")   # Anthropic
+set_api_key("your-api-key", provider = "gemini")      # Google Gemini
+set_api_key("your-api-key", provider = "openrouter")  # OpenRouter
 
 # Or use environment variables (recommended)
 # Add to .Renviron:
-# ANTHROPIC_API_KEY=your-key
 # OPENAI_API_KEY=your-key
+# ANTHROPIC_API_KEY=your-key
 # GEMINI_API_KEY=your-key
+# OPENROUTER_API_KEY=your-key
 ```
 
 ---
