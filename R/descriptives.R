@@ -207,7 +207,7 @@ calculate_stat <- function(x, stat, digits = 2) {
 #'   Default: `"Descriptive Statistics"`.
 #' @param subtitle Optional character string for table subtitle.
 #' @param overall Logical. When `group_by` is specified, also include
-#'   overall (ungrouped) statistics? Default: TRUE.
+#'   overall (ungrouped) statistics? Default: FALSE.
 #' @param transpose Logical. Transpose the table so variables are columns
 #'   and statistics are rows? Default: FALSE.
 #' @param format Character. Output format: "gt" (default, publication-ready gt table),
@@ -320,7 +320,7 @@ descriptive_table <- function(data,
                               labels = NULL,
                               title = "Descriptive Statistics",
                               subtitle = NULL,
-                              overall = TRUE,
+                              overall = FALSE,
                               transpose = FALSE,
                               format = c("gt", "plain", "markdown", "latex", "kable"),
                               show_header = TRUE,

@@ -13,7 +13,7 @@ descriptive_table(
   labels = NULL,
   title = "Descriptive Statistics",
   subtitle = NULL,
-  overall = TRUE,
+  overall = FALSE,
   transpose = FALSE,
   format = c("gt", "plain", "markdown", "latex", "kable"),
   show_header = TRUE,
@@ -54,7 +54,7 @@ Default: `"Descriptive Statistics"`.}
 \item{subtitle}{Optional character string for table subtitle.}
 
 \item{overall}{Logical. When `group_by` is specified, also include
-overall (ungrouped) statistics? Default: TRUE.}
+overall (ungrouped) statistics? Default: FALSE.}
 
 \item{transpose}{Logical. Transpose the table so variables are columns
 and statistics are rows? Default: FALSE.}
