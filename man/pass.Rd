@@ -7,6 +7,7 @@
 pass(
   x,
   prompt = NULL,
+  add_prompt = NULL,
   action = c("write", "interpret", "explain", "summarize", "critique", "suggest"),
   style = c("scientific", "simple", "detailed", "brief"),
   output = c("text", "markdown", "md", "latex", "html"),
@@ -24,7 +25,11 @@ pass(
 \arguments{
 \item{x}{Any R object to interpret (test result, model, data frame, etc.)}
 
-\item{prompt}{Custom prompt to use. If NULL, builds from action and style.}
+\item{prompt}{Custom prompt to use. If NULL, builds from action and style.
+Note: This REPLACES the default prompt entirely.}
+
+\item{add_prompt}{Additional instructions to ADD to the default prompt.
+Unlike `prompt`, this appends to (not replaces) the auto-generated prompt.}
 
 \item{action}{What to do with the output:
 \itemize{
@@ -118,8 +123,12 @@ aov(mpg ~ factor(cyl), data = mtcars) |> summary() |>
 # Critique an analysis
 lm(mpg ~ ., data = mtcars) |> summary() |> pass(action = "critique")
 
-# Custom prompt (specific request to the AI)
+# Custom prompt (REPLACES default - specific request to the AI)
 my_results |> pass(prompt = "Focus only on the interaction effects")
+
+# Add to default prompt (keeps "write methods/results" + your addition)
+my_results |> pass(add_prompt = "Also mention limitations of the sample size")
+my_results |> pass(action = "write", add_prompt = "Include a brief discussion section")
 
 # Custom context (about your study)
 t.test(score ~ group, data = mydata) |>
