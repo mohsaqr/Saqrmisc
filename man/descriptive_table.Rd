@@ -15,7 +15,8 @@ descriptive_table(
   subtitle = NULL,
   overall = TRUE,
   transpose = FALSE,
-  format = "gt",
+  format = c("gt", "plain", "markdown", "latex", "kable"),
+  show_header = TRUE,
   theme = "default",
   compare = FALSE,
   bold_highest = NULL,
@@ -38,27 +39,9 @@ stratified statistics. When provided, statistics are calculated separately
 for each group level.}
 
 \item{stats}{Character vector specifying which statistics to compute.
-Default: `c("n", "mean", "sd", "median", "min", "max")`.
-Available options:
-\describe{
-  \item{`"n"`}{Sample size (non-missing)}
-  \item{`"missing"`}{Count of missing values}
-  \item{`"missing_pct"`}{Percentage of missing values}
-  \item{`"mean"`}{Arithmetic mean}
-  \item{`"sd"`}{Standard deviation}
-  \item{`"se"`}{Standard error of the mean}
-  \item{`"var"`}{Variance}
-  \item{`"median"`}{Median (50th percentile)}
-  \item{`"min"`}{Minimum value}
-  \item{`"max"`}{Maximum value}
-  \item{`"range"`}{Range (max - min)}
-  \item{`"iqr"`}{Interquartile range (Q3 - Q1)}
-  \item{`"q1"`}{First quartile (25th percentile)}
-  \item{`"q3"`}{Third quartile (75th percentile)}
-  \item{`"skewness"`}{Skewness coefficient}
-  \item{`"kurtosis"`}{Excess kurtosis (normal = 0)}
-  \item{`"cv"`}{Coefficient of variation (\%)}
-}}
+Default: c("n", "mean", "sd", "median", "min", "max").
+Available options: "n", "missing", "missing_pct", "mean", "sd", "se", "var",
+"median", "min", "max", "range", "iqr", "q1", "q3", "skewness", "kurtosis", "cv".}
 
 \item{digits}{Integer. Number of decimal places for numeric output.
 Default: `2`.}
@@ -78,8 +61,11 @@ overall (ungrouped) statistics? Default: `TRUE`.}
 \item{transpose}{Logical. Transpose the table so variables are columns
 and statistics are rows? Default: `FALSE`.}
 
-\item{format}{Character. Output format: `"gt"` (default) for gt table,
-`"data.frame"` for raw data frame, or `"kable"` for kableExtra HTML table.}
+\item{format}{Character. Output format: "gt" (default, publication-ready gt table),
+"plain" (data frame), "markdown", "latex", or "kable".}
+
+\item{show_header}{Logical. Show title/subtitle header? Default TRUE.
+Set to FALSE to hide the table header.}
 
 \item{theme}{Character. Visual theme for gt table. Default: `"default"`.
 Options:
@@ -102,11 +88,8 @@ mean for each variable? Default: `TRUE` when compare is `TRUE`.}
 Default: `"red"`. Set to `NULL` to disable coloring.}
 }
 \value{
-Depending on `format`:
-\describe{
-  \item{`"gt"`}{A gt table object that can be printed or exported}
-  \item{`"data.frame"`}{A data frame with computed statistics}
-}
+Depending on format: a gt table object (default), a data frame (plain),
+  a markdown string, a LaTeX string, or a knitr::kable object.
 }
 \description{
 Creates a comprehensive, publication-ready table of descriptive statistics

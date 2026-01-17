@@ -19,7 +19,9 @@ correlation_matrix(
   heatmap = FALSE,
   digits = 2,
   title = NULL,
-  use = c("pairwise", "complete")
+  use = c("pairwise", "complete"),
+  format = c("gt", "plain", "markdown", "latex", "kable"),
+  show_header = TRUE
 )
 }
 \arguments{
@@ -55,6 +57,12 @@ For partial/semi-partial, each pair is controlled for all other variables in Var
 
 \item{use}{Method for handling missing data: "pairwise" (default) or "complete".
 Note: partial and semi-partial correlations always use complete cases.}
+
+\item{format}{Character. Output format: "gt" (default, publication-ready gt table),
+"plain" (data frame), "markdown", "latex", or "kable".}
+
+\item{show_header}{Logical. Show title header? Default: `TRUE`.
+Set to `FALSE` to hide the table header.}
 }
 \value{
 A list containing:

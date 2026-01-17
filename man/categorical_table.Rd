@@ -13,6 +13,7 @@ categorical_table(
   show_n = TRUE,
   show_total = TRUE,
   show_missing = FALSE,
+  show_header = TRUE,
   chi_square = TRUE,
   fisher = FALSE,
   cramers_v = TRUE,
@@ -21,7 +22,7 @@ categorical_table(
   labels = NULL,
   title = NULL,
   subtitle = NULL,
-  format = "gt",
+  format = c("gt", "plain", "markdown", "latex", "kable"),
   theme = "default",
   combine = TRUE
 )
@@ -48,6 +49,9 @@ Default: `c("col")` for cross-tabs, `c("total")` for single variable.}
 \item{show_missing}{Logical. Include missing values as a category?
 Default: `FALSE`.}
 
+\item{show_header}{Logical. Show title/subtitle header? Default: `TRUE`.
+Set to `FALSE` to hide the table header.}
+
 \item{chi_square}{Logical. Compute chi-square test for cross-tabulations?
 Default: `TRUE`.}
 
@@ -67,10 +71,11 @@ Default: `FALSE`.}
 
 \item{subtitle}{Optional character string for table subtitle.}
 
-\item{format}{Character. Output format: `"gt"` (default) or `"data.frame"`.}
+\item{format}{Character. Output format: "gt" (default, publication-ready gt table),
+"plain" (data frame), "markdown", "latex", or "kable".}
 
-\item{theme}{Character. Visual theme: `"default"`, `"minimal"`, `"dark"`,
-`"colorful"`. Default: `"default"`.}
+\item{theme}{Character. Visual theme: "default", "minimal", "dark",
+or "colorful". Default: "default".}
 
 \item{combine}{Logical. For single variables, combine n and % in one column?
 Default: `TRUE`. Shows as "n (%)".}

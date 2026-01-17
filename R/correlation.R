@@ -23,14 +23,8 @@
 #' @param title Optional title for the table.
 #' @param use Method for handling missing data: "pairwise" (default) or "complete".
 #'   Note: partial and semi-partial correlations always use complete cases.
-#' @param format Character. Output format:
-#'   \describe{
-#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
-#'     \item{`"plain"`}{Plain data frame (the correlation matrix)}
-#'     \item{`"markdown"`}{Markdown-formatted table}
-#'     \item{`"latex"`}{LaTeX tabular format}
-#'     \item{`"kable"`}{knitr::kable format}
-#'   }
+#' @param format Character. Output format: "gt" (default, publication-ready gt table),
+#'   "plain" (data frame), "markdown", "latex", or "kable".
 #' @param show_header Logical. Show title header? Default: `TRUE`.
 #'   Set to `FALSE` to hide the table header.
 #'
@@ -638,27 +632,14 @@ correlation_matrix <- function(data,
 #'   across all pairs, they are moved to the subtitle instead of shown as columns.
 #' @param digits Number of decimal places. Default 3.
 #' @param title Optional title for the table.
-#' @param format Character. Output format:
-#'   \describe{
-#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
-#'     \item{`"plain"`}{Plain data frame}
-#'     \item{`"markdown"`}{Markdown-formatted table}
-#'     \item{`"latex"`}{LaTeX tabular format}
-#'     \item{`"kable"`}{knitr::kable format}
-#'   }
-#' @param show_header Logical. Show title/subtitle header? Default: `TRUE`.
-#'   Set to `FALSE` to hide the table header.
+#' @param format Character. Output format: "gt" (default, publication-ready gt table),
+#'   "plain" (data frame), "markdown", "latex", or "kable".
+#' @param show_header Logical. Show title/subtitle header? Default TRUE.
+#'   Set to FALSE to hide the table header.
 #'
-#' @return A list containing:
-#' \itemize{
-#'   \item \code{table}: A gt table with full correlation statistics
-#'   \item \code{data}: Data frame with all statistics
-#'   \item \code{display}: Data frame as displayed (after include/exclude filtering)
-#'   \item \code{n_pairs}: Number of variable pairs
-#'   \item \code{n_significant}: Number of significant correlations
-#'   \item \code{consolidated}: List of values moved to subtitle (df, n if constant)
-#'   \item \code{between_data}: Between-cluster correlations (if multilevel & between = TRUE)
-#' }
+#' @return A list containing: table (formatted output), data (raw statistics),
+#'   display (formatted display data frame), n_pairs, n_significant,
+#'   consolidated (values moved to subtitle), between_data (if multilevel).
 #'
 #' @details
 #' When \code{multilevel = TRUE}, the function calculates within-cluster correlations

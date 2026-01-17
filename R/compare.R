@@ -395,26 +395,12 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @param repeat_category Optional character. Name of a stratification variable.
 #'   When provided, separate analyses are performed for each level (e.g., analyze
 #'   gender differences separately for each country).
-#' @param plots Logical. Generate visualizations? Default: `TRUE`.
-#' @param plot_style Character. Style of plots to generate:
-#'   \describe{
-#'     \item{`"points"` (default)}{Jittered points with mean and CI error bars - clean and modern}
-#'     \item{`"boxplot"`}{Modern boxplot with jittered points overlay}
-#'     \item{`"bar"`}{Bar plot with CI error bars - classic presentation style}
-#'     \item{`"violin"`}{Violin plot with inner boxplot showing distribution shape}
-#'     \item{`"ggstatsplot"`}{Original ggstatsplot style with statistical annotations
-#'       (requires ggstatsplot package - will prompt to install if missing)}
-#'   }
-#' @param table Logical. Generate summary statistics table? Default: `TRUE`.
-#' @param type Character. Type of statistical test to use. Options:
-#'   \describe{
-#'     \item{`"auto"` (default)}{Automatic selection: parametric tests}
-#'     \item{`"parametric"`, `"p"`}{Parametric tests (t-test for 2 groups, ANOVA for 3+)}
-#'     \item{`"nonparametric"`, `"np"`}{Nonparametric tests (Mann-Whitney/Kruskal-Wallis)}
-#'     \item{`"kw"`}{Kruskal-Wallis (same as "np", for 3+ groups)}
-#'     \item{`"mw"`}{Mann-Whitney (same as "np", for 2 groups)}
-#'     \item{`"bayes"`, `"bf"`}{Bayesian tests with Bayes Factors}
-#'   }
+#' @param plots Logical. Generate visualizations? Default TRUE.
+#' @param plot_style Character. Style of plots: "points" (default, jittered with CI),
+#'   "boxplot", "bar", "violin", or "ggstatsplot" (requires ggstatsplot package).
+#' @param table Logical. Generate summary statistics table? Default TRUE.
+#' @param type Character. Type of statistical test: "auto" (default), "parametric"/"p",
+#'   "nonparametric"/"np", "kw" (Kruskal-Wallis), "mw" (Mann-Whitney), or "bayes"/"bf".
 #' @param bayesian Logical. Compute Bayesian t-tests with Bayes Factors? Default: `FALSE`.
 #'   Requires the BayesFactor package. Can also use `type = "bayes"`.
 #' @param equivalence Logical. Perform equivalence testing (TOST)? Default: `FALSE`.
@@ -446,16 +432,10 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #'   results into a single table? Default: `TRUE`. The combined table shows
 #'   all repeat_category levels together with bold highest means and red
 #'   significant p-values.
-#' @param format Character. Output format for tables:
-#'   \describe{
-#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
-#'     \item{`"plain"`}{Plain data frame}
-#'     \item{`"markdown"`}{Markdown-formatted table}
-#'     \item{`"latex"`}{LaTeX tabular format}
-#'     \item{`"kable"`}{knitr::kable format}
-#'   }
-#' @param show_header Logical. Show title/subtitle header? Default: `TRUE`.
-#'   Set to `FALSE` to hide the table header.
+#' @param format Character. Output format for tables: "gt" (default, publication-ready),
+#'   "plain" (data frame), "markdown", "latex", or "kable".
+#' @param show_header Logical. Show title/subtitle header? Default TRUE.
+#'   Set to FALSE to hide the table header.
 #'
 #' @return A list with class "comparison_results" containing:
 #' \itemize{

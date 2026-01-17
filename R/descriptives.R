@@ -199,27 +199,9 @@ calculate_stat <- function(x, stat, digits = 2) {
 #'   stratified statistics. When provided, statistics are calculated separately
 #'   for each group level.
 #' @param stats Character vector specifying which statistics to compute.
-#'   Default: `c("n", "mean", "sd", "median", "min", "max")`.
-#'   Available options:
-#'   \describe{
-#'     \item{`"n"`}{Sample size (non-missing)}
-#'     \item{`"missing"`}{Count of missing values}
-#'     \item{`"missing_pct"`}{Percentage of missing values}
-#'     \item{`"mean"`}{Arithmetic mean}
-#'     \item{`"sd"`}{Standard deviation}
-#'     \item{`"se"`}{Standard error of the mean}
-#'     \item{`"var"`}{Variance}
-#'     \item{`"median"`}{Median (50th percentile)}
-#'     \item{`"min"`}{Minimum value}
-#'     \item{`"max"`}{Maximum value}
-#'     \item{`"range"`}{Range (max - min)}
-#'     \item{`"iqr"`}{Interquartile range (Q3 - Q1)}
-#'     \item{`"q1"`}{First quartile (25th percentile)}
-#'     \item{`"q3"`}{Third quartile (75th percentile)}
-#'     \item{`"skewness"`}{Skewness coefficient}
-#'     \item{`"kurtosis"`}{Excess kurtosis (normal = 0)}
-#'     \item{`"cv"`}{Coefficient of variation (\%)}
-#'   }
+#'   Default: c("n", "mean", "sd", "median", "min", "max").
+#'   Available options: "n", "missing", "missing_pct", "mean", "sd", "se", "var",
+#'   "median", "min", "max", "range", "iqr", "q1", "q3", "skewness", "kurtosis", "cv".
 #' @param digits Integer. Number of decimal places for numeric output.
 #'   Default: `2`.
 #' @param labels Optional named character vector for variable labels.
@@ -232,16 +214,10 @@ calculate_stat <- function(x, stat, digits = 2) {
 #'   overall (ungrouped) statistics? Default: `TRUE`.
 #' @param transpose Logical. Transpose the table so variables are columns
 #'   and statistics are rows? Default: `FALSE`.
-#' @param format Character. Output format:
-#'   \describe{
-#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
-#'     \item{`"plain"`}{Plain data frame (same as old `"data.frame"`)}
-#'     \item{`"markdown"`}{Markdown-formatted table}
-#'     \item{`"latex"`}{LaTeX tabular format}
-#'     \item{`"kable"`}{knitr::kable or kableExtra format}
-#'   }
-#' @param show_header Logical. Show title/subtitle header? Default: `TRUE`.
-#'   Set to `FALSE` to hide the table header.
+#' @param format Character. Output format: "gt" (default, publication-ready gt table),
+#'   "plain" (data frame), "markdown", "latex", or "kable".
+#' @param show_header Logical. Show title/subtitle header? Default TRUE.
+#'   Set to FALSE to hide the table header.
 #' @param theme Character. Visual theme for gt table. Default: `"default"`.
 #'   Options:
 #'   \itemize{
@@ -259,14 +235,8 @@ calculate_stat <- function(x, stat, digits = 2) {
 #' @param sig_color Character. Color for significant p-values (< 0.05).
 #'   Default: `"red"`. Set to `NULL` to disable coloring.
 #'
-#' @return Depending on `format`:
-#' \describe{
-#'   \item{`"gt"`}{A gt table object that can be printed or exported}
-#'   \item{`"plain"`}{A data frame with computed statistics}
-#'   \item{`"markdown"`}{A character string with markdown table}
-#'   \item{`"latex"`}{A character string with LaTeX tabular}
-#'   \item{`"kable"`}{A knitr::kable object}
-#' }
+#' @return Depending on format: a gt table object (default), a data frame (plain),
+#'   a markdown string, a LaTeX string, or a knitr::kable object.
 #'
 #' @section Exporting Tables:
 #' The gt output can be exported to various formats:
@@ -1039,16 +1009,10 @@ descriptive_table <- function(data,
 #' @param labels Optional named character vector for category labels.
 #' @param title Optional character string for table title.
 #' @param subtitle Optional character string for table subtitle.
-#' @param format Character. Output format:
-#'   \describe{
-#'     \item{`"gt"` (default)}{Publication-ready gt table with formatting}
-#'     \item{`"plain"`}{Plain data frame (same as old `"data.frame"`)}
-#'     \item{`"markdown"`}{Markdown-formatted table}
-#'     \item{`"latex"`}{LaTeX tabular format}
-#'     \item{`"kable"`}{knitr::kable format}
-#'   }
-#' @param theme Character. Visual theme: `"default"`, `"minimal"`, `"dark"`,
-#'   `"colorful"`. Default: `"default"`.
+#' @param format Character. Output format: "gt" (default, publication-ready gt table),
+#'   "plain" (data frame), "markdown", "latex", or "kable".
+#' @param theme Character. Visual theme: "default", "minimal", "dark",
+#'   or "colorful". Default: "default".
 #' @param combine Logical. For single variables, combine n and % in one column?
 #'   Default: `TRUE`. Shows as "n (%)".
 #'

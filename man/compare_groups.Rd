@@ -28,7 +28,9 @@ compare_groups(
   min_subcategory = 5,
   colors = NULL,
   verbose = TRUE,
-  combined_table = TRUE
+  combined_table = TRUE,
+  format = c("gt", "plain", "markdown", "latex", "kable"),
+  show_header = TRUE
 )
 }
 \arguments{
@@ -56,29 +58,15 @@ multiple variables are passed to `category`. Default: `" | "`.}
 When provided, separate analyses are performed for each level (e.g., analyze
 gender differences separately for each country).}
 
-\item{plots}{Logical. Generate visualizations? Default: `TRUE`.}
+\item{plots}{Logical. Generate visualizations? Default TRUE.}
 
-\item{plot_style}{Character. Style of plots to generate:
-\describe{
-  \item{`"points"` (default)}{Jittered points with mean and CI error bars - clean and modern}
-  \item{`"boxplot"`}{Modern boxplot with jittered points overlay}
-  \item{`"bar"`}{Bar plot with CI error bars - classic presentation style}
-  \item{`"violin"`}{Violin plot with inner boxplot showing distribution shape}
-  \item{`"ggstatsplot"`}{Original ggstatsplot style with statistical annotations
-    (requires ggstatsplot package - will prompt to install if missing)}
-}}
+\item{plot_style}{Character. Style of plots: "points" (default, jittered with CI),
+"boxplot", "bar", "violin", or "ggstatsplot" (requires ggstatsplot package).}
 
-\item{table}{Logical. Generate summary statistics table? Default: `TRUE`.}
+\item{table}{Logical. Generate summary statistics table? Default TRUE.}
 
-\item{type}{Character. Type of statistical test to use. Options:
-\describe{
-  \item{`"auto"` (default)}{Automatic selection: parametric tests}
-  \item{`"parametric"`, `"p"`}{Parametric tests (t-test for 2 groups, ANOVA for 3+)}
-  \item{`"nonparametric"`, `"np"`}{Nonparametric tests (Mann-Whitney/Kruskal-Wallis)}
-  \item{`"kw"`}{Kruskal-Wallis (same as "np", for 3+ groups)}
-  \item{`"mw"`}{Mann-Whitney (same as "np", for 2 groups)}
-  \item{`"bayes"`, `"bf"`}{Bayesian tests with Bayes Factors}
-}}
+\item{type}{Character. Type of statistical test: "auto" (default), "parametric"/"p",
+"nonparametric"/"np", "kw" (Kruskal-Wallis), "mw" (Mann-Whitney), or "bayes"/"bf".}
 
 \item{bayesian}{Logical. Compute Bayesian t-tests with Bayes Factors? Default: `FALSE`.
 Requires the BayesFactor package. Can also use `type = "bayes"`.}
@@ -123,6 +111,12 @@ a built-in palette.}
 results into a single table? Default: `TRUE`. The combined table shows
 all repeat_category levels together with bold highest means and red
 significant p-values.}
+
+\item{format}{Character. Output format for tables: "gt" (default, publication-ready),
+"plain" (data frame), "markdown", "latex", or "kable".}
+
+\item{show_header}{Logical. Show title/subtitle header? Default TRUE.
+Set to FALSE to hide the table header.}
 }
 \value{
 A list with class "comparison_results" containing:

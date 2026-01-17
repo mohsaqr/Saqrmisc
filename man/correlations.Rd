@@ -21,7 +21,9 @@ correlations(
   exclude = NULL,
   auto_consolidate = TRUE,
   digits = 3,
-  title = NULL
+  title = NULL,
+  format = c("gt", "plain", "markdown", "latex", "kable"),
+  show_header = TRUE
 )
 }
 \arguments{
@@ -68,18 +70,17 @@ across all pairs, they are moved to the subtitle instead of shown as columns.}
 \item{digits}{Number of decimal places. Default 3.}
 
 \item{title}{Optional title for the table.}
+
+\item{format}{Character. Output format: "gt" (default, publication-ready gt table),
+"plain" (data frame), "markdown", "latex", or "kable".}
+
+\item{show_header}{Logical. Show title/subtitle header? Default TRUE.
+Set to FALSE to hide the table header.}
 }
 \value{
-A list containing:
-\itemize{
-  \item \code{table}: A gt table with full correlation statistics
-  \item \code{data}: Data frame with all statistics
-  \item \code{display}: Data frame as displayed (after include/exclude filtering)
-  \item \code{n_pairs}: Number of variable pairs
-  \item \code{n_significant}: Number of significant correlations
-  \item \code{consolidated}: List of values moved to subtitle (df, n if constant)
-  \item \code{between_data}: Between-cluster correlations (if multilevel & between = TRUE)
-}
+A list containing: table (formatted output), data (raw statistics),
+  display (formatted display data frame), n_pairs, n_significant,
+  consolidated (values moved to subtitle), between_data (if multilevel).
 }
 \description{
 Creates a comprehensive long-format correlation table showing all pairwise
