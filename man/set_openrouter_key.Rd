@@ -4,17 +4,22 @@
 \alias{set_openrouter_key}
 \title{Set OpenRouter API Key}
 \usage{
-set_openrouter_key(key)
+set_openrouter_key(key, model = NULL, ...)
 }
 \arguments{
 \item{key}{Your OpenRouter API key}
+
+\item{model}{Optional. Default model (e.g., "anthropic/claude-sonnet-4", "openai/gpt-4o").}
+
+\item{...}{Additional options.}
 }
 \description{
-Convenience alias for `set_api_key(key, "openrouter")`.
+Convenience alias for `set_api_key(key, "openrouter", ...)`.
 }
 \examples{
 \dontrun{
 set_openrouter_key("sk-or-...")
+set_openrouter_key("sk-or-...", model = "openai/gpt-4o")
 }
 
 }

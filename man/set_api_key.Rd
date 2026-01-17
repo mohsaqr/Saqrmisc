@@ -2,24 +2,41 @@
 % Please edit documentation in R/pass.R
 \name{set_api_key}
 \alias{set_api_key}
-\title{Set API Key for Session}
+\title{Set API Key and Options for Session}
 \usage{
-set_api_key(key, provider = c("openai", "anthropic", "gemini", "openrouter"))
+set_api_key(
+  key,
+  provider = c("openai", "anthropic", "gemini", "openrouter"),
+  model = NULL,
+  ...
+)
 }
 \arguments{
 \item{key}{Your API key}
 
 \item{provider}{Provider name: "openai" (default), "anthropic", "gemini", or "openrouter"}
+
+\item{model}{Optional. Default model to use for this provider.}
+
+\item{...}{Additional options to store (e.g., `base_url`, `timeout`).}
+}
+\value{
+Invisibly returns TRUE.
 }
 \description{
-Convenience function to set your API key for the current R session.
+Set your API key and optional default settings for the current R session.
+Settings are stored as R options and used as defaults by `pass()`.
 }
 \examples{
 \dontrun{
+# Just set the key
 set_api_key("sk-...", "openai")
-set_api_key("sk-ant-...", "anthropic")
-set_api_key("AIza...", "gemini")
-set_api_key("sk-or-...", "openrouter")
+
+# Set key and default model
+set_api_key("sk-...", "openai", model = "gpt-4o")
+
+# Set key with custom base URL (for Azure OpenAI, etc.)
+set_api_key("sk-...", "openai", model = "gpt-4", base_url = "https://my-azure.openai.azure.com")
 }
 
 }

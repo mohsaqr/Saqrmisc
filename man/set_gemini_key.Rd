@@ -4,17 +4,22 @@
 \alias{set_gemini_key}
 \title{Set Google Gemini API Key}
 \usage{
-set_gemini_key(key)
+set_gemini_key(key, model = NULL, ...)
 }
 \arguments{
 \item{key}{Your Gemini API key}
+
+\item{model}{Optional. Default model (e.g., "gemini-2.5-flash").}
+
+\item{...}{Additional options.}
 }
 \description{
-Convenience alias for `set_api_key(key, "gemini")`.
+Convenience alias for `set_api_key(key, "gemini", ...)`.
 }
 \examples{
 \dontrun{
 set_gemini_key("AIza...")
+set_gemini_key("AIza...", model = "gemini-2.5-pro")
 }
 
 }

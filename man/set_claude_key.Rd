@@ -4,17 +4,22 @@
 \alias{set_claude_key}
 \title{Set Anthropic (Claude) API Key}
 \usage{
-set_claude_key(key)
+set_claude_key(key, model = NULL, ...)
 }
 \arguments{
 \item{key}{Your Anthropic API key}
+
+\item{model}{Optional. Default model (e.g., "claude-sonnet-4-20250514").}
+
+\item{...}{Additional options.}
 }
 \description{
-Convenience alias for `set_api_key(key, "anthropic")`.
+Convenience alias for `set_api_key(key, "anthropic", ...)`.
 }
 \examples{
 \dontrun{
 set_claude_key("sk-ant-...")
+set_claude_key("sk-ant-...", model = "claude-sonnet-4-20250514")
 }
 
 }

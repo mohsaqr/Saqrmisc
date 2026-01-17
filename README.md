@@ -780,8 +780,16 @@ set_claude_key("sk-ant-...")       # Anthropic Claude
 set_gemini_key("AIza...")          # Google Gemini
 set_openrouter_key("sk-or-...")    # OpenRouter
 
+# Set key with custom default model
+set_openai_key("sk-...", model = "gpt-4o")
+set_claude_key("sk-ant-...", model = "claude-opus-4-20250514")
+set_openrouter_key("sk-or-...", model = "openai/gpt-4o")
+
+# Set key with custom base URL (for Azure OpenAI, etc.)
+set_openai_key("sk-...", model = "gpt-4", base_url = "https://my-azure.openai.azure.com")
+
 # Or use the generic function
-set_api_key("your-api-key", provider = "openai")
+set_api_key("your-api-key", provider = "openai", model = "gpt-4o")
 
 # Or use environment variables (recommended)
 # Add to .Renviron:

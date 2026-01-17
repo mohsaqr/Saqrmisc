@@ -4,17 +4,23 @@
 \alias{set_openai_key}
 \title{Set OpenAI API Key}
 \usage{
-set_openai_key(key)
+set_openai_key(key, model = NULL, ...)
 }
 \arguments{
 \item{key}{Your OpenAI API key}
+
+\item{model}{Optional. Default model (e.g., "gpt-4o", "gpt-4.1-nano").}
+
+\item{...}{Additional options (e.g., `base_url` for Azure OpenAI).}
 }
 \description{
-Convenience alias for `set_api_key(key, "openai")`.
+Convenience alias for `set_api_key(key, "openai", ...)`.
 }
 \examples{
 \dontrun{
 set_openai_key("sk-...")
+set_openai_key("sk-...", model = "gpt-4o")
+set_openai_key("sk-...", model = "gpt-4", base_url = "https://my-azure.openai.azure.com")
 }
 
 }

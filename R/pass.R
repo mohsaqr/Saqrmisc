@@ -169,17 +169,32 @@ style_missing <- missing(style)
     api_key <- get_api_key(provider, api_key, quiet)
   }
 
-  # Set default model
+  # Set default model (check stored options first)
   if (is.null(model)) {
     if (use_local) {
       model <- "local-model"  # Placeholder, LM Studio uses loaded model
     } else {
-      model <- switch(provider,
-        openai = "gpt-4.1-nano",
-        anthropic = "claude-sonnet-4-20250514",
-        gemini = "gemini-2.5-flash",
-        openrouter = "anthropic/claude-sonnet-4"
-      )
+      # Check for stored model option
+      stored_model <- getOption(paste0("saqrmisc.", provider, "_model"))
+      if (!is.null(stored_model)) {
+        model <- stored_model
+      } else {
+        model <- switch(provider,
+          openai = "gpt-4.1-nano",
+          anthropic = "claude-sonnet-4-20250514",
+          gemini = "gemini-2.5-flash",
+          openrouter = "anthropic/claude-sonnet-4"
+        )
+      }
+    }
+  }
+
+  # Check for stored base_url option (if not already set)
+  if (is.null(base_url) && !use_local) {
+    stored_base_url <- getOption(paste0("saqrmisc.", provider, "_base_url"))
+    if (!is.null(stored_base_url)) {
+      base_url <- stored_base_url
+      use_local <- TRUE  # Treat custom base_url as local-style call
     }
   }
 
@@ -672,25 +687,38 @@ call_openrouter <- function(model, api_key, system_prompt, user_prompt) {
   result$choices[[1]]$message$content
 }
 
-#' Set API Key for Session
+#' Set API Key and Options for Session
 #'
 #' @description
-#' Convenience function to set your API key for the current R session.
+#' Set your API key and optional default settings for the current R session.
+#' Settings are stored as R options and used as defaults by `pass()`.
 #'
 #' @param key Your API key
 #' @param provider Provider name: "openai" (default), "anthropic", "gemini", or "openrouter"
+#' @param model Optional. Default model to use for this provider.
+#' @param ... Additional options to store (e.g., `base_url`, `timeout`).
+#'
+#' @return Invisibly returns TRUE.
 #'
 #' @examples
 #' \dontrun{
+#' # Just set the key
 #' set_api_key("sk-...", "openai")
-#' set_api_key("sk-ant-...", "anthropic")
-#' set_api_key("AIza...", "gemini")
-#' set_api_key("sk-or-...", "openrouter")
+#'
+#' # Set key and default model
+#' set_api_key("sk-...", "openai", model = "gpt-4o")
+#'
+#' # Set key with custom base URL (for Azure OpenAI, etc.)
+#' set_api_key("sk-...", "openai", model = "gpt-4", base_url = "https://my-azure.openai.azure.com")
 #' }
 #'
 #' @export
-set_api_key <- function(key, provider = c("openai", "anthropic", "gemini", "openrouter")) {
+set_api_key <- function(key, provider = c("openai", "anthropic", "gemini", "openrouter"),
+                        model = NULL, ...) {
   provider <- match.arg(provider)
+
+
+  # Set the API key as environment variable
   env_var <- switch(provider,
     openai = "OPENAI_API_KEY",
     anthropic = "ANTHROPIC_API_KEY",
@@ -698,75 +726,105 @@ set_api_key <- function(key, provider = c("openai", "anthropic", "gemini", "open
     openrouter = "OPENROUTER_API_KEY"
   )
   do.call(Sys.setenv, setNames(list(key), env_var))
-  message("API key set for ", provider, " (this session only)")
+
+  # Store additional options
+  opts <- list(...)
+  if (!is.null(model)) {
+    opts$model <- model
+  }
+
+  if (length(opts) > 0) {
+    # Store options with provider-specific names
+    for (opt_name in names(opts)) {
+      full_name <- paste0("saqrmisc.", provider, "_", opt_name)
+      do.call(options, setNames(list(opts[[opt_name]]), full_name))
+    }
+    message("API key and settings set for ", provider, " (this session only)")
+    message("  Options: ", paste(names(opts), "=", opts, collapse = ", "))
+  } else {
+    message("API key set for ", provider, " (this session only)")
+  }
+
   invisible(TRUE)
 }
 
 #' Set OpenAI API Key
 #'
 #' @description
-#' Convenience alias for `set_api_key(key, "openai")`.
+#' Convenience alias for `set_api_key(key, "openai", ...)`.
 #'
 #' @param key Your OpenAI API key
+#' @param model Optional. Default model (e.g., "gpt-4o", "gpt-4.1-nano").
+#' @param ... Additional options (e.g., `base_url` for Azure OpenAI).
 #'
 #' @examples
 #' \dontrun{
 #' set_openai_key("sk-...")
+#' set_openai_key("sk-...", model = "gpt-4o")
+#' set_openai_key("sk-...", model = "gpt-4", base_url = "https://my-azure.openai.azure.com")
 #' }
 #'
 #' @export
-set_openai_key <- function(key) {
-
-  set_api_key(key, "openai")
+set_openai_key <- function(key, model = NULL, ...) {
+  set_api_key(key, "openai", model = model, ...)
 }
 
 #' Set Anthropic (Claude) API Key
 #'
 #' @description
-#' Convenience alias for `set_api_key(key, "anthropic")`.
+#' Convenience alias for `set_api_key(key, "anthropic", ...)`.
 #'
 #' @param key Your Anthropic API key
+#' @param model Optional. Default model (e.g., "claude-sonnet-4-20250514").
+#' @param ... Additional options.
 #'
 #' @examples
 #' \dontrun{
 #' set_claude_key("sk-ant-...")
+#' set_claude_key("sk-ant-...", model = "claude-sonnet-4-20250514")
 #' }
 #'
 #' @export
-set_claude_key <- function(key) {
-  set_api_key(key, "anthropic")
+set_claude_key <- function(key, model = NULL, ...) {
+  set_api_key(key, "anthropic", model = model, ...)
 }
 
 #' Set Google Gemini API Key
 #'
 #' @description
-#' Convenience alias for `set_api_key(key, "gemini")`.
+#' Convenience alias for `set_api_key(key, "gemini", ...)`.
 #'
 #' @param key Your Gemini API key
+#' @param model Optional. Default model (e.g., "gemini-2.5-flash").
+#' @param ... Additional options.
 #'
 #' @examples
 #' \dontrun{
 #' set_gemini_key("AIza...")
+#' set_gemini_key("AIza...", model = "gemini-2.5-pro")
 #' }
 #'
 #' @export
-set_gemini_key <- function(key) {
-  set_api_key(key, "gemini")
+set_gemini_key <- function(key, model = NULL, ...) {
+  set_api_key(key, "gemini", model = model, ...)
 }
 
 #' Set OpenRouter API Key
 #'
 #' @description
-#' Convenience alias for `set_api_key(key, "openrouter")`.
+#' Convenience alias for `set_api_key(key, "openrouter", ...)`.
 #'
 #' @param key Your OpenRouter API key
+#' @param model Optional. Default model (e.g., "anthropic/claude-sonnet-4", "openai/gpt-4o").
+#' @param ... Additional options.
 #'
 #' @examples
 #' \dontrun{
 #' set_openrouter_key("sk-or-...")
+#' set_openrouter_key("sk-or-...", model = "openai/gpt-4o")
 #' }
 #'
 #' @export
-set_openrouter_key <- function(key) {
-  set_api_key(key, "openrouter")
+set_openrouter_key <- function(key, model = NULL, ...) {
+  set_api_key(key, "openrouter", model = model, ...)
 }
