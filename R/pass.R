@@ -5,6 +5,72 @@
 # Null coalescing operator (if not from rlang)
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+#' Smart output capture for different object types
+#' @noRd
+capture_smart_output <- function(x) {
+  obj_class <- class(x)
+
+ # Handle Saqrmisc results (lists with $data, $display, or $table components)
+  if (is.list(x) && !is.data.frame(x)) {
+    parts <- c()
+
+    # Check for display data frame (formatted for viewing)
+    if (!is.null(x$display) && is.data.frame(x$display)) {
+      parts <- c(parts, "Display Table:", paste(utils::capture.output(print(x$display)), collapse = "\n"))
+    }
+
+    # Check for raw data
+    if (!is.null(x$data) && is.data.frame(x$data)) {
+      parts <- c(parts, "Data:", paste(utils::capture.output(print(x$data)), collapse = "\n"))
+    }
+
+    # Check for correlation matrix
+    if (!is.null(x$correlation_matrix) && is.matrix(x$correlation_matrix)) {
+      parts <- c(parts, "Correlation Matrix:", paste(utils::capture.output(print(round(x$correlation_matrix, 3))), collapse = "\n"))
+    }
+
+    # Check for p-values matrix
+    if (!is.null(x$p_matrix) && is.matrix(x$p_matrix)) {
+      parts <- c(parts, "P-values:", paste(utils::capture.output(print(round(x$p_matrix, 4))), collapse = "\n"))
+    }
+
+    # Check for summary_data (from compare_groups)
+    if (!is.null(x$summary_data) && is.data.frame(x$summary_data)) {
+      parts <- c(parts, "Summary Data:", paste(utils::capture.output(print(x$summary_data)), collapse = "\n"))
+    }
+
+    # If we captured something useful, return it
+    if (length(parts) > 0) {
+      return(paste(parts, collapse = "\n\n"))
+    }
+  }
+
+  # Handle gt tables - convert to data frame if possible
+  if ("gt_tbl" %in% obj_class) {
+    # Try to extract the underlying data
+    if (!is.null(x$`_data`)) {
+      return(paste(
+        "GT Table Contents:",
+        paste(utils::capture.output(print(as.data.frame(x$`_data`))), collapse = "\n"),
+        sep = "\n"
+      ))
+    }
+  }
+
+  # Handle markdown_table class (from Saqrmisc)
+  if ("markdown_table" %in% obj_class) {
+    return(as.character(x))
+  }
+
+  # Handle data frames nicely
+  if (is.data.frame(x)) {
+    return(paste(utils::capture.output(print(x)), collapse = "\n"))
+  }
+
+  # Default: capture print output
+  paste(utils::capture.output(print(x)), collapse = "\n")
+}
+
 #' Pass R Output to AI for Interpretation
 #'
 #' @description
@@ -155,8 +221,8 @@ style_missing <- missing(style)
   # Check if using local server
   use_local <- !is.null(base_url)
 
-  # Capture the R output as text
-  output_text <- paste(utils::capture.output(print(x)), collapse = "\n")
+  # Smart capture of R output based on object type
+  output_text <- capture_smart_output(x)
 
   # Also try to get the class/type info
   obj_class <- paste(class(x), collapse = ", ")
@@ -395,20 +461,33 @@ get_api_key <- function(provider, api_key = NULL, quiet = FALSE) {
 #' Build system prompt based on action, style, output, and custom message
 #' @noRd
 build_system_prompt <- function(action, style, output, system_message = NULL) {
-  base <- "You are an expert statistician helping researchers interpret their R output. "
+  base <- paste0(
+    "You are an expert statistician helping researchers interpret R output. ",
+    "You can interpret ANY type of R output including: descriptive statistics tables, ",
+    "correlation matrices, frequency tables, regression summaries, t-tests, ANOVAs, ",
+    "chi-square tests, data frames, and any other statistical output. ",
+    "Even if there is no formal hypothesis test, you should describe and interpret ",
+    "what the numbers mean (e.g., means, standard deviations, correlations, frequencies). "
+  )
 
   # Action-specific instructions
   action_prompts <- list(
-    interpret = "Interpret the statistical results, explaining what they mean scientifically.",
-    explain = "Explain what this analysis does and what the output means. Help the reader understand the methodology.",
+    interpret = paste0(
+      "Interpret the output, explaining what the numbers mean scientifically. ",
+      "For descriptive tables: discuss central tendency, variability, and any notable patterns. ",
+      "For correlations: discuss strength, direction, and significance of relationships. ",
+      "For frequency tables: discuss distributions and proportions. ",
+      "For tests: explain significance and effect sizes."
+    ),
+    explain = "Explain what this analysis shows and what the output means. Help the reader understand what was computed and why it matters.",
     write = paste0(
       "Write publication-ready text with clearly labeled **Methods** and **Results** sections. ",
-      "In Methods: describe the statistical test/model used, cite R and relevant packages (e.g., R Core Team, 2024). ",
-      "In Results: report all statistics in APA format, include effect sizes with interpretation. ",
-      "For regression models: include the equation (e.g., Y = b0 + b1*X1 + b2*X2). ",
-      "End with a **References** section citing R and any packages mentioned (use proper citation format)."
+      "In Methods: describe what was computed (descriptive statistics, correlations, tests, etc.), cite R and relevant packages. ",
+      "In Results: report all statistics in APA format. For descriptive stats, report M, SD, ranges. ",
+      "For correlations, report r values with significance. For tests, include effect sizes. ",
+      "End with a **References** section citing R and any packages mentioned."
     ),
-    summarize = "Provide a brief summary of the key findings. Focus on the most important takeaways.",
+    summarize = "Provide a brief summary of the key findings. Focus on the most important takeaways from the numbers shown.",
     critique = "Provide a critical evaluation of the analysis, including potential limitations, assumptions that may be violated, and alternative approaches.",
     suggest = "Based on these results, suggest appropriate follow-up analyses or next steps for the research."
   )
