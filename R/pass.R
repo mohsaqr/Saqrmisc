@@ -243,7 +243,13 @@ build_system_prompt <- function(action, style, output) {
   action_prompts <- list(
     interpret = "Interpret the statistical results, explaining what they mean scientifically.",
     explain = "Explain what this analysis does and what the output means. Help the reader understand the methodology.",
-    write = "Write publication-ready text suitable for a research paper's Methods and Results sections.",
+    write = paste0(
+      "Write publication-ready text with clearly labeled **Methods** and **Results** sections. ",
+      "In Methods: describe the statistical test/model used, cite R and relevant packages (e.g., R Core Team, 2024). ",
+      "In Results: report all statistics in APA format, include effect sizes with interpretation. ",
+      "For regression models: include the equation (e.g., Y = b0 + b1*X1 + b2*X2). ",
+      "End with a **References** section citing R and any packages mentioned (use proper citation format)."
+    ),
     summarize = "Provide a brief summary of the key findings. Focus on the most important takeaways.",
     critique = "Provide a critical evaluation of the analysis, including potential limitations, assumptions that may be violated, and alternative approaches.",
     suggest = "Based on these results, suggest appropriate follow-up analyses or next steps for the research."
