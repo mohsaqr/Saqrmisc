@@ -230,8 +230,18 @@ calculate_stat <- function(x, stat, digits = 2) {
 #' @param ... Additional arguments passed to \code{\link{pass}} when
 #'   interpret = TRUE (e.g., provider, model, context, append_prompt).
 #'
-#' @return Depending on format: a gt table object (default), a data frame (plain),
-#'   a markdown string, a LaTeX string, or a knitr::kable object.
+#' @return A saqr_result object containing:
+#'   \itemize{
+#'     \item \code{table}: The formatted gt table (or other format if specified)
+#'     \item \code{data}: Raw data frame with computed statistics
+#'     \item \code{markdown}: Markdown version of the table for AI interpretation
+#'     \item \code{type}: "descriptive"
+#'     \item \code{variables}: Variables analyzed
+#'     \item \code{statistics}: Statistics computed
+#'     \item \code{n}: Total sample size
+#'   }
+#'   When printed, displays the formatted table. Use \code{result$markdown} to
+#'   get a text version suitable for \code{\link{pass}}.
 #'
 #' @section Exporting Tables:
 #' The gt output can be exported using gtsave(): HTML (.html), Word (.docx),
@@ -510,12 +520,15 @@ descriptive_table <- function(data,
   }
 
   # ===========================================================================
-  # Return Non-GT Formats
+  # Return Non-GT Formats (wrapped in saqr_result)
   # ===========================================================================
   if (format %in% c("plain", "markdown", "latex", "kable") && (is.null(group_by_str) || format != "kable")) {
+    # Create markdown version for AI
+    markdown_table <- df_to_markdown(desc_data, digits = digits)
+
     # kable with group_by has special handling below
     if (format == "kable" && is.null(group_by_str)) {
-      result <- format_table(
+      formatted <- format_table(
         df = desc_data,
         format = format,
         title = if (show_header) title else NULL,
@@ -523,14 +536,23 @@ descriptive_table <- function(data,
         show_header = show_header,
         digits = digits
       )
+      result <- saqr_result(
+        data = desc_data,
+        table = formatted,
+        type = "descriptive",
+        markdown = markdown_table,
+        variables = Vars,
+        statistics = stats,
+        n = nrow(data)
+      )
       if (!is.null(test_results) && nrow(test_results) > 0) {
-        attr(result, "test_results") <- test_results
+        result$comparison <- test_results
       }
       return(result)
     }
 
     if (format %in% c("plain", "markdown", "latex")) {
-      result <- format_table(
+      formatted <- format_table(
         df = desc_data,
         format = format,
         title = if (show_header) title else NULL,
@@ -538,8 +560,17 @@ descriptive_table <- function(data,
         show_header = show_header,
         digits = digits
       )
+      result <- saqr_result(
+        data = desc_data,
+        table = formatted,
+        type = "descriptive",
+        markdown = markdown_table,
+        variables = Vars,
+        statistics = stats,
+        n = nrow(data)
+      )
       if (!is.null(test_results) && nrow(test_results) > 0) {
-        attr(result, "test_results") <- test_results
+        result$comparison <- test_results
       }
       return(result)
     }
@@ -647,7 +678,24 @@ descriptive_table <- function(data,
       kableExtra::column_spec(1, bold = TRUE) %>%
       kableExtra::column_spec(ncol(kable_df), color = p_colors)
 
-    return(kable_table)
+    # Wrap in saqr_result
+    markdown_table <- df_to_markdown(desc_data, digits = digits)
+    result <- saqr_result(
+      data = desc_data,
+      table = kable_table,
+      type = "descriptive",
+      markdown = markdown_table,
+      variables = Vars,
+      statistics = stats,
+      n = nrow(data),
+      grouping_var = group_by_str,
+      groups = unique(data[[group_by_str]]),
+      n_groups = length(unique(data[[group_by_str]]))
+    )
+    if (!is.null(test_results) && nrow(test_results) > 0) {
+      result$comparison <- test_results
+    }
+    return(result)
   }
 
   # ===========================================================================
@@ -961,10 +1009,38 @@ descriptive_table <- function(data,
   }
 
   # ===========================================================================
+  # Create markdown version for AI compatibility
+  # ===========================================================================
+  markdown_table <- df_to_markdown(desc_data, digits = digits)
+
+  # Build result object
+  result <- saqr_result(
+    data = desc_data,
+    table = gt_table,
+    type = "descriptive",
+    markdown = markdown_table,
+    variables = Vars,
+    statistics = stats,
+    n = nrow(data)
+  )
+
+  # Add group info if present
+  if (!is.null(group_by_str)) {
+    result$grouping_var <- group_by_str
+    result$groups <- unique(data[[group_by_str]])
+    result$n_groups <- length(result$groups)
+  }
+
+  # Add comparison info if present
+  if (compare && exists("test_results") && !is.null(test_results)) {
+    result$comparison <- test_results
+    result$test_type <- if (result$n_groups == 2) "t-test" else "ANOVA"
+  }
+
+  # ===========================================================================
   # AI Interpretation (if requested)
   # ===========================================================================
   if (interpret) {
-    # Build metadata for the interpretation
     metadata <- list(
       variables = Vars,
       total_n = nrow(data),
@@ -974,20 +1050,19 @@ descriptive_table <- function(data,
 
     if (!is.null(group_by_str)) {
       metadata$grouping_var <- group_by_str
-      metadata$groups <- unique(data[[group_by_str]])
-      metadata$n_groups <- length(metadata$groups)
+      metadata$groups <- result$groups
+      metadata$n_groups <- result$n_groups
 
-      if (compare && !is.null(test_results)) {
+      if (compare && !is.null(result$comparison)) {
         metadata$comparison_performed <- TRUE
-        metadata$test_type <- if (metadata$n_groups == 2) "t-test" else "ANOVA"
+        metadata$test_type <- result$test_type
       }
     }
 
-    # Call the interpretation function
-    interpret_with_ai(gt_table, analysis_type = "descriptive", metadata = metadata, ...)
+    interpret_with_ai(result, analysis_type = "descriptive", metadata = metadata, ...)
   }
 
-  return(gt_table)
+  return(result)
 }
 
 

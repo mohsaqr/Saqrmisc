@@ -87,8 +87,18 @@ AI. Requires API key setup (see \code{\link{set_api_key}}).}
 interpret = TRUE (e.g., provider, model, context, append_prompt).}
 }
 \value{
-Depending on format: a gt table object (default), a data frame (plain),
-  a markdown string, a LaTeX string, or a knitr::kable object.
+A saqr_result object containing:
+  \itemize{
+    \item \code{table}: The formatted gt table (or other format if specified)
+    \item \code{data}: Raw data frame with computed statistics
+    \item \code{markdown}: Markdown version of the table for AI interpretation
+    \item \code{type}: "descriptive"
+    \item \code{variables}: Variables analyzed
+    \item \code{statistics}: Statistics computed
+    \item \code{n}: Total sample size
+  }
+  When printed, displays the formatted table. Use \code{result$markdown} to
+  get a text version suitable for \code{\link{pass}}.
 }
 \description{
 Creates a comprehensive, publication-ready table of descriptive statistics
