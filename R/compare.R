@@ -372,6 +372,7 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @return gt table object
 #' @noRd
 create_pivot_table <- function(combined_data, category_name, repeat_category_name,
+                                pivot_by = "category",
                                 pivot_stat = "mean", pivot_stars = TRUE,
                                 p_adjust_method = "fdr", comparison_categories = NULL,
                                 format = "gt", show_header = TRUE, verbose = TRUE) {
@@ -386,12 +387,26 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
          paste(names(combined_data), collapse = ", "))
   }
 
-  # Get unique groups (will become columns)
-  groups <- unique(combined_data[[category_name]])
-
   # Prepare data for pivoting using symbols for grouping
   repeat_sym <- rlang::sym(repeat_category_name)
   cat_sym <- rlang::sym(category_name)
+
+  # Determine which column becomes columns vs rows based on pivot_by
+  if (pivot_by == "category") {
+    # Category groups become columns (e.g., GPT, Mistral, Qwen as columns)
+    pivot_col_name <- category_name
+    pivot_col_sym <- cat_sym
+    row_col_name <- repeat_category_name
+    row_col_sym <- repeat_sym
+    groups <- unique(combined_data[[category_name]])
+  } else {
+    # Repeat category levels become columns (e.g., he/him, she/her as columns)
+    pivot_col_name <- repeat_category_name
+    pivot_col_sym <- repeat_sym
+    row_col_name <- category_name
+    row_col_sym <- cat_sym
+    groups <- unique(combined_data[[repeat_category_name]])
+  }
 
   # Prepare data for pivoting
   pivot_data <- combined_data %>%
@@ -421,22 +436,22 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
   pivot_subset <- pivot_data %>%
     dplyr::select(!!repeat_sym, variable, !!cat_sym, display_val, p_value_agg)
 
-  # Pivot to wide format
+  # Pivot to wide format - pivot the selected column
   pivot_wide <- pivot_subset %>%
     tidyr::pivot_wider(
-      names_from = !!cat_sym,
+      names_from = !!pivot_col_sym,
       values_from = display_val
     )
 
-  # Get p-value per row (one p-value per variable/repeat_category combination)
+  # Get p-value per row (one p-value per variable/row_col combination)
   p_values_unique <- pivot_data %>%
-    dplyr::group_by(!!repeat_sym, variable) %>%
+    dplyr::group_by(!!row_col_sym, variable) %>%
     dplyr::summarise(p_value = dplyr::first(p_value_agg[!is.na(p_value_agg)]), .groups = "drop")
 
   # Merge p-values back
   pivot_wide <- pivot_wide %>%
     dplyr::select(-p_value_agg) %>%
-    dplyr::left_join(p_values_unique, by = c(repeat_category_name, "variable"))
+    dplyr::left_join(p_values_unique, by = c(row_col_name, "variable"))
 
   # Add significance stars
   if (pivot_stars) {
@@ -453,7 +468,7 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
   }
 
   # Rename columns for display
-  names(pivot_wide)[names(pivot_wide) == repeat_category_name] <- "level"
+  names(pivot_wide)[names(pivot_wide) == row_col_name] <- "level"
   names(pivot_wide)[names(pivot_wide) == "variable"] <- "Variable"
 
   # Reorder columns: Variable, level, groups..., Sig (if present), p_value (hidden)
@@ -474,7 +489,7 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
   )
 
   title_text <- paste0(stat_label, " by Factor Levels")
-  subtitle_text <- paste0("Groups compared: ", paste(groups, collapse = ", "),
+  subtitle_text <- paste0("Columns: ", paste(groups, collapse = ", "),
                           " | P-adjustment: ", toupper(p_adjust_method))
 
   # Handle non-GT formats
@@ -786,9 +801,11 @@ create_posthoc_pivot_table <- function(all_posthoc_data, repeat_category_name,
 #'   or "both" (return both formats).
 #' @param pairwise_display Which pairwise comparisons to show on plots? Options:
 #'   "significant" (default), "all", "none".
-#' @param pivot Logical. Pivot category groups to columns? Default FALSE.
-#'   When TRUE, creates a wide table with group levels as columns and
-#'   repeat_category levels as rows.
+#' @param pivot Logical. Pivot to wide format? Default FALSE.
+#'   When TRUE, creates a wide table based on pivot_by parameter.
+#' @param pivot_by Character. Which variable to pivot to columns:
+#'   "category" (default) - category groups become columns (e.g., GPT, Mistral, Qwen),
+#'   "repeat_category" - repeat_category levels become columns (e.g., he/him, she/her).
 #' @param pivot_stat Character. Statistic to display in pivoted cells:
 #'   "mean" (default), "mean_sd" (mean with SD in parentheses),
 #'   "median", or "n" (count).
@@ -1050,6 +1067,7 @@ compare_groups <- function(data, category, Vars = NULL,
                                       posthoc_format = c("wide", "long", "both"),
                                       pairwise_display = "significant",
                                       pivot = FALSE,
+                                      pivot_by = c("category", "repeat_category"),
                                       pivot_stat = c("mean", "mean_sd", "median", "n"),
                                       pivot_stars = TRUE,
                                       min_threshold = 0.05, min_subcategory = 5,
@@ -1150,6 +1168,7 @@ compare_groups <- function(data, category, Vars = NULL,
 
   # Validate pivot parameters
   pivot_stat <- match.arg(pivot_stat)
+  pivot_by <- match.arg(pivot_by)
   posthoc_format <- match.arg(posthoc_format)
 
   # Pivot requires repeat_category
@@ -2297,6 +2316,7 @@ compare_groups <- function(data, category, Vars = NULL,
           combined_data = combined_data,
           category_name = category_name_str,
           repeat_category_name = repeat_category_name_str,
+          pivot_by = pivot_by,
           pivot_stat = pivot_stat,
           pivot_stars = pivot_stars,
           p_adjust_method = p_adjust_method,
@@ -2595,6 +2615,7 @@ compare_groups <- function(data, category, Vars = NULL,
       equivalence_bounds = if (equivalence) equivalence_bounds else NULL,
       p_adjust_method = p_adjust_method,
       pivot = pivot,
+      pivot_by = if (pivot) pivot_by else NULL,
       pivot_stat = if (pivot) pivot_stat else NULL,
       pivot_stars = if (pivot) pivot_stars else NULL,
       posthoc_format = if (pivot && posthoc_table) posthoc_format else NULL
