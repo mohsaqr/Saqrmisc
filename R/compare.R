@@ -1529,6 +1529,9 @@ compare_groups <- function(data, category, Vars = NULL,
       stop("No numeric variables found to analyze")
     }
 
+    # Determine if nonparametric tests should be used
+    use_nonparametric <- nonparametric || tolower(type) %in% c("nonparametric", "np", "kw", "mw", "wilcox", "wilcoxon", "kruskal-wallis", "kruskal", "mann-whitney")
+
     # Run analysis: for each category level, for each compare_by factor, run ANOVA
     all_results <- list()
 
@@ -1611,7 +1614,7 @@ compare_groups <- function(data, category, Vars = NULL,
     }
 
     # Create pivot table for "within" mode
-    pivot_table <- create_pivot_table_within(
+    within_table <- create_pivot_table_within(
       all_results = all_results,
       category_levels = category_levels,
       compare_by = compare_by,
@@ -1623,9 +1626,37 @@ compare_groups <- function(data, category, Vars = NULL,
       verbose = verbose
     )
 
-    # Return results
+    # Also run the standard "between" comparison (LLM vs LLM)
+    if (verbose) {
+      cat("\nAlso running standard between-group comparison...\n")
+    }
+
+    between_result <- compare_groups(
+      data = data,
+      category = category_name,
+      Vars = Vars,
+      compare_by = NULL,
+      compare_mode = "between",
+      repeat_category = NULL,
+      plots = FALSE,
+      table = TRUE,
+      type = if (use_nonparametric) "np" else type,
+      nonparametric = use_nonparametric,
+      p_adjust_method = p_adjust_method,
+      posthoc = posthoc,
+      posthoc_method = posthoc_method,
+      pivot = FALSE,
+      verbose = FALSE,
+      combined_table = TRUE,
+      format = format,
+      show_header = show_header
+    )
+
+    # Return both results
     result <- list(
-      pivot_table = pivot_table,
+      summary_table = between_result$summary_table,
+      summary_data = between_result$summary_data,
+      within_table = within_table,
       raw_results = all_results,
       metadata = list(
         compare_mode = "within",
