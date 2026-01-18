@@ -3,11 +3,12 @@
 # This file contains functions for group comparison analysis using ggbetweenstats.
 # Functions: compare_groups
 
-#' @importFrom dplyr group_by summarise mutate filter count select bind_rows any_of case_when ungroup first
+#' @importFrom dplyr group_by summarise mutate filter count select bind_rows any_of case_when ungroup first left_join all_of
 #' @importFrom rlang sym .data
 #' @importFrom ggplot2 ggplot aes scale_color_manual
 #' @importFrom stats t.test aov sd var p.adjust
 #' @importFrom grDevices colorRampPalette
+#' @importFrom tidyr pivot_wider
 NULL
 
 # =============================================================================
@@ -356,6 +357,375 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 }
 
 # =============================================================================
+# PIVOT TABLE HELPER FUNCTIONS
+# =============================================================================
+
+#' Create pivoted summary table
+#'
+#' @param combined_data Data frame with combined summary statistics
+#' @param category_name Name of the grouping variable (becomes columns)
+#' @param repeat_category_name Name of the repeat category variable
+#' @param pivot_stat Statistic to show: "mean", "mean_sd", "median", "n"
+#' @param pivot_stars Logical, show significance stars
+#' @param p_adjust_method Method used for p-value adjustment
+#' @param comparison_categories Variables being compared
+#' @return gt table object
+#' @noRd
+create_pivot_table <- function(combined_data, category_name, repeat_category_name,
+                                pivot_stat = "mean", pivot_stars = TRUE,
+                                p_adjust_method = "fdr", comparison_categories = NULL,
+                                format = "gt", show_header = TRUE, verbose = TRUE) {
+
+  # Validate inputs
+  if (!category_name %in% names(combined_data)) {
+    stop("Category column '", category_name, "' not found in data. Available columns: ",
+         paste(names(combined_data), collapse = ", "))
+  }
+  if (!repeat_category_name %in% names(combined_data)) {
+    stop("Repeat category column '", repeat_category_name, "' not found in data. Available columns: ",
+         paste(names(combined_data), collapse = ", "))
+  }
+
+  # Get unique groups (will become columns)
+  groups <- unique(combined_data[[category_name]])
+
+  # Prepare data for pivoting using symbols for grouping
+  repeat_sym <- rlang::sym(repeat_category_name)
+  cat_sym <- rlang::sym(category_name)
+
+  # Prepare data for pivoting
+  pivot_data <- combined_data %>%
+    dplyr::group_by(!!repeat_sym, variable, !!cat_sym) %>%
+    dplyr::summarise(
+      mean_val = mean(mean, na.rm = TRUE),
+      sd_val = mean(sd, na.rm = TRUE),
+      median_val = if ("median" %in% names(combined_data)) mean(median, na.rm = TRUE) else NA,
+      n_val = sum(n, na.rm = TRUE),
+      p_value_agg = dplyr::first(p_value[!is.na(p_value)]),
+      .groups = "drop"
+    )
+
+  # Create the statistic to display
+  pivot_data <- pivot_data %>%
+    dplyr::mutate(
+      display_val = dplyr::case_when(
+        pivot_stat == "mean" ~ sprintf("%.3f", mean_val),
+        pivot_stat == "mean_sd" ~ sprintf("%.2f (%.2f)", mean_val, sd_val),
+        pivot_stat == "median" ~ sprintf("%.3f", median_val),
+        pivot_stat == "n" ~ as.character(n_val),
+        TRUE ~ sprintf("%.3f", mean_val)
+      )
+    )
+
+  # Select columns for pivot
+  pivot_subset <- pivot_data %>%
+    dplyr::select(!!repeat_sym, variable, !!cat_sym, display_val, p_value_agg)
+
+  # Pivot to wide format
+  pivot_wide <- pivot_subset %>%
+    tidyr::pivot_wider(
+      names_from = !!cat_sym,
+      values_from = display_val
+    )
+
+  # Get p-value per row (one p-value per variable/repeat_category combination)
+  p_values_unique <- pivot_data %>%
+    dplyr::group_by(!!repeat_sym, variable) %>%
+    dplyr::summarise(p_value = dplyr::first(p_value_agg[!is.na(p_value_agg)]), .groups = "drop")
+
+  # Merge p-values back
+  pivot_wide <- pivot_wide %>%
+    dplyr::select(-p_value_agg) %>%
+    dplyr::left_join(p_values_unique, by = c(repeat_category_name, "variable"))
+
+  # Add significance stars
+  if (pivot_stars) {
+    pivot_wide <- pivot_wide %>%
+      dplyr::mutate(
+        Sig = dplyr::case_when(
+          is.na(p_value) ~ "",
+          p_value < 0.001 ~ "***",
+          p_value < 0.01 ~ "**",
+          p_value < 0.05 ~ "*",
+          TRUE ~ ""
+        )
+      )
+  }
+
+  # Rename columns for display
+  names(pivot_wide)[names(pivot_wide) == repeat_category_name] <- "level"
+  names(pivot_wide)[names(pivot_wide) == "variable"] <- "Variable"
+
+  # Reorder columns: Variable, level, groups..., Sig (if present), p_value (hidden)
+  col_order <- c("Variable", "level", as.character(groups))
+  if (pivot_stars) col_order <- c(col_order, "Sig")
+  pivot_wide <- pivot_wide %>%
+    dplyr::select(dplyr::all_of(col_order), dplyr::everything())
+
+  # Remove p_value from display (keep for formatting)
+  display_data <- pivot_wide %>% dplyr::select(-p_value)
+
+  # Build title and subtitle
+  stat_label <- switch(pivot_stat,
+    "mean" = "Mean",
+    "mean_sd" = "Mean (SD)",
+    "median" = "Median",
+    "n" = "N"
+  )
+
+  title_text <- paste0(stat_label, " by Factor Levels")
+  subtitle_text <- paste0("Groups compared: ", paste(groups, collapse = ", "),
+                          " | P-adjustment: ", toupper(p_adjust_method))
+
+  # Handle non-GT formats
+
+  if (format %in% c("plain", "markdown", "latex", "kable")) {
+    result <- format_table(
+      df = display_data,
+      format = format,
+      title = if (show_header) title_text else NULL,
+      subtitle = if (show_header) subtitle_text else NULL,
+      show_header = show_header,
+      bold_cols = "Variable",
+      align_left = c("Variable", "level")
+    )
+    return(result)
+  }
+
+  # Create gt table
+  gt_pivot <- display_data %>%
+    gt::gt() %>%
+    gt::tab_header(
+      title = title_text,
+      subtitle = subtitle_text
+    ) %>%
+    gt::tab_style(
+      style = list(
+        gt::cell_text(weight = "bold"),
+        gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+        gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+      ),
+      locations = gt::cells_column_labels()
+    ) %>%
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_body(columns = "Variable")
+    ) %>%
+    gt::cols_align(align = "center") %>%
+    gt::cols_align(align = "left", columns = c("Variable", "level")) %>%
+    gt::tab_options(
+      table.border.top.width = gt::px(2),
+      table.border.top.color = "black",
+      table.border.bottom.width = gt::px(2),
+      table.border.bottom.color = "black"
+    )
+
+  # Highlight significant rows (with stars)
+  if (pivot_stars) {
+    sig_rows <- which(display_data$Sig != "")
+    if (length(sig_rows) > 0) {
+      gt_pivot <- gt_pivot %>%
+        gt::tab_style(
+          style = gt::cell_text(weight = "bold"),
+          locations = gt::cells_body(columns = "Sig", rows = sig_rows)
+        )
+    }
+  }
+
+  # Add footnote
+  gt_pivot <- gt_pivot %>%
+    gt::tab_footnote(
+      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05"
+    )
+
+  return(gt_pivot)
+}
+
+#' Create pivoted post-hoc comparison table
+#'
+#' @param all_posthoc_data Data frame with all post-hoc results
+#' @param repeat_category_name Name of the repeat category variable
+#' @param posthoc_format "wide", "long", or "both"
+#' @param p_adjust_method Method used for p-value adjustment
+#' @return List with wide and/or long format tables
+#' @noRd
+create_posthoc_pivot_table <- function(all_posthoc_data, repeat_category_name,
+                                        posthoc_format = "wide", p_adjust_method = "fdr",
+                                        format = "gt", show_header = TRUE, verbose = TRUE) {
+
+  result <- list()
+
+  if (nrow(all_posthoc_data) == 0) {
+    return(result)
+  }
+
+  # Standardize column names
+  if (!"group" %in% names(all_posthoc_data) && repeat_category_name %in% names(all_posthoc_data)) {
+    all_posthoc_data$group <- all_posthoc_data[[repeat_category_name]]
+  }
+
+  # Add diff column if missing (for nonparametric tests)
+  if (!"diff" %in% names(all_posthoc_data)) {
+    all_posthoc_data$diff <- NA_real_
+  }
+
+  # Add significance stars
+  all_posthoc_data <- all_posthoc_data %>%
+    dplyr::mutate(
+      sig = dplyr::case_when(
+        is.na(p_adj) ~ "",
+        p_adj < 0.001 ~ "***",
+        p_adj < 0.01 ~ "**",
+        p_adj < 0.05 ~ "*",
+        TRUE ~ ""
+      ),
+      # Format difference with stars
+      diff_sig = dplyr::case_when(
+        is.na(diff) ~ sig,
+        TRUE ~ paste0(sprintf("%.2f", diff), sig)
+      )
+    )
+
+  # =========================================================================
+  # LONG FORMAT
+  # =========================================================================
+  if (posthoc_format %in% c("long", "both")) {
+    long_data <- all_posthoc_data %>%
+      dplyr::mutate(
+        Variable = variable,
+        Level = group,
+        Comparison = comparison,
+        Diff = ifelse(is.na(diff), "-", sprintf("%.2f", diff)),
+        `P-adj` = dplyr::case_when(
+          is.na(p_adj) ~ "NA",
+          p_adj < 0.001 ~ "< .001",
+          TRUE ~ sprintf("%.3f", p_adj)
+        ),
+        Sig = sig
+      ) %>%
+      dplyr::select(Variable, Level, Comparison, Diff, `P-adj`, Sig)
+
+    title_text <- "Post-hoc Pairwise Comparisons"
+    subtitle_text <- paste0("P-adjustment: ", toupper(p_adjust_method))
+
+    if (format %in% c("plain", "markdown", "latex", "kable")) {
+      result$long <- format_table(
+        df = long_data,
+        format = format,
+        title = if (show_header) title_text else NULL,
+        subtitle = if (show_header) subtitle_text else NULL,
+        show_header = show_header,
+        bold_cols = "Variable",
+        align_left = c("Variable", "Level", "Comparison")
+      )
+    } else {
+      sig_rows <- which(long_data$Sig != "")
+
+      gt_long <- long_data %>%
+        gt::gt() %>%
+        gt::tab_header(
+          title = title_text,
+          subtitle = subtitle_text
+        ) %>%
+        gt::tab_style(
+          style = list(
+            gt::cell_text(weight = "bold"),
+            gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(2))
+          ),
+          locations = gt::cells_column_labels()
+        ) %>%
+        gt::cols_align(align = "center") %>%
+        gt::cols_align(align = "left", columns = c("Variable", "Level", "Comparison")) %>%
+        gt::tab_options(
+          table.border.top.width = gt::px(2),
+          table.border.top.color = "black",
+          table.border.bottom.width = gt::px(2),
+          table.border.bottom.color = "black"
+        )
+
+      if (length(sig_rows) > 0) {
+        gt_long <- gt_long %>%
+          gt::tab_style(
+            style = gt::cell_text(weight = "bold"),
+            locations = gt::cells_body(rows = sig_rows)
+          ) %>%
+          gt::tab_style(
+            style = gt::cell_text(color = "red"),
+            locations = gt::cells_body(columns = "P-adj", rows = sig_rows)
+          )
+      }
+
+      gt_long <- gt_long %>%
+        gt::tab_footnote(footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05")
+
+      result$long <- gt_long
+    }
+  }
+
+  # =========================================================================
+  # WIDE FORMAT
+  # =========================================================================
+  if (posthoc_format %in% c("wide", "both")) {
+    # Get unique comparisons
+    comparisons <- unique(all_posthoc_data$comparison)
+
+    wide_data <- all_posthoc_data %>%
+      dplyr::select(variable, group, comparison, diff_sig) %>%
+      tidyr::pivot_wider(
+        names_from = comparison,
+        values_from = diff_sig
+      )
+
+    # Rename columns for display
+    names(wide_data)[names(wide_data) == "variable"] <- "Variable"
+    names(wide_data)[names(wide_data) == "group"] <- "Level"
+
+    title_text <- "Post-hoc Pairwise Comparisons (Wide)"
+    subtitle_text <- paste0("Values show mean difference with significance | P-adjustment: ",
+                            toupper(p_adjust_method))
+
+    if (format %in% c("plain", "markdown", "latex", "kable")) {
+      result$wide <- format_table(
+        df = wide_data,
+        format = format,
+        title = if (show_header) title_text else NULL,
+        subtitle = if (show_header) subtitle_text else NULL,
+        show_header = show_header,
+        bold_cols = "Variable",
+        align_left = c("Variable", "Level")
+      )
+    } else {
+      gt_wide <- wide_data %>%
+        gt::gt() %>%
+        gt::tab_header(
+          title = title_text,
+          subtitle = subtitle_text
+        ) %>%
+        gt::tab_style(
+          style = list(
+            gt::cell_text(weight = "bold"),
+            gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(2))
+          ),
+          locations = gt::cells_column_labels()
+        ) %>%
+        gt::cols_align(align = "center") %>%
+        gt::cols_align(align = "left", columns = c("Variable", "Level")) %>%
+        gt::tab_options(
+          table.border.top.width = gt::px(2),
+          table.border.top.color = "black",
+          table.border.bottom.width = gt::px(2),
+          table.border.bottom.color = "black"
+        ) %>%
+        gt::tab_footnote(footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05")
+
+      result$wide <- gt_wide
+    }
+  }
+
+  return(result)
+}
+
+# =============================================================================
 # MAIN FUNCTION
 # =============================================================================
 
@@ -402,16 +772,28 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @param nonparametric Logical. Use nonparametric tests? Default: FALSE.
 #'   When TRUE, uses Mann-Whitney U (2 groups) or Kruskal-Wallis (3+ groups).
 #' @param p_adjust_method Method for multiple comparison correction. Options:
-#'   "none", "bonferroni", "holm", "hochberg", "BH", "BY", "fdr".
-#'   Default: "none". Applied to both tables and post-hoc tests.
+#'   "none", "bonferroni", "holm", "hochberg", "hommel", "BH", "BY", "fdr".
+#'   Default: "fdr" (Benjamini-Hochberg False Discovery Rate).
+#'   Applied to both tables and post-hoc tests.
 #' @param posthoc Logical. Compute post-hoc pairwise comparisons for 3+ groups?
 #'   Default: TRUE. Results include a comparison table and text report.
 #' @param posthoc_method Method for post-hoc comparisons: "games-howell" (default,
 #'   does not assume equal variances) or "tukey" (Tukey's HSD, assumes equal variances).
 #' @param posthoc_table Logical. Include detailed post-hoc pairwise comparison table
 #'   in the output? Default FALSE.
+#' @param posthoc_format Character. Format for post-hoc table when pivot = TRUE:
+#'   "wide" (default, comparisons as columns), "long" (one row per comparison),
+#'   or "both" (return both formats).
 #' @param pairwise_display Which pairwise comparisons to show on plots? Options:
 #'   "significant" (default), "all", "none".
+#' @param pivot Logical. Pivot category groups to columns? Default FALSE.
+#'   When TRUE, creates a wide table with group levels as columns and
+#'   repeat_category levels as rows.
+#' @param pivot_stat Character. Statistic to display in pivoted cells:
+#'   "mean" (default), "mean_sd" (mean with SD in parentheses),
+#'   "median", or "n" (count).
+#' @param pivot_stars Logical. Show significance stars in pivot table?
+#'   Default TRUE when pivot = TRUE.
 #' @param min_threshold Numeric. Minimum proportion (0-1) of total sample required
 #'   to include a repeat_category level. Default: 0.05 (5 percent).
 #' @param min_subcategory Integer. Minimum observations required per group.
@@ -438,6 +820,12 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #'   summary_table (formatted gt table), and summary_data (data frame with raw
 #'   statistics). For stratified analysis (with repeat_category), returns a named
 #'   list where each element corresponds to a level of repeat_category.
+#'   When pivot = TRUE, additional elements are returned:
+#'   \itemize{
+#'     \item pivot_table: gt table with groups as columns and factor levels as rows
+#'     \item posthoc_pivot_wide: Post-hoc comparisons in wide format (if posthoc_table = TRUE)
+#'     \item posthoc_pivot_long: Post-hoc comparisons in long format (if posthoc_format = "long" or "both")
+#'   }
 #'
 #' @examples
 #' \dontrun{
@@ -568,6 +956,73 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #'   category_sep = " x ",  # Creates "Strong x Male", etc.
 #'   Vars = c("score")
 #' )
+#'
+#' # ============================================================
+#' # EXAMPLE 8: Pivoted Table (groups as columns)
+#' # ============================================================
+#' # LLM comparison data
+#' data <- data.frame(
+#'   Support_level = c(rnorm(100, 4, 1), rnorm(100, 6.5, 1), rnorm(100, 4.8, 1)),
+#'   pronoun = rep(c("he/him", "she/her", "they/them"), each = 100),
+#'   LA_activity = rep(c("Negative", "Positive"), 150),
+#'   llm = rep(c("GPT", "Mistral", "Qwen"), each = 100)
+#' )
+#'
+#' # Basic pivot - groups become columns
+#' results <- compare_groups(
+#'   data = data,
+#'   category = "llm",                    # Becomes columns: GPT | Mistral | Qwen
+#'   Vars = "Support_level",
+#'   repeat_category = "pronoun",         # Rows: he/him, she/her, they/them
+#'   pivot = TRUE                         # Enable pivot mode
+#' )
+#'
+#' # Access the pivot table
+#' results$pivot_table
+#'
+#' # ============================================================
+#' # EXAMPLE 9: Pivot with Mean and SD
+#' # ============================================================
+#' results <- compare_groups(
+#'   data = data,
+#'   category = "llm",
+#'   Vars = "Support_level",
+#'   repeat_category = c("pronoun", "LA_activity"),
+#'   pivot = TRUE,
+#'   pivot_stat = "mean_sd"              # Shows "4.32 (1.21)"
+#' )
+#'
+#' # ============================================================
+#' # EXAMPLE 10: Pivot with Post-hoc Comparisons Table
+#' # ============================================================
+#' results <- compare_groups(
+#'   data = data,
+#'   category = "llm",
+#'   Vars = "Support_level",
+#'   repeat_category = "pronoun",
+#'   pivot = TRUE,
+#'   posthoc = TRUE,
+#'   posthoc_table = TRUE,               # Include post-hoc table
+#'   posthoc_format = "wide"             # "wide", "long", or "both"
+#' )
+#'
+#' # Access tables
+#' results$pivot_table              # Main pivoted means table
+#' results$posthoc_pivot_wide       # Post-hoc comparisons (wide format)
+#'
+#' # ============================================================
+#' # EXAMPLE 11: Different P-value Adjustment Methods
+#' # ============================================================
+#' # Available methods: "none", "bonferroni", "holm", "hochberg",
+#' #                   "hommel", "BH", "BY", "fdr" (default)
+#' results <- compare_groups(
+#'   data = data,
+#'   category = "llm",
+#'   Vars = "Support_level",
+#'   repeat_category = "pronoun",
+#'   pivot = TRUE,
+#'   p_adjust_method = "bonferroni"
+#' )
 #' }
 #'
 #' @seealso
@@ -589,10 +1044,14 @@ compare_groups <- function(data, category, Vars = NULL,
                                       type = "auto",
                                       bayesian = FALSE,
                                       equivalence = FALSE, equivalence_bounds = c(-0.5, 0.5),
-                                      nonparametric = FALSE, p_adjust_method = "none",
+                                      nonparametric = FALSE, p_adjust_method = "fdr",
                                       posthoc = TRUE, posthoc_method = "games-howell",
                                       posthoc_table = FALSE,
+                                      posthoc_format = c("wide", "long", "both"),
                                       pairwise_display = "significant",
+                                      pivot = FALSE,
+                                      pivot_stat = c("mean", "mean_sd", "median", "n"),
+                                      pivot_stars = TRUE,
                                       min_threshold = 0.05, min_subcategory = 5,
                                       colors = NULL, verbose = TRUE,
                                       combined_table = TRUE,
@@ -681,13 +1140,23 @@ compare_groups <- function(data, category, Vars = NULL,
   # If "auto", use the nonparametric parameter as-is (default FALSE)
 
   # Validate p_adjust_method
-  valid_methods <- c("none", "bonferroni", "holm", "hochberg", "BH", "BY", "fdr")
+  valid_methods <- c("none", "bonferroni", "holm", "hochberg", "hommel", "BH", "BY", "fdr")
   if (!p_adjust_method %in% valid_methods) {
     stop("p_adjust_method must be one of: ", paste(valid_methods, collapse = ", "))
   }
 
   # Validate plot_style
   plot_style <- match.arg(plot_style)
+
+  # Validate pivot parameters
+  pivot_stat <- match.arg(pivot_stat)
+  posthoc_format <- match.arg(posthoc_format)
+
+  # Pivot requires repeat_category
+  if (pivot && is.null(repeat_category)) {
+    warning("pivot = TRUE requires repeat_category. Setting pivot = FALSE.")
+    pivot <- FALSE
+  }
 
   # Validate equivalence bounds
   if (equivalence) {
@@ -782,7 +1251,8 @@ compare_groups <- function(data, category, Vars = NULL,
   # ===========================================================================
   # Check Required Packages
   # ===========================================================================
-  required_pkgs <- c("gt", "gridExtra")
+  required_pkgs <- c("gridExtra")
+  if (format == "gt") required_pkgs <- c(required_pkgs, "gt")
   if (bayesian) required_pkgs <- c(required_pkgs, "BayesFactor")
   if (equivalence) required_pkgs <- c(required_pkgs, "TOSTER")
   if (!nonparametric) required_pkgs <- c(required_pkgs, "effsize", "effectsize")
@@ -1808,6 +2278,72 @@ compare_groups <- function(data, category, Vars = NULL,
       })
     }
 
+    # =========================================================================
+    # Create PIVOT table if requested
+    # =========================================================================
+    if (pivot && length(all_summary_data) > 0) {
+      combined_data <- dplyr::bind_rows(all_summary_data)
+
+      # Debug: check that required columns exist
+      required_cols <- c(category_name_str, repeat_category_name_str, "variable", "mean", "sd", "n", "p_value")
+      missing_cols <- setdiff(required_cols, names(combined_data))
+      if (length(missing_cols) > 0 && verbose) {
+        warning("Pivot table: missing columns in combined_data: ", paste(missing_cols, collapse = ", "))
+      }
+
+      tryCatch({
+        # Create the pivot table
+        results_by_group$pivot_table <- create_pivot_table(
+          combined_data = combined_data,
+          category_name = category_name_str,
+          repeat_category_name = repeat_category_name_str,
+          pivot_stat = pivot_stat,
+          pivot_stars = pivot_stars,
+          p_adjust_method = p_adjust_method,
+          comparison_categories = comparison_categories,
+          format = format,
+          show_header = show_header,
+          verbose = verbose
+        )
+
+        # Create post-hoc pivot tables if posthoc_table is TRUE
+        if (posthoc_table && posthoc) {
+          # Collect all post-hoc data
+          all_posthoc_data <- data.frame()
+          for (stat in all_stats) {
+            if (!is.null(stat$posthoc) && nrow(stat$posthoc) > 0) {
+              ph_data <- stat$posthoc
+              ph_data[[repeat_category_name_str]] <- stat$group
+              all_posthoc_data <- rbind(all_posthoc_data, ph_data)
+            }
+          }
+
+          if (nrow(all_posthoc_data) > 0) {
+            posthoc_pivot_tables <- create_posthoc_pivot_table(
+              all_posthoc_data = all_posthoc_data,
+              repeat_category_name = repeat_category_name_str,
+              posthoc_format = posthoc_format,
+              p_adjust_method = p_adjust_method,
+              format = format,
+              show_header = show_header,
+              verbose = verbose
+            )
+
+            # Store tables based on format
+            if (posthoc_format %in% c("wide", "both") && !is.null(posthoc_pivot_tables$wide)) {
+              results_by_group$posthoc_pivot_wide <- posthoc_pivot_tables$wide
+            }
+            if (posthoc_format %in% c("long", "both") && !is.null(posthoc_pivot_tables$long)) {
+              results_by_group$posthoc_pivot_long <- posthoc_pivot_tables$long
+            }
+          }
+        }
+      }, error = function(e) {
+        warning("Error creating pivot table: ", e$message, "\nColumns in data: ",
+                paste(names(combined_data), collapse = ", "))
+      })
+    }
+
     # Create combined plot grid
     if (plots && length(all_plots) > 0) {
       results_by_group$all_plots <- all_plots
@@ -1846,72 +2382,78 @@ compare_groups <- function(data, category, Vars = NULL,
       }
 
       if (nrow(all_posthoc) > 0) {
+        # Add diff column if missing (for nonparametric tests)
+        if (!"diff" %in% names(all_posthoc)) {
+          all_posthoc$diff <- NA_real_
+        }
+
         # Format the post-hoc table
         posthoc_display <- all_posthoc %>%
-          dplyr::select(
-            Group,
+          dplyr::mutate(
             Variable = variable,
             Comparison = comparison,
-            Difference = diff,
-            `P-adj` = p_adj
-          ) %>%
-          dplyr::mutate(
-            Difference = ifelse(is.na(Difference), "-", sprintf("%.2f", Difference)),
-            `P-adj` = dplyr::case_when(
-              is.na(`P-adj`) ~ "NA",
-              `P-adj` < 0.001 ~ "< .001",
-              TRUE ~ sprintf("%.3f", `P-adj`)
+            Difference = ifelse(is.na(diff), "-", sprintf("%.2f", diff)),
+            P_adj_fmt = dplyr::case_when(
+              is.na(p_adj) ~ "NA",
+              p_adj < 0.001 ~ "< .001",
+              TRUE ~ sprintf("%.3f", p_adj)
             ),
             Sig = dplyr::case_when(
-              `P-adj` == "NA" ~ "",
-              `P-adj` == "< .001" ~ "***",
-              suppressWarnings(as.numeric(`P-adj`)) < 0.01 ~ "**",
-              suppressWarnings(as.numeric(`P-adj`)) < 0.05 ~ "*",
+              is.na(p_adj) ~ "",
+              p_adj < 0.001 ~ "***",
+              p_adj < 0.01 ~ "**",
+              p_adj < 0.05 ~ "*",
               TRUE ~ ""
             )
-          )
+          ) %>%
+          dplyr::select(Group, Variable, Comparison, Difference, `P-adj` = P_adj_fmt, Sig)
 
         # Identify significant rows
         sig_rows <- which(posthoc_display$Sig != "")
 
-        # Create gt table
-        gt_posthoc <- posthoc_display %>%
-          gt::gt() %>%
-          gt::tab_header(
-            title = "Post-hoc Pairwise Comparisons",
-            subtitle = paste0("Method: ", posthoc_method, " | Adjustment: ",
-                             if (p_adjust_method == "none") "bonferroni" else p_adjust_method)
-          ) %>%
-          gt::tab_style(
-            style = list(
-              gt::cell_text(weight = "bold"),
-              gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(2))
-            ),
-            locations = gt::cells_column_labels()
-          ) %>%
-          gt::cols_align(align = "center") %>%
-          gt::cols_align(align = "left", columns = c("Group", "Variable", "Comparison")) %>%
-          gt::tab_options(
-            table.border.top.width = gt::px(2),
-            table.border.top.color = "black",
-            table.border.bottom.width = gt::px(2),
-            table.border.bottom.color = "black"
-          )
-
-        # Highlight significant rows
-        if (length(sig_rows) > 0) {
-          gt_posthoc <- gt_posthoc %>%
-            gt::tab_style(
-              style = gt::cell_text(weight = "bold"),
-              locations = gt::cells_body(rows = sig_rows)
+        # Create table based on format
+        if (format %in% c("plain", "markdown", "latex", "kable")) {
+          results_by_group$posthoc_table <- posthoc_display
+        } else {
+          # Create gt table
+          gt_posthoc <- posthoc_display %>%
+            gt::gt() %>%
+            gt::tab_header(
+              title = "Post-hoc Pairwise Comparisons",
+              subtitle = paste0("Method: ", posthoc_method, " | Adjustment: ",
+                               if (p_adjust_method == "none") "bonferroni" else p_adjust_method)
             ) %>%
             gt::tab_style(
-              style = gt::cell_text(color = "red"),
-              locations = gt::cells_body(columns = "P-adj", rows = sig_rows)
+              style = list(
+                gt::cell_text(weight = "bold"),
+                gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(2))
+              ),
+              locations = gt::cells_column_labels()
+            ) %>%
+            gt::cols_align(align = "center") %>%
+            gt::cols_align(align = "left", columns = c("Group", "Variable", "Comparison")) %>%
+            gt::tab_options(
+              table.border.top.width = gt::px(2),
+              table.border.top.color = "black",
+              table.border.bottom.width = gt::px(2),
+              table.border.bottom.color = "black"
             )
-        }
 
-        results_by_group$posthoc_table <- gt_posthoc
+          # Highlight significant rows
+          if (length(sig_rows) > 0) {
+            gt_posthoc <- gt_posthoc %>%
+              gt::tab_style(
+                style = gt::cell_text(weight = "bold"),
+                locations = gt::cells_body(rows = sig_rows)
+              ) %>%
+              gt::tab_style(
+                style = gt::cell_text(color = "red"),
+                locations = gt::cells_body(columns = "P-adj", rows = sig_rows)
+              )
+          }
+
+          results_by_group$posthoc_table <- gt_posthoc
+        }
       }
     }
 
@@ -2000,17 +2542,37 @@ compare_groups <- function(data, category, Vars = NULL,
       cat("  * p < .05\n")
       cat(paste(rep("=", 70), collapse = ""), "\n\n")
 
-      # Print combined table
-      if (!is.null(results_by_group$combined_table)) {
-        print(results_by_group$combined_table)
+      # Print pivot table if pivot = TRUE
+      if (pivot && !is.null(results_by_group$pivot_table)) {
+        print(results_by_group$pivot_table)
         cat("\n")
-      }
 
-      # Print post-hoc table if it exists
-      if (!is.null(results_by_group$posthoc_table)) {
-        cat("\n")
-        print(results_by_group$posthoc_table)
-        cat("\n*** p < .001, ** p < .01, * p < .05\n")
+        # Print post-hoc pivot tables
+        if (!is.null(results_by_group$posthoc_pivot_wide)) {
+          cat("\n")
+          print(results_by_group$posthoc_pivot_wide)
+        }
+        if (!is.null(results_by_group$posthoc_pivot_long)) {
+          cat("\n")
+          print(results_by_group$posthoc_pivot_long)
+        }
+      } else {
+        # If pivot was requested but failed, show a message
+        if (pivot && is.null(results_by_group$pivot_table)) {
+          cat("Note: Pivot table creation failed. Showing combined table instead.\n\n")
+        }
+        # Print combined table (original format)
+        if (!is.null(results_by_group$combined_table)) {
+          print(results_by_group$combined_table)
+          cat("\n")
+        }
+
+        # Print post-hoc table if it exists (original format)
+        if (!is.null(results_by_group$posthoc_table)) {
+          cat("\n")
+          print(results_by_group$posthoc_table)
+          cat("\n*** p < .001, ** p < .01, * p < .05\n")
+        }
       }
 
       # Display combined plot
@@ -2031,7 +2593,11 @@ compare_groups <- function(data, category, Vars = NULL,
       bayesian_analysis = bayesian,
       equivalence_testing = equivalence,
       equivalence_bounds = if (equivalence) equivalence_bounds else NULL,
-      p_adjust_method = p_adjust_method
+      p_adjust_method = p_adjust_method,
+      pivot = pivot,
+      pivot_stat = if (pivot) pivot_stat else NULL,
+      pivot_stars = if (pivot) pivot_stars else NULL,
+      posthoc_format = if (pivot && posthoc_table) posthoc_format else NULL
     )
 
     # AI interpretation if requested (for stratified analysis)
