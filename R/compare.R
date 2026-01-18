@@ -373,6 +373,150 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @param comparison_categories Variables being compared
 #' @return gt table object
 #' @noRd
+#' Create Simple Pivot Table (without repeat_category)
+#'
+#' Creates a pivot table with variables as rows and category levels as columns
+#' @param summary_data Data frame with summary statistics
+#' @param category_name Name of category column
+#' @param pivot_stat Statistic to show
+#' @param pivot_stars Show p (ES) column
+#' @param p_adjust_method P-value adjustment method
+#' @param format Output format
+#' @param show_header Show header
+#' @param verbose Print messages
+#' @return Formatted table
+#' @noRd
+create_pivot_table_simple <- function(summary_data, category_name,
+                                       pivot_stat = "mean", pivot_stars = TRUE,
+                                       p_adjust_method = "fdr",
+                                       format = "gt", show_header = TRUE, verbose = TRUE) {
+
+  # Get category levels for columns
+  cat_levels <- unique(summary_data[[category_name]])
+
+  # Get unique variables for rows
+  variables <- unique(summary_data$variable)
+
+  # Build pivot data
+  rows <- list()
+
+  for (var in variables) {
+    var_data <- summary_data[summary_data$variable == var, ]
+
+    row <- list(Variable = var)
+
+    # Get p-value and ES for this variable (same across all category levels)
+    p_val <- var_data$p_value[!is.na(var_data$p_value)][1]
+    es_val <- if ("efsz" %in% names(var_data)) var_data$efsz[!is.na(var_data$efsz)][1] else NA
+
+    # Add value for each category level
+    for (cat_level in cat_levels) {
+      cat_row <- var_data[var_data[[category_name]] == cat_level, ]
+      if (nrow(cat_row) > 0) {
+        mean_val <- cat_row$mean[1]
+        sd_val <- cat_row$sd[1]
+        n_val <- cat_row$n[1]
+
+        if (pivot_stat == "mean") {
+          row[[as.character(cat_level)]] <- sprintf("%.2f", mean_val)
+        } else if (pivot_stat == "mean_sd") {
+          row[[as.character(cat_level)]] <- sprintf("%.2f (%.2f)", mean_val, sd_val)
+        } else if (pivot_stat == "n") {
+          row[[as.character(cat_level)]] <- as.character(n_val)
+        } else {
+          row[[as.character(cat_level)]] <- sprintf("%.2f", mean_val)
+        }
+      } else {
+        row[[as.character(cat_level)]] <- "-"
+      }
+    }
+
+    # Add p (ES) column
+    if (pivot_stars) {
+      if (!is.na(p_val)) {
+        if (p_val < 0.001) {
+          p_str <- "<.001"
+        } else {
+          p_str <- sprintf("%.3f", p_val)
+        }
+      } else {
+        p_str <- "-"
+      }
+
+      if (!is.na(es_val)) {
+        es_str <- sprintf("%.2f", es_val)
+      } else {
+        es_str <- "-"
+      }
+
+      row[["p (ES)"]] <- sprintf("%s (%s)", p_str, es_str)
+    }
+
+    rows[[length(rows) + 1]] <- row
+  }
+
+  # Convert to data frame
+  df <- dplyr::bind_rows(rows)
+
+  # Build title
+  stat_label <- switch(pivot_stat,
+    "mean" = "Mean",
+    "mean_sd" = "Mean (SD)",
+    "median" = "Median",
+    "n" = "N",
+    "Mean"
+  )
+
+  title_text <- paste0(stat_label, " by ", category_name)
+  subtitle_text <- paste0("Columns: ", paste(cat_levels, collapse = ", "),
+                          " | p (ES) = p-value (effect size)")
+
+  # Handle plain format
+  if (format %in% c("plain", "markdown", "latex", "kable")) {
+    result <- format_table(
+      df = df,
+      format = format,
+      title = if (show_header) title_text else NULL,
+      subtitle = if (show_header) subtitle_text else NULL,
+      show_header = show_header,
+      bold_cols = "Variable",
+      align_left = "Variable"
+    )
+    return(result)
+  }
+
+  # Create gt table
+  gt_table <- df %>%
+    gt::gt() %>%
+    gt::tab_header(
+      title = title_text,
+      subtitle = subtitle_text
+    ) %>%
+    gt::tab_style(
+      style = list(
+        gt::cell_text(weight = "bold"),
+        gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+        gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+      ),
+      locations = gt::cells_column_labels()
+    ) %>%
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_body(columns = "Variable")
+    ) %>%
+    gt::tab_options(
+      table.border.top.color = "black",
+      table.border.bottom.color = "black",
+      column_labels.border.bottom.color = "black",
+      table_body.border.bottom.color = "black"
+    ) %>%
+    gt::tab_footnote(
+      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared"
+    )
+
+  return(gt_table)
+}
+
 create_pivot_table <- function(combined_data, category_name, repeat_category_name,
                                 repeat_category_orig_vars = NULL,
                                 pivot_by = "category",
@@ -421,6 +565,7 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
       median_val = if ("median" %in% names(combined_data)) mean(median, na.rm = TRUE) else NA,
       n_val = sum(n, na.rm = TRUE),
       p_value_agg = dplyr::first(p_value[!is.na(p_value)]),
+      es_agg = if ("efsz" %in% names(combined_data)) dplyr::first(efsz[!is.na(efsz)]) else NA_real_,
       .groups = "drop"
     )
 
@@ -447,25 +592,29 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
       values_from = display_val
     )
 
-  # Get p-value per row (one p-value per variable/row_col combination)
-  p_values_unique <- pivot_data %>%
+  # Get p-value and ES per row (one p-value/ES per variable/row_col combination)
+  stats_unique <- pivot_data %>%
     dplyr::group_by(!!row_col_sym, variable) %>%
-    dplyr::summarise(p_value = dplyr::first(p_value_agg[!is.na(p_value_agg)]), .groups = "drop")
+    dplyr::summarise(
+      p_value = dplyr::first(p_value_agg[!is.na(p_value_agg)]),
+      es_value = dplyr::first(es_agg[!is.na(es_agg)]),
+      .groups = "drop"
+    )
 
-  # Merge p-values back
+  # Merge p-values and ES back
   pivot_wide <- pivot_wide %>%
-    dplyr::left_join(p_values_unique, by = c(row_col_name, "variable"))
+    dplyr::left_join(stats_unique, by = c(row_col_name, "variable"))
 
-  # Add significance stars
+  # Add p (ES) column instead of just stars
   if (pivot_stars) {
     pivot_wide <- pivot_wide %>%
       dplyr::mutate(
-        Sig = dplyr::case_when(
-          is.na(p_value) ~ "",
-          p_value < 0.001 ~ "***",
-          p_value < 0.01 ~ "**",
-          p_value < 0.05 ~ "*",
-          TRUE ~ ""
+        `p (ES)` = dplyr::case_when(
+          is.na(p_value) & is.na(es_value) ~ "-",
+          is.na(p_value) ~ sprintf("- (%.2f)", es_value),
+          is.na(es_value) ~ if_else(p_value < 0.001, "<.001 (-)", sprintf("%.3f (-)", p_value)),
+          p_value < 0.001 ~ sprintf("<.001 (%.2f)", es_value),
+          TRUE ~ sprintf("%.3f (%.2f)", p_value, es_value)
         )
       )
   }
@@ -503,14 +652,15 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
     }
   }
 
-  # Reorder columns: Variable, level col(s), groups..., Sig (if present), p_value (hidden)
+  # Reorder columns: Variable, level col(s), groups..., p (ES) (if present)
   col_order <- c("Variable", level_cols, as.character(groups))
-  if (pivot_stars) col_order <- c(col_order, "Sig")
+  if (pivot_stars) col_order <- c(col_order, "p (ES)")
   pivot_wide <- pivot_wide %>%
     dplyr::select(dplyr::all_of(col_order), dplyr::everything())
 
-  # Remove p_value from display (keep for formatting)
-  display_data <- pivot_wide %>% dplyr::select(-p_value)
+  # Remove p_value and es_value from display (keep for formatting)
+  cols_to_remove <- intersect(c("p_value", "es_value"), names(pivot_wide))
+  display_data <- pivot_wide %>% dplyr::select(-dplyr::all_of(cols_to_remove))
 
   # Build title and subtitle
   stat_label <- switch(pivot_stat,
@@ -1770,11 +1920,8 @@ compare_groups <- function(data, category, Vars = NULL,
   pivot_by <- match.arg(pivot_by)
   posthoc_format <- match.arg(posthoc_format)
 
-  # Pivot requires repeat_category
-  if (pivot && is.null(repeat_category)) {
-    warning("pivot = TRUE requires repeat_category. Setting pivot = FALSE.")
-    pivot <- FALSE
-  }
+  # Pivot with multiple variables uses variables as rows
+  # repeat_category is optional for pivot
 
   # Validate equivalence bounds
   if (equivalence) {
@@ -2766,6 +2913,24 @@ compare_groups <- function(data, category, Vars = NULL,
     # No repeat category - single analysis
     result <- run_single_analysis(data)
 
+    # Create pivot table if requested (variables as rows, category as columns)
+    if (pivot && !is.null(result$summary_data)) {
+      tryCatch({
+        result$pivot_table <- create_pivot_table_simple(
+          summary_data = result$summary_data,
+          category_name = category_name_str,
+          pivot_stat = pivot_stat,
+          pivot_stars = pivot_stars,
+          p_adjust_method = p_adjust_method,
+          format = format,
+          show_header = show_header,
+          verbose = verbose
+        )
+      }, error = function(e) {
+        if (verbose) warning("Could not create pivot table: ", e$message)
+      })
+    }
+
     # AI interpretation if requested
     if (interpret) {
       n_groups <- length(unique(data[[category_name_str]]))
@@ -3021,30 +3186,45 @@ compare_groups <- function(data, category, Vars = NULL,
     if (pivot && length(all_summary_data) > 0) {
       combined_data <- dplyr::bind_rows(all_summary_data)
 
-      # Debug: check that required columns exist
-      required_cols <- c(category_name_str, repeat_category_name_str, "variable", "mean", "sd", "n", "p_value")
-      missing_cols <- setdiff(required_cols, names(combined_data))
-      if (length(missing_cols) > 0 && verbose) {
-        warning("Pivot table: missing columns in combined_data: ", paste(missing_cols, collapse = ", "))
-      }
-
       tryCatch({
-        # Create the pivot table
-        results_by_group$pivot_table <- create_pivot_table(
-          combined_data = combined_data,
-          category_name = category_name_str,
-          repeat_category_name = repeat_category_name_str,
-          repeat_category_orig_vars = repeat_category_orig_vars,
-          pivot_by = pivot_by,
-          pivot_stat = pivot_stat,
-          pivot_stars = pivot_stars,
-          pivot_split_level = pivot_split_level,
-          p_adjust_method = p_adjust_method,
-          comparison_categories = comparison_categories,
-          format = format,
-          show_header = show_header,
-          verbose = verbose
-        )
+        # Use simple pivot if no repeat_category, otherwise use full pivot
+        if (is.null(repeat_category_name_str)) {
+          # Simple pivot: variables as rows, category as columns
+          results_by_group$pivot_table <- create_pivot_table_simple(
+            summary_data = combined_data,
+            category_name = category_name_str,
+            pivot_stat = pivot_stat,
+            pivot_stars = pivot_stars,
+            p_adjust_method = p_adjust_method,
+            format = format,
+            show_header = show_header,
+            verbose = verbose
+          )
+        } else {
+          # Full pivot with repeat_category
+          # Debug: check that required columns exist
+          required_cols <- c(category_name_str, repeat_category_name_str, "variable", "mean", "sd", "n", "p_value")
+          missing_cols <- setdiff(required_cols, names(combined_data))
+          if (length(missing_cols) > 0 && verbose) {
+            warning("Pivot table: missing columns in combined_data: ", paste(missing_cols, collapse = ", "))
+          }
+
+          results_by_group$pivot_table <- create_pivot_table(
+            combined_data = combined_data,
+            category_name = category_name_str,
+            repeat_category_name = repeat_category_name_str,
+            repeat_category_orig_vars = repeat_category_orig_vars,
+            pivot_by = pivot_by,
+            pivot_stat = pivot_stat,
+            pivot_stars = pivot_stars,
+            pivot_split_level = pivot_split_level,
+            p_adjust_method = p_adjust_method,
+            comparison_categories = comparison_categories,
+            format = format,
+            show_header = show_header,
+            verbose = verbose
+          )
+        }
 
         # Create post-hoc pivot tables if posthoc_table is TRUE
         if (posthoc_table && posthoc) {
