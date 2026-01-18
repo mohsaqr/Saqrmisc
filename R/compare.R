@@ -432,9 +432,9 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
       )
     )
 
-  # Select columns for pivot
+  # Select columns for pivot (exclude p_value_agg to avoid creating separate rows)
   pivot_subset <- pivot_data %>%
-    dplyr::select(!!repeat_sym, variable, !!cat_sym, display_val, p_value_agg)
+    dplyr::select(!!repeat_sym, variable, !!cat_sym, display_val)
 
   # Pivot to wide format - pivot the selected column
   pivot_wide <- pivot_subset %>%
@@ -450,7 +450,6 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
 
   # Merge p-values back
   pivot_wide <- pivot_wide %>%
-    dplyr::select(-p_value_agg) %>%
     dplyr::left_join(p_values_unique, by = c(row_col_name, "variable"))
 
   # Add significance stars
