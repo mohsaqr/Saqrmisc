@@ -1012,17 +1012,10 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
       }
 
       # Add Sig row for this factor
-      # P-value row
-      p_row <- list(
+      # Combined p-value (effect size) row
+      stats_row <- list(
         factor = factor_var,
-        level = "p",
-        variable = outcome_var
-      )
-
-      # Effect size row
-      es_row <- list(
-        factor = factor_var,
-        level = "ES",
+        level = "p (ES)",
         variable = outcome_var
       )
 
@@ -1033,24 +1026,26 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
         # Format p-value
         if (!is.null(p_val) && !is.na(p_val)) {
           if (p_val < 0.001) {
-            p_row[[cat_level]] <- "<.001"
+            p_str <- "<.001"
           } else {
-            p_row[[cat_level]] <- sprintf("%.3f", p_val)
+            p_str <- sprintf("%.3f", p_val)
           }
         } else {
-          p_row[[cat_level]] <- "-"
+          p_str <- "-"
         }
 
         # Format effect size
         if (!is.null(es_val) && !is.na(es_val)) {
-          es_row[[cat_level]] <- sprintf("%.2f", es_val)
+          es_str <- sprintf("%.2f", es_val)
         } else {
-          es_row[[cat_level]] <- "-"
+          es_str <- "-"
         }
+
+        # Combine: p-value (effect size)
+        stats_row[[cat_level]] <- sprintf("%s (%s)", p_str, es_str)
       }
 
-      rows[[length(rows) + 1]] <- p_row
-      rows[[length(rows) + 1]] <- es_row
+      rows[[length(rows) + 1]] <- stats_row
     }
   }
 
@@ -1115,7 +1110,7 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
       table_body.border.bottom.color = "black"
     ) %>%
     gt::tab_footnote(
-      footnote = "p = p-value; ES = effect size (eta-squared for ANOVA, epsilon-squared for Kruskal-Wallis)"
+      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared"
     )
 
   return(gt_table)
