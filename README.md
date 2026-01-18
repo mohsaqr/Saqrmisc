@@ -187,7 +187,7 @@ correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), show_header = FALSE)
 
 ### `compare_groups()` - Statistical Group Comparisons
 
-Compare groups using t-tests, ANOVA, or nonparametric alternatives with publication-ready visualizations.
+Compare groups using t-tests, ANOVA, or nonparametric alternatives with publication-ready visualizations. Supports both between-group and within-group analysis modes.
 
 ```r
 # Two-group comparison (automatic t-test)
@@ -263,6 +263,70 @@ compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"), format = "latex")
 compare_groups(mtcars, category = "am", Vars = c("mpg"), show_header = FALSE)
 ```
 
+### Pivot Tables
+
+Create compact pivot tables with category levels as columns and p-value with effect size:
+
+```r
+# Pivot table: Variables as rows, category levels as columns
+results <- compare_groups(
+  data = df,
+  category = "llm",
+  Vars = c("Accuracy", "Higher_Order", "Noise"),
+  pivot = TRUE,
+  pivot_stat = "mean_sd",
+  type = "np"
+)
+
+results$pivot_table
+```
+
+**Output:**
+```
+Variable            GPT         Mistral     Qwen        p (ES)
+Accuracy            1.69 (0.50) 1.47 (0.56) 1.46 (0.50) <.001 (0.05)
+Higher_Order_Skills 0.95 (0.82) 0.79 (0.77) 0.89 (0.69) 0.160 (0.01)
+Noise               0.45 (0.32) 0.52 (0.28) 0.48 (0.30) 0.234 (0.02)
+```
+
+The `p (ES)` column shows p-value and effect size (eta-squared or epsilon-squared) together.
+
+### Within-Group Analysis
+
+Test whether factors have effects within each category level (treating categories as separate datasets):
+
+```r
+# Example: Test if pronoun and support affect scores within each LLM
+results <- compare_groups(
+  data = df,
+  category = "llm",                      # Categories become columns
+  Vars = "Support_level",                # Outcome variable
+  compare_by = c("pronoun", "support"),  # Factors to test within each LLM
+  compare_mode = "within",               # Within-group analysis
+  pivot_stat = "mean_sd"
+)
+
+# View within-group results
+results$within_table
+
+# Also get standard between-group comparison
+results$summary_table
+```
+
+**Within Table Output:**
+```
+factor   level    GPT          Mistral      Qwen
+pronoun  he/him   5.19 (1.88)  5.26 (1.98)  4.57 (2.08)
+         she/her  6.31 (1.86)  6.74 (2.00)  6.66 (2.04)
+         p (ES)   0.003 (0.09) <.001 (0.12) <.001 (0.23)
+support  Low      5.42 (2.01)  5.80 (2.10)  5.30 (2.15)
+         Medium   5.65 (1.95)  5.90 (1.88)  5.55 (2.00)
+         High     6.25 (1.90)  6.45 (2.05)  6.10 (2.08)
+         p (ES)   0.045 (0.04) 0.120 (0.03) 0.035 (0.05)
+```
+
+Each factor is tested separately within each category level (LLM). The `p (ES)` row shows the p-value and effect size for that factor's effect within each column.
+
 **Parameters:**
 
 | Parameter | Description | Default |
@@ -270,11 +334,15 @@ compare_groups(mtcars, category = "am", Vars = c("mpg"), show_header = FALSE)
 | `category` | Grouping variable (quoted string) | Required |
 | `Vars` | Numeric variables to compare | Required |
 | `repeat_category` | Stratification variable | `NULL` |
+| `compare_by` | Factors to test within each category (for `compare_mode = "within"`) | `NULL` |
+| `compare_mode` | `"between"` (compare categories) or `"within"` (test factors within each category) | `"between"` |
 | `type` | `"auto"`, `"p"`, `"np"`, `"bayes"` | `"auto"` |
 | `posthoc` | Compute post-hoc tests? | `TRUE` |
 | `posthoc_method` | `"games-howell"` or `"tukey"` | `"games-howell"` |
 | `bayesian` | Compute Bayes Factors? | `FALSE` |
 | `equivalence` | Perform TOST? | `FALSE` |
+| `pivot` | Create pivot table with categories as columns? | `FALSE` |
+| `pivot_stat` | Statistic for pivot: `"mean"`, `"mean_sd"`, `"median"`, `"n"` | `"mean"` |
 | `format` | `"gt"`, `"plain"`, `"markdown"`, `"latex"`, `"kable"` | `"gt"` |
 | `show_header` | Show table title/subtitle? | `TRUE` |
 
