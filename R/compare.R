@@ -365,15 +365,19 @@ plot_violin_style <- function(data, x_var, y_var, colors, title = NULL, subtitle
 #' @param combined_data Data frame with combined summary statistics
 #' @param category_name Name of the grouping variable (becomes columns)
 #' @param repeat_category_name Name of the repeat category variable
+#' @param repeat_category_orig_vars Original variable names if multiple were combined
 #' @param pivot_stat Statistic to show: "mean", "mean_sd", "median", "n"
 #' @param pivot_stars Logical, show significance stars
+#' @param pivot_split_level Logical, split combined level column into separate columns
 #' @param p_adjust_method Method used for p-value adjustment
 #' @param comparison_categories Variables being compared
 #' @return gt table object
 #' @noRd
 create_pivot_table <- function(combined_data, category_name, repeat_category_name,
+                                repeat_category_orig_vars = NULL,
                                 pivot_by = "category",
                                 pivot_stat = "mean", pivot_stars = TRUE,
+                                pivot_split_level = TRUE,
                                 p_adjust_method = "fdr", comparison_categories = NULL,
                                 format = "gt", show_header = TRUE, verbose = TRUE) {
 
@@ -470,8 +474,37 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
   names(pivot_wide)[names(pivot_wide) == row_col_name] <- "level"
   names(pivot_wide)[names(pivot_wide) == "variable"] <- "Variable"
 
-  # Reorder columns: Variable, level, groups..., Sig (if present), p_value (hidden)
-  col_order <- c("Variable", "level", as.character(groups))
+  # Split combined level column if requested and multiple vars were combined
+  level_cols <- "level"
+  if (pivot_split_level && !is.null(repeat_category_orig_vars) && length(repeat_category_orig_vars) > 1) {
+    # Check if level column contains the separator
+    if (any(grepl(" \\| ", pivot_wide$level))) {
+      # Split the level column into separate columns
+      split_levels <- strsplit(as.character(pivot_wide$level), " \\| ")
+      max_parts <- max(sapply(split_levels, length))
+
+      # Use original variable names if available and match count
+      if (length(repeat_category_orig_vars) == max_parts) {
+        new_col_names <- repeat_category_orig_vars
+      } else {
+        new_col_names <- paste0("level_", seq_len(max_parts))
+      }
+
+      # Create new columns from split
+      for (i in seq_len(max_parts)) {
+        pivot_wide[[new_col_names[i]]] <- sapply(split_levels, function(x) {
+          if (length(x) >= i) x[i] else NA_character_
+        })
+      }
+
+      # Remove original level column
+      pivot_wide <- pivot_wide %>% dplyr::select(-level)
+      level_cols <- new_col_names
+    }
+  }
+
+  # Reorder columns: Variable, level col(s), groups..., Sig (if present), p_value (hidden)
+  col_order <- c("Variable", level_cols, as.character(groups))
   if (pivot_stars) col_order <- c(col_order, "Sig")
   pivot_wide <- pivot_wide %>%
     dplyr::select(dplyr::all_of(col_order), dplyr::everything())
@@ -501,7 +534,7 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
       subtitle = if (show_header) subtitle_text else NULL,
       show_header = show_header,
       bold_cols = "Variable",
-      align_left = c("Variable", "level")
+      align_left = c("Variable", level_cols)
     )
     return(result)
   }
@@ -810,6 +843,9 @@ create_posthoc_pivot_table <- function(all_posthoc_data, repeat_category_name,
 #'   "median", or "n" (count).
 #' @param pivot_stars Logical. Show significance stars in pivot table?
 #'   Default TRUE when pivot = TRUE.
+#' @param pivot_split_level Logical. When multiple repeat_category variables are
+#'   combined (e.g., "he/him | High"), split them back into separate columns?
+#'   Default TRUE. When FALSE, keeps the combined "level" column.
 #' @param min_threshold Numeric. Minimum proportion (0-1) of total sample required
 #'   to include a repeat_category level. Default: 0.05 (5 percent).
 #' @param min_subcategory Integer. Minimum observations required per group.
@@ -1069,6 +1105,7 @@ compare_groups <- function(data, category, Vars = NULL,
                                       pivot_by = c("category", "repeat_category"),
                                       pivot_stat = c("mean", "mean_sd", "median", "n"),
                                       pivot_stars = TRUE,
+                                      pivot_split_level = TRUE,
                                       min_threshold = 0.05, min_subcategory = 5,
                                       colors = NULL, verbose = TRUE,
                                       combined_table = TRUE,
@@ -2315,9 +2352,11 @@ compare_groups <- function(data, category, Vars = NULL,
           combined_data = combined_data,
           category_name = category_name_str,
           repeat_category_name = repeat_category_name_str,
+          repeat_category_orig_vars = repeat_category_orig_vars,
           pivot_by = pivot_by,
           pivot_stat = pivot_stat,
           pivot_stars = pivot_stars,
+          pivot_split_level = pivot_split_level,
           p_adjust_method = p_adjust_method,
           comparison_categories = comparison_categories,
           format = format,
@@ -2617,6 +2656,7 @@ compare_groups <- function(data, category, Vars = NULL,
       pivot_by = if (pivot) pivot_by else NULL,
       pivot_stat = if (pivot) pivot_stat else NULL,
       pivot_stars = if (pivot) pivot_stars else NULL,
+      pivot_split_level = if (pivot) pivot_split_level else NULL,
       posthoc_format = if (pivot && posthoc_table) posthoc_format else NULL
     )
 
