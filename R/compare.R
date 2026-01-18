@@ -1012,34 +1012,45 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
       }
 
       # Add Sig row for this factor
-      sig_row <- list(
+      # P-value row
+      p_row <- list(
         factor = factor_var,
-        level = "Sig",
+        level = "p",
+        variable = outcome_var
+      )
+
+      # Effect size row
+      es_row <- list(
+        factor = factor_var,
+        level = "ES",
         variable = outcome_var
       )
 
       for (cat_level in category_levels) {
         p_val <- p_values_by_cat[[cat_level]]
         es_val <- es_by_cat[[cat_level]]
+
+        # Format p-value
         if (!is.null(p_val) && !is.na(p_val)) {
-          stars <- dplyr::case_when(
-            p_val < 0.001 ~ "***",
-            p_val < 0.01 ~ "**",
-            p_val < 0.05 ~ "*",
-            TRUE ~ ""
-          )
-          # Add effect size if available
-          if (!is.null(es_val) && !is.na(es_val)) {
-            sig_row[[cat_level]] <- sprintf("%s (%.2f)", stars, es_val)
+          if (p_val < 0.001) {
+            p_row[[cat_level]] <- "<.001"
           } else {
-            sig_row[[cat_level]] <- stars
+            p_row[[cat_level]] <- sprintf("%.3f", p_val)
           }
         } else {
-          sig_row[[cat_level]] <- ""
+          p_row[[cat_level]] <- "-"
+        }
+
+        # Format effect size
+        if (!is.null(es_val) && !is.na(es_val)) {
+          es_row[[cat_level]] <- sprintf("%.2f", es_val)
+        } else {
+          es_row[[cat_level]] <- "-"
         }
       }
 
-      rows[[length(rows) + 1]] <- sig_row
+      rows[[length(rows) + 1]] <- p_row
+      rows[[length(rows) + 1]] <- es_row
     }
   }
 
@@ -1104,7 +1115,7 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
       table_body.border.bottom.color = "black"
     ) %>%
     gt::tab_footnote(
-      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05; effect size in parentheses (eta-squared or epsilon-squared)"
+      footnote = "p = p-value; ES = effect size (eta-squared for ANOVA, epsilon-squared for Kruskal-Wallis)"
     )
 
   return(gt_table)
