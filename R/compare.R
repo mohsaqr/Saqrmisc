@@ -588,6 +588,168 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
   return(gt_pivot)
 }
 
+#' Create pivoted summary table with row grouping by factor
+#'
+#' @param combined_data Data frame with combined summary statistics including factor and level columns
+#' @param category_name Name of the grouping variable (becomes columns)
+#' @param repeat_category_vars Original repeat category variable names
+#' @param pivot_stat Statistic to show: "mean", "mean_sd", "median", "n"
+#' @param pivot_stars Logical, show significance stars
+#' @param p_adjust_method Method used for p-value adjustment
+#' @param comparison_categories Variables being compared
+#' @param format Output format
+#' @param show_header Show table header
+#' @param verbose Print messages
+#' @return gt table object with row grouping
+#' @noRd
+create_pivot_table_grouped <- function(combined_data, category_name,
+                                        repeat_category_vars,
+                                        pivot_stat = "mean", pivot_stars = TRUE,
+                                        p_adjust_method = "fdr",
+                                        comparison_categories = NULL,
+                                        format = "gt", show_header = TRUE,
+                                        verbose = TRUE) {
+
+  # Get unique groups (will become columns)
+  groups <- unique(combined_data[[category_name]])
+  cat_sym <- rlang::sym(category_name)
+
+  # Data should already have 'factor' and 'level' columns from the collection step
+  if (!"factor" %in% names(combined_data) || !"level" %in% names(combined_data)) {
+    stop("combined_data must have 'factor' and 'level' columns")
+  }
+
+  # Aggregate by factor, level, variable, and category
+  pivot_agg <- combined_data %>%
+    dplyr::group_by(factor, level, variable, !!cat_sym) %>%
+    dplyr::summarise(
+      mean_val = mean(mean, na.rm = TRUE),
+      sd_val = mean(sd, na.rm = TRUE),
+      median_val = if ("median" %in% names(combined_data)) mean(median, na.rm = TRUE) else NA,
+      n_val = sum(n, na.rm = TRUE),
+      p_value_agg = dplyr::first(p_value[!is.na(p_value)]),
+      .groups = "drop"
+    )
+
+  # Create the statistic to display
+  pivot_agg <- pivot_agg %>%
+    dplyr::mutate(
+      display_val = dplyr::case_when(
+        pivot_stat == "mean" ~ sprintf("%.3f", mean_val),
+        pivot_stat == "mean_sd" ~ sprintf("%.2f (%.2f)", mean_val, sd_val),
+        pivot_stat == "median" ~ sprintf("%.3f", median_val),
+        pivot_stat == "n" ~ as.character(n_val),
+        TRUE ~ sprintf("%.3f", mean_val)
+      )
+    )
+
+  # Select columns for pivot (exclude p_value_agg)
+  pivot_subset <- pivot_agg %>%
+    dplyr::select(factor, level, variable, !!cat_sym, display_val)
+
+  # Pivot to wide format
+  pivot_wide <- pivot_subset %>%
+    tidyr::pivot_wider(
+      names_from = !!cat_sym,
+      values_from = display_val
+    )
+
+  # Get p-value per row
+  p_values_unique <- pivot_agg %>%
+    dplyr::group_by(factor, level, variable) %>%
+    dplyr::summarise(p_value = dplyr::first(p_value_agg[!is.na(p_value_agg)]), .groups = "drop")
+
+  # Merge p-values back
+  pivot_wide <- pivot_wide %>%
+    dplyr::left_join(p_values_unique, by = c("factor", "level", "variable"))
+
+  # Add significance stars
+  if (pivot_stars) {
+    pivot_wide <- pivot_wide %>%
+      dplyr::mutate(
+        Sig = dplyr::case_when(
+          is.na(p_value) ~ "",
+          p_value < 0.001 ~ "***",
+          p_value < 0.01 ~ "**",
+          p_value < 0.05 ~ "*",
+          TRUE ~ ""
+        )
+      )
+  }
+
+  # Reorder columns
+  col_order <- c("factor", "level", "variable", as.character(groups))
+  if (pivot_stars) col_order <- c(col_order, "Sig")
+  pivot_wide <- pivot_wide %>%
+    dplyr::select(dplyr::all_of(col_order), dplyr::everything())
+
+  # Remove p_value and variable column from display if only one variable
+  display_data <- pivot_wide %>% dplyr::select(-p_value)
+  if (length(unique(display_data$variable)) == 1) {
+    display_data <- display_data %>% dplyr::select(-variable)
+  }
+
+  # Build title and subtitle
+  stat_label <- switch(pivot_stat,
+    "mean" = "Mean",
+    "mean_sd" = "Mean (SD)",
+    "median" = "Median",
+    "n" = "N"
+  )
+
+  title_text <- paste0(stat_label, " by Factor Levels")
+  subtitle_text <- paste0("Columns: ", paste(groups, collapse = ", "),
+                          " | P-adjustment: ", toupper(p_adjust_method))
+
+  # Handle non-GT formats
+  if (format %in% c("plain", "markdown", "latex", "kable")) {
+    result <- format_table(
+      df = display_data,
+      format = format,
+      title = if (show_header) title_text else NULL,
+      subtitle = if (show_header) subtitle_text else NULL,
+      show_header = show_header,
+      bold_cols = c("factor"),
+      align_left = c("factor", "level")
+    )
+    return(result)
+  }
+
+  # Create gt table with row grouping
+  gt_pivot <- display_data %>%
+    gt::gt(groupname_col = "factor") %>%
+    gt::tab_header(
+      title = title_text,
+      subtitle = subtitle_text
+    ) %>%
+    gt::tab_style(
+      style = list(
+        gt::cell_text(weight = "bold"),
+        gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+        gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+      ),
+      locations = gt::cells_column_labels()
+    ) %>%
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_row_groups()
+    ) %>%
+    gt::tab_options(
+      table.border.top.color = "black",
+      table.border.bottom.color = "black",
+      column_labels.border.bottom.color = "black",
+      table_body.border.bottom.color = "black"
+    )
+
+  # Add footnote
+  gt_pivot <- gt_pivot %>%
+    gt::tab_footnote(
+      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05"
+    )
+
+  return(gt_pivot)
+}
+
 #' Create pivoted post-hoc comparison table
 #'
 #' @param all_posthoc_data Data frame with all post-hoc results
@@ -802,6 +964,10 @@ create_posthoc_pivot_table <- function(all_posthoc_data, repeat_category_name,
 #' @param repeat_category Optional character. Name of a stratification variable.
 #'   When provided, separate analyses are performed for each level (e.g., analyze
 #'   gender differences separately for each country).
+#' @param repeat_combine Logical. When multiple repeat_category variables are provided,
+#'   should they be combined into one grouping (e.g., "he/him | High")? Default TRUE.
+#'   When FALSE, runs separate analyses for each repeat_category variable independently,
+#'   with results displayed in row groups.
 #' @param repeat_levels Optional character vector. Specific levels of repeat_category
 #'   to include in the analysis. If NULL (default), all levels are used.
 #' @param plots Logical. Generate visualizations? Default TRUE.
@@ -1089,6 +1255,7 @@ create_posthoc_pivot_table <- function(all_posthoc_data, repeat_category_name,
 compare_groups <- function(data, category, Vars = NULL,
                                       category_sep = " | ",
                                       repeat_category = NULL,
+                                      repeat_combine = TRUE,
                                       repeat_levels = NULL,
                                       plots = TRUE,
                                       plot_style = c("points", "boxplot", "bar", "violin", "ggstatsplot"),
@@ -1281,12 +1448,131 @@ compare_groups <- function(data, category, Vars = NULL,
       stop("Repeat category variable(s) not found in data: ", paste(missing_vars, collapse = ", "))
     }
 
-    # Create combined grouping variable if multiple
+    # Handle multiple repeat_category variables
     if (length(repeat_category_vars) > 1) {
-      data$.repeat_group <- apply(data[, repeat_category_vars, drop = FALSE], 1, paste, collapse = " | ")
-      repeat_category_name_str <- ".repeat_group"
-      # Store original variable names for labeling
-      repeat_category_orig_vars <- repeat_category_vars
+      if (repeat_combine) {
+        # Combine into single grouping variable (current behavior)
+        data$.repeat_group <- apply(data[, repeat_category_vars, drop = FALSE], 1, paste, collapse = " | ")
+        repeat_category_name_str <- ".repeat_group"
+        repeat_category_orig_vars <- repeat_category_vars
+      } else {
+        # Run separate analyses for each repeat_category variable
+        if (verbose) {
+          cat("Running separate analyses for each repeat_category variable...\n\n")
+        }
+
+        all_var_results <- list()
+        all_var_summary_data <- list()
+
+        for (rc_var in repeat_category_vars) {
+          if (verbose) {
+            cat("Analyzing by:", rc_var, "\n")
+          }
+
+          # Recursively call with single repeat_category
+          var_result <- compare_groups(
+            data = data,
+            category = category_name_str,
+            Vars = Vars,
+            category_sep = category_sep,
+            repeat_category = rc_var,
+            repeat_combine = TRUE,
+            repeat_levels = repeat_levels,
+            plots = FALSE,  # Disable plots for sub-analyses
+            plot_style = plot_style,
+            table = table,
+            type = type,
+            bayesian = bayesian,
+            equivalence = equivalence,
+            equivalence_bounds = equivalence_bounds,
+            nonparametric = nonparametric,
+            p_adjust_method = p_adjust_method,
+            posthoc = posthoc,
+            posthoc_method = posthoc_method,
+            posthoc_table = posthoc_table,
+            posthoc_format = posthoc_format,
+            pairwise_display = pairwise_display,
+            pivot = FALSE,  # We'll create our own pivot table
+            pivot_by = pivot_by,
+            pivot_stat = pivot_stat,
+            pivot_stars = pivot_stars,
+            pivot_split_level = pivot_split_level,
+            min_threshold = min_threshold,
+            min_subcategory = min_subcategory,
+            colors = colors,
+            verbose = FALSE,
+            combined_table = FALSE,
+            format = "plain",
+            show_header = show_header,
+            interpret = FALSE
+          )
+
+          all_var_results[[rc_var]] <- var_result
+
+          # Collect summary data from each level with factor column
+          # Results are structured as: var_result$level_name$summary_data
+          for (level_name in names(var_result)) {
+            if (level_name != "metadata" && !is.null(var_result[[level_name]]$summary_data)) {
+              level_summary <- var_result[[level_name]]$summary_data
+              level_summary$factor <- rc_var
+              level_summary$level <- level_name
+              all_var_summary_data[[paste0(rc_var, "_", level_name)]] <- level_summary
+            }
+          }
+        }
+
+        # Combine all summary data
+        if (length(all_var_summary_data) > 0) {
+          combined_all <- dplyr::bind_rows(all_var_summary_data)
+
+          # Create pivot table with row grouping
+          if (pivot) {
+            pivot_result <- create_pivot_table_grouped(
+              combined_data = combined_all,
+              category_name = category_name_str,
+              repeat_category_vars = repeat_category_vars,
+              pivot_stat = pivot_stat,
+              pivot_stars = pivot_stars,
+              p_adjust_method = p_adjust_method,
+              comparison_categories = Vars,
+              format = format,
+              show_header = show_header,
+              verbose = verbose
+            )
+          } else {
+            pivot_result <- NULL
+          }
+
+          # Return combined results
+          result <- list(
+            by_variable = all_var_results,
+            combined_data = combined_all,
+            pivot_table = pivot_result,
+            metadata = list(
+              repeat_category_vars = repeat_category_vars,
+              repeat_combine = FALSE,
+              variables_analyzed = Vars
+            )
+          )
+          class(result) <- c("comparison_results", "list")
+          return(result)
+        } else {
+          # No data collected - return empty result
+          warning("No data collected from repeat_category analyses")
+          result <- list(
+            by_variable = all_var_results,
+            combined_data = NULL,
+            pivot_table = NULL,
+            metadata = list(
+              repeat_category_vars = repeat_category_vars,
+              repeat_combine = FALSE,
+              variables_analyzed = Vars
+            )
+          )
+          class(result) <- c("comparison_results", "list")
+          return(result)
+        }
+      }
     } else {
       repeat_category_name_str <- repeat_category_vars
       repeat_category_orig_vars <- repeat_category_vars
