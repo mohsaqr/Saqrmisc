@@ -934,6 +934,170 @@ create_posthoc_pivot_table <- function(all_posthoc_data, repeat_category_name,
   return(result)
 }
 
+#' Create pivot table for "within" compare_mode
+#'
+#' @param all_results List of results from within-mode analysis
+#' @param category_levels Levels of the category variable (columns)
+#' @param compare_by Factors that were tested
+#' @param pivot_stat Statistic to show
+#' @param pivot_stars Show significance stars
+#' @param p_adjust_method P-value adjustment method
+#' @param format Output format
+#' @param show_header Show header
+#' @param verbose Print messages
+#' @return Formatted table
+#' @noRd
+create_pivot_table_within <- function(all_results, category_levels, compare_by,
+                                       pivot_stat = "mean", pivot_stars = TRUE,
+                                       p_adjust_method = "fdr",
+                                       format = "gt", show_header = TRUE,
+                                       verbose = TRUE) {
+
+  # Build data frame for the pivot table
+  rows <- list()
+
+  for (outcome_var in names(all_results)) {
+    var_results <- all_results[[outcome_var]]
+
+    for (factor_var in names(var_results)) {
+      factor_data <- var_results[[factor_var]]
+
+      # Get factor levels in order
+      factor_levels <- unique(sapply(factor_data, function(x) x$level))
+
+      # Collect p-values for this factor across all category levels (for the Sig row)
+      p_values_by_cat <- list()
+
+      for (key in names(factor_data)) {
+        item <- factor_data[[key]]
+
+        # Create row for this factor level
+        row <- list(
+          factor = factor_var,
+          level = item$level,
+          variable = outcome_var
+        )
+
+        # Add means for each category level
+        for (cat_level in category_levels) {
+          mean_val <- item[[paste0(cat_level, "_mean")]]
+          sd_val <- item[[paste0(cat_level, "_sd")]]
+          p_val <- item[[paste0(cat_level, "_p")]]
+
+          # Format display value
+          if (pivot_stat == "mean") {
+            row[[cat_level]] <- if (!is.null(mean_val) && !is.na(mean_val)) sprintf("%.2f", mean_val) else "-"
+          } else if (pivot_stat == "mean_sd") {
+            if (!is.null(mean_val) && !is.na(mean_val)) {
+              row[[cat_level]] <- sprintf("%.2f (%.2f)", mean_val, ifelse(is.na(sd_val), 0, sd_val))
+            } else {
+              row[[cat_level]] <- "-"
+            }
+          } else {
+            row[[cat_level]] <- if (!is.null(mean_val) && !is.na(mean_val)) sprintf("%.2f", mean_val) else "-"
+          }
+
+          # Collect p-value (same for all levels of this factor within this category)
+          if (!is.null(p_val) && !is.na(p_val)) {
+            p_values_by_cat[[cat_level]] <- p_val
+          }
+        }
+
+        rows[[length(rows) + 1]] <- row
+      }
+
+      # Add Sig row for this factor
+      sig_row <- list(
+        factor = factor_var,
+        level = "Sig",
+        variable = outcome_var
+      )
+
+      for (cat_level in category_levels) {
+        p_val <- p_values_by_cat[[cat_level]]
+        if (!is.null(p_val) && !is.na(p_val)) {
+          sig_row[[cat_level]] <- dplyr::case_when(
+            p_val < 0.001 ~ "***",
+            p_val < 0.01 ~ "**",
+            p_val < 0.05 ~ "*",
+            TRUE ~ ""
+          )
+        } else {
+          sig_row[[cat_level]] <- ""
+        }
+      }
+
+      rows[[length(rows) + 1]] <- sig_row
+    }
+  }
+
+  # Convert to data frame
+  df <- dplyr::bind_rows(rows)
+
+  # If only one variable, remove variable column
+  if (length(unique(df$variable)) == 1) {
+    df <- df %>% dplyr::select(-variable)
+  }
+
+  # Build title
+  stat_label <- switch(pivot_stat,
+    "mean" = "Mean",
+    "mean_sd" = "Mean (SD)",
+    "median" = "Median",
+    "n" = "N",
+    "Mean"
+  )
+
+  title_text <- paste0(stat_label, " by Factor Levels (Within-Group Analysis)")
+  subtitle_text <- paste0("Columns: ", paste(category_levels, collapse = ", "),
+                          " | Sig row shows factor effect within each column")
+
+  # Handle plain format
+  if (format %in% c("plain", "markdown", "latex", "kable")) {
+    result <- format_table(
+      df = df,
+      format = format,
+      title = if (show_header) title_text else NULL,
+      subtitle = if (show_header) subtitle_text else NULL,
+      show_header = show_header,
+      bold_cols = "factor",
+      align_left = c("factor", "level")
+    )
+    return(result)
+  }
+
+  # Create gt table with row grouping
+  gt_table <- df %>%
+    gt::gt(groupname_col = "factor") %>%
+    gt::tab_header(
+      title = title_text,
+      subtitle = subtitle_text
+    ) %>%
+    gt::tab_style(
+      style = list(
+        gt::cell_text(weight = "bold"),
+        gt::cell_borders(sides = "top", color = "black", weight = gt::px(2)),
+        gt::cell_borders(sides = "bottom", color = "black", weight = gt::px(1))
+      ),
+      locations = gt::cells_column_labels()
+    ) %>%
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_row_groups()
+    ) %>%
+    gt::tab_options(
+      table.border.top.color = "black",
+      table.border.bottom.color = "black",
+      column_labels.border.bottom.color = "black",
+      table_body.border.bottom.color = "black"
+    ) %>%
+    gt::tab_footnote(
+      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05 (factor effect within each column)"
+    )
+
+  return(gt_table)
+}
+
 # =============================================================================
 # MAIN FUNCTION
 # =============================================================================
@@ -963,11 +1127,18 @@ create_posthoc_pivot_table <- function(all_posthoc_data, repeat_category_name,
 #'   a numeric vector of column indices, or a single number (from that column to end).
 #' @param repeat_category Optional character. Name of a stratification variable.
 #'   When provided, separate analyses are performed for each level (e.g., analyze
-#'   gender differences separately for each country).
-#' @param repeat_combine Logical. When multiple repeat_category variables are provided,
-#'   should they be combined into one grouping (e.g., "he/him | High")? Default TRUE.
-#'   When FALSE, runs separate analyses for each repeat_category variable independently,
-#'   with results displayed in row groups.
+#'   gender differences separately for each country). Used with compare_mode = "between".
+#' @param compare_by Optional character vector. Factors to test within each category level.
+#'   Used with compare_mode = "within". For example, if category = "llm" and
+#'   compare_by = c("pronoun", "support"), tests whether pronoun and support have
+#'   effects within each LLM dataset separately.
+#' @param compare_mode Character. Analysis mode:
+#'   "between" (default) - compare category levels (e.g., GPT vs Mistral vs Qwen),
+#'   "within" - test compare_by factors within each category level (e.g., test
+#'   pronoun effect within GPT, within Mistral, within Qwen separately).
+#' @param repeat_combine Logical. When multiple repeat_category variables are provided
+#'   with compare_mode = "between", should they be combined into one grouping
+#'   (e.g., "he/him | High")? Default TRUE.
 #' @param repeat_levels Optional character vector. Specific levels of repeat_category
 #'   to include in the analysis. If NULL (default), all levels are used.
 #' @param plots Logical. Generate visualizations? Default TRUE.
@@ -1255,6 +1426,8 @@ create_posthoc_pivot_table <- function(all_posthoc_data, repeat_category_name,
 compare_groups <- function(data, category, Vars = NULL,
                                       category_sep = " | ",
                                       repeat_category = NULL,
+                                      compare_by = NULL,
+                                      compare_mode = c("between", "within"),
                                       repeat_combine = TRUE,
                                       repeat_levels = NULL,
                                       plots = TRUE,
@@ -1304,6 +1477,168 @@ compare_groups <- function(data, category, Vars = NULL,
 
   # Validate format parameter
   format <- match.arg(format)
+
+  # Validate compare_mode parameter
+  compare_mode <- match.arg(compare_mode)
+
+  # ===========================================================================
+  # Handle compare_mode = "within" (test factors within each category level)
+  # ===========================================================================
+  if (compare_mode == "within") {
+    if (is.null(compare_by)) {
+      stop("compare_by must be specified when compare_mode = 'within'")
+    }
+
+    # Validate pivot_stat for within mode
+    pivot_stat <- match.arg(pivot_stat, c("mean", "mean_sd", "median", "n"))
+
+    # Validate compare_by variables exist
+    if (!is.character(compare_by)) {
+      stop("'compare_by' must be a character vector of variable names")
+    }
+    missing_vars <- setdiff(compare_by, names(data))
+    if (length(missing_vars) > 0) {
+      stop("compare_by variable(s) not found in data: ", paste(missing_vars, collapse = ", "))
+    }
+
+    # Get category variable name
+    if (!is.character(category)) {
+      category_name <- deparse(substitute(category))
+    } else {
+      category_name <- category
+    }
+
+    if (!category_name %in% names(data)) {
+      stop("Category variable '", category_name, "' not found in data")
+    }
+
+    # Get category levels (these become columns/separate datasets)
+    category_levels <- unique(data[[category_name]])
+    category_levels <- category_levels[!is.na(category_levels)]
+
+    if (verbose) {
+      cat("Compare mode: WITHIN\n")
+      cat("Testing factors:", paste(compare_by, collapse = ", "), "\n")
+      cat("Within each:", category_name, "(", paste(category_levels, collapse = ", "), ")\n\n")
+    }
+
+    # Resolve Vars
+    Vars <- resolve_cols(data, Vars, cols_expr = Vars_expr, numeric_only = TRUE, exclude = c(category_name, compare_by))
+
+    if (length(Vars) == 0) {
+      stop("No numeric variables found to analyze")
+    }
+
+    # Run analysis: for each category level, for each compare_by factor, run ANOVA
+    all_results <- list()
+
+    for (outcome_var in Vars) {
+      var_results <- list()
+
+      for (factor_var in compare_by) {
+        factor_levels <- unique(data[[factor_var]])
+        factor_levels <- factor_levels[!is.na(factor_levels)]
+
+        # Collect means and p-values for each category level
+        row_data <- list()
+
+        for (cat_level in category_levels) {
+          # Subset data for this category level
+          subset_data <- data[data[[category_name]] == cat_level & !is.na(data[[category_name]]), ]
+
+          # Get means for each factor level
+          for (fac_level in factor_levels) {
+            fac_subset <- subset_data[subset_data[[factor_var]] == fac_level & !is.na(subset_data[[factor_var]]), ]
+            mean_val <- mean(fac_subset[[outcome_var]], na.rm = TRUE)
+            sd_val <- sd(fac_subset[[outcome_var]], na.rm = TRUE)
+            n_val <- sum(!is.na(fac_subset[[outcome_var]]))
+
+            key <- paste0(factor_var, "_", fac_level)
+            if (is.null(row_data[[key]])) {
+              row_data[[key]] <- list(
+                factor = factor_var,
+                level = fac_level,
+                variable = outcome_var
+              )
+            }
+            row_data[[key]][[paste0(cat_level, "_mean")]] <- mean_val
+            row_data[[key]][[paste0(cat_level, "_sd")]] <- sd_val
+            row_data[[key]][[paste0(cat_level, "_n")]] <- n_val
+          }
+
+          # Run ANOVA for this factor within this category level
+          if (length(factor_levels) >= 2) {
+            # Check if we have enough data
+            valid_data <- subset_data[!is.na(subset_data[[outcome_var]]) & !is.na(subset_data[[factor_var]]), ]
+
+            if (nrow(valid_data) >= 3) {
+              tryCatch({
+                # Determine if nonparametric (resolved_type not yet defined at this point)
+                use_nonparametric <- nonparametric || tolower(type) %in% c("nonparametric", "np", "kw", "mw", "wilcox", "wilcoxon", "kruskal-wallis", "kruskal", "mann-whitney")
+                if (use_nonparametric) {
+                  # Kruskal-Wallis test
+                  test_result <- kruskal.test(
+                    as.formula(paste0("`", outcome_var, "` ~ `", factor_var, "`")),
+                    data = valid_data
+                  )
+                  p_val <- test_result$p.value
+                } else {
+                  # ANOVA
+                  aov_result <- aov(
+                    as.formula(paste0("`", outcome_var, "` ~ `", factor_var, "`")),
+                    data = valid_data
+                  )
+                  p_val <- summary(aov_result)[[1]][["Pr(>F)"]][1]
+                }
+
+                # Store p-value for this category level
+                for (key in names(row_data)) {
+                  if (startsWith(key, paste0(factor_var, "_"))) {
+                    row_data[[key]][[paste0(cat_level, "_p")]] <- p_val
+                  }
+                }
+              }, error = function(e) {
+                if (verbose) warning("Error in test for ", factor_var, " within ", cat_level, ": ", e$message)
+              })
+            }
+          }
+        }
+
+        var_results[[factor_var]] <- row_data
+      }
+
+      all_results[[outcome_var]] <- var_results
+    }
+
+    # Create pivot table for "within" mode
+    pivot_table <- create_pivot_table_within(
+      all_results = all_results,
+      category_levels = category_levels,
+      compare_by = compare_by,
+      pivot_stat = pivot_stat,
+      pivot_stars = pivot_stars,
+      p_adjust_method = p_adjust_method,
+      format = format,
+      show_header = show_header,
+      verbose = verbose
+    )
+
+    # Return results
+    result <- list(
+      pivot_table = pivot_table,
+      raw_results = all_results,
+      metadata = list(
+        compare_mode = "within",
+        category = category_name,
+        category_levels = category_levels,
+        compare_by = compare_by,
+        variables_analyzed = Vars,
+        test_type = if (nonparametric) "nonparametric" else "parametric"
+      )
+    )
+    class(result) <- c("comparison_results", "list")
+    return(result)
+  }
 
   # Vars will be resolved after category is determined (to exclude it)
 
