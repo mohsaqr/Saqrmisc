@@ -965,8 +965,9 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
       # Get factor levels in order
       factor_levels <- unique(sapply(factor_data, function(x) x$level))
 
-      # Collect p-values for this factor across all category levels (for the Sig row)
+      # Collect p-values and effect sizes for this factor across all category levels (for the Sig row)
       p_values_by_cat <- list()
+      es_by_cat <- list()
 
       for (key in names(factor_data)) {
         item <- factor_data[[key]]
@@ -983,6 +984,7 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
           mean_val <- item[[paste0(cat_level, "_mean")]]
           sd_val <- item[[paste0(cat_level, "_sd")]]
           p_val <- item[[paste0(cat_level, "_p")]]
+          es_val <- item[[paste0(cat_level, "_es")]]
 
           # Format display value
           if (pivot_stat == "mean") {
@@ -997,9 +999,12 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
             row[[cat_level]] <- if (!is.null(mean_val) && !is.na(mean_val)) sprintf("%.2f", mean_val) else "-"
           }
 
-          # Collect p-value (same for all levels of this factor within this category)
+          # Collect p-value and effect size (same for all levels of this factor within this category)
           if (!is.null(p_val) && !is.na(p_val)) {
             p_values_by_cat[[cat_level]] <- p_val
+          }
+          if (!is.null(es_val) && !is.na(es_val)) {
+            es_by_cat[[cat_level]] <- es_val
           }
         }
 
@@ -1015,13 +1020,20 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
 
       for (cat_level in category_levels) {
         p_val <- p_values_by_cat[[cat_level]]
+        es_val <- es_by_cat[[cat_level]]
         if (!is.null(p_val) && !is.na(p_val)) {
-          sig_row[[cat_level]] <- dplyr::case_when(
+          stars <- dplyr::case_when(
             p_val < 0.001 ~ "***",
             p_val < 0.01 ~ "**",
             p_val < 0.05 ~ "*",
             TRUE ~ ""
           )
+          # Add effect size if available
+          if (!is.null(es_val) && !is.na(es_val)) {
+            sig_row[[cat_level]] <- sprintf("%s (%.2f)", stars, es_val)
+          } else {
+            sig_row[[cat_level]] <- stars
+          }
         } else {
           sig_row[[cat_level]] <- ""
         }
@@ -1092,7 +1104,7 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
       table_body.border.bottom.color = "black"
     ) %>%
     gt::tab_footnote(
-      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05 (factor effect within each column)"
+      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05; effect size in parentheses (eta-squared or epsilon-squared)"
     )
 
   return(gt_table)
@@ -1585,19 +1597,31 @@ compare_groups <- function(data, category, Vars = NULL,
                     data = valid_data
                   )
                   p_val <- test_result$p.value
+                  # Epsilon-squared effect size for Kruskal-Wallis: H / (n - 1)
+                  n_total <- nrow(valid_data)
+                  es_val <- as.numeric(test_result$statistic) / (n_total - 1)
+                  es_type <- "e2"
                 } else {
                   # ANOVA
                   aov_result <- aov(
                     as.formula(paste0("`", outcome_var, "` ~ `", factor_var, "`")),
                     data = valid_data
                   )
-                  p_val <- summary(aov_result)[[1]][["Pr(>F)"]][1]
+                  aov_summary <- summary(aov_result)[[1]]
+                  p_val <- aov_summary[["Pr(>F)"]][1]
+                  # Eta-squared effect size: SS_between / SS_total
+                  ss_between <- aov_summary[["Sum Sq"]][1]
+                  ss_total <- sum(aov_summary[["Sum Sq"]])
+                  es_val <- ss_between / ss_total
+                  es_type <- "n2"
                 }
 
-                # Store p-value for this category level
+                # Store p-value and effect size for this category level
                 for (key in names(row_data)) {
                   if (startsWith(key, paste0(factor_var, "_"))) {
                     row_data[[key]][[paste0(cat_level, "_p")]] <- p_val
+                    row_data[[key]][[paste0(cat_level, "_es")]] <- es_val
+                    row_data[[key]][[paste0(cat_level, "_es_type")]] <- es_type
                   }
                 }
               }, error = function(e) {
