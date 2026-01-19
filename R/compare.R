@@ -612,7 +612,8 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
         `p (ES)` = dplyr::case_when(
           is.na(p_value) & is.na(es_value) ~ "-",
           is.na(p_value) ~ sprintf("- (%.2f)", es_value),
-          is.na(es_value) ~ if_else(p_value < 0.001, "<.001 (-)", sprintf("%.3f (-)", p_value)),
+          is.na(es_value) & p_value < 0.001 ~ "<.001 (-)",
+          is.na(es_value) ~ sprintf("%.3f (-)", p_value),
           p_value < 0.001 ~ sprintf("<.001 (%.2f)", es_value),
           TRUE ~ sprintf("%.3f (%.2f)", p_value, es_value)
         )
@@ -709,7 +710,7 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
       locations = gt::cells_body(columns = "Variable")
     ) %>%
     gt::cols_align(align = "center") %>%
-    gt::cols_align(align = "left", columns = c("Variable", "level")) %>%
+    gt::cols_align(align = "left", columns = c("Variable", level_cols)) %>%
     gt::tab_options(
       table.border.top.width = gt::px(2),
       table.border.top.color = "black",
@@ -717,22 +718,10 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
       table.border.bottom.color = "black"
     )
 
-  # Highlight significant rows (with stars)
-  if (pivot_stars) {
-    sig_rows <- which(display_data$Sig != "")
-    if (length(sig_rows) > 0) {
-      gt_pivot <- gt_pivot %>%
-        gt::tab_style(
-          style = gt::cell_text(weight = "bold"),
-          locations = gt::cells_body(columns = "Sig", rows = sig_rows)
-        )
-    }
-  }
-
-  # Add footnote
+  # Add footnote for p (ES) column
   gt_pivot <- gt_pivot %>%
     gt::tab_footnote(
-      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05"
+      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared"
     )
 
   return(gt_pivot)
