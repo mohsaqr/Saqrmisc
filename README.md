@@ -10,11 +10,17 @@
 
 **Saqrmisc** is a comprehensive R package for statistical analysis, data transformation, and visualization. It provides a consistent, user-friendly API for common data analysis tasks with publication-ready outputs.
 
+> **See [FEATURES.md](FEATURES.md) for a complete feature reference.**
+
 ### Key Features
 
 - **Consistent API**: All functions use quoted strings for variable names
 - **Publication-Ready Output**: Beautiful gt tables and ggplot2 visualizations
 - **Comprehensive Statistics**: From descriptives to advanced clustering and networks
+- **Pivot Tables**: Compact summary tables with categories as columns and p (ES) values
+- **Within-Group Analysis**: Test factors within each category level
+- **AI Interpretation**: Pipe any R output to GPT-4, Claude, or Gemini for scientific interpretation
+- **Multiple Output Formats**: gt, plain, markdown, latex, kable
 - **Robust Error Handling**: Clear error messages and input validation
 
 ## Installation
