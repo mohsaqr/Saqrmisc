@@ -1795,6 +1795,13 @@ compare_groups <- function(data, category, Vars = NULL,
       verbose = verbose
     )
 
+    # Print within table if verbose
+    if (verbose && !is.null(within_table)) {
+      cat("\n--- Within-Group Analysis Table ---\n")
+      print(within_table)
+      cat("\n")
+    }
+
     # Also run the standard "between" comparison (LLM vs LLM)
     if (verbose) {
       cat("\nAlso running standard between-group comparison...\n")
@@ -2915,6 +2922,12 @@ compare_groups <- function(data, category, Vars = NULL,
           show_header = show_header,
           verbose = verbose
         )
+        # Print pivot table if verbose
+        if (verbose && !is.null(result$pivot_table)) {
+          cat("\n--- Pivot Table ---\n")
+          print(result$pivot_table)
+          cat("\n")
+        }
       }, error = function(e) {
         if (verbose) warning("Could not create pivot table: ", e$message)
       })
@@ -3213,6 +3226,13 @@ compare_groups <- function(data, category, Vars = NULL,
             show_header = show_header,
             verbose = verbose
           )
+        }
+
+        # Print pivot table if verbose
+        if (verbose && !is.null(results_by_group$pivot_table)) {
+          cat("\n--- Pivot Table ---\n")
+          print(results_by_group$pivot_table)
+          cat("\n")
         }
 
         # Create post-hoc pivot tables if posthoc_table is TRUE
