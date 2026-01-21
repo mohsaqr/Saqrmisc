@@ -399,11 +399,14 @@ create_pivot_table_simple <- function(summary_data, category_name,
 
   # Build pivot data
   rows <- list()
+  # Track raw mean values for bolding the highest
+  raw_means <- list()
 
   for (var in variables) {
     var_data <- summary_data[summary_data$variable == var, ]
 
     row <- list(Variable = var)
+    row_means <- list()
 
     # Get p-value and ES for this variable (same across all category levels)
     p_val <- var_data$p_value[!is.na(var_data$p_value)][1]
@@ -417,6 +420,9 @@ create_pivot_table_simple <- function(summary_data, category_name,
         sd_val <- cat_row$sd[1]
         n_val <- cat_row$n[1]
 
+        # Store raw mean for comparison
+        row_means[[as.character(cat_level)]] <- mean_val
+
         if (pivot_stat == "mean") {
           row[[as.character(cat_level)]] <- sprintf("%.2f", mean_val)
         } else if (pivot_stat == "mean_sd") {
@@ -428,6 +434,7 @@ create_pivot_table_simple <- function(summary_data, category_name,
         }
       } else {
         row[[as.character(cat_level)]] <- "-"
+        row_means[[as.character(cat_level)]] <- NA
       }
     }
 
@@ -453,10 +460,31 @@ create_pivot_table_simple <- function(summary_data, category_name,
     }
 
     rows[[length(rows) + 1]] <- row
+    raw_means[[var]] <- row_means
   }
 
   # Convert to data frame
   df <- dplyr::bind_rows(rows)
+
+  # Find the highest value for each row and track positions for bolding
+  bold_positions <- list()  # list of list(row = i, col = "col_name")
+  for (i in seq_along(variables)) {
+    var <- variables[i]
+    means <- raw_means[[var]]
+    numeric_means <- unlist(means)
+    numeric_means <- numeric_means[!is.na(numeric_means)]
+
+    if (length(numeric_means) > 0) {
+      max_val <- max(numeric_means, na.rm = TRUE)
+      # Find which category has the max value
+      for (cat_level in names(means)) {
+        if (!is.na(means[[cat_level]]) && means[[cat_level]] == max_val) {
+          bold_positions[[length(bold_positions) + 1]] <- list(row = i, col = cat_level)
+          break  # Only bold one (the first max if ties)
+        }
+      }
+    }
+  }
 
   # Build title
   stat_label <- switch(pivot_stat,
@@ -469,10 +497,20 @@ create_pivot_table_simple <- function(summary_data, category_name,
 
   title_text <- paste0(stat_label, " by ", category_name)
   subtitle_text <- paste0("Columns: ", paste(cat_levels, collapse = ", "),
-                          " | p (ES) = p-value (effect size)")
+                          " | p (ES) = p-value (effect size) | Bold = highest value")
 
   # Handle plain format
   if (format %in% c("plain", "markdown", "latex", "kable")) {
+    # For non-GT formats, wrap highest values in bold markers
+    for (pos in bold_positions) {
+      if (format == "markdown") {
+        df[pos$row, pos$col] <- paste0("**", df[pos$row, pos$col], "**")
+      } else if (format == "latex") {
+        df[pos$row, pos$col] <- paste0("\\textbf{", df[pos$row, pos$col], "}")
+      }
+      # For plain and kable, leave as-is (no bold markers)
+    }
+
     result <- format_table(
       df = df,
       format = format,
@@ -511,8 +549,17 @@ create_pivot_table_simple <- function(summary_data, category_name,
       table_body.border.bottom.color = "black"
     ) %>%
     gt::tab_footnote(
-      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared"
+      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared; Bold = highest value"
     )
+
+  # Apply bold styling to highest values
+  for (pos in bold_positions) {
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_body(columns = pos$col, rows = pos$row)
+      )
+  }
 
   return(gt_table)
 }
@@ -592,6 +639,14 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
       values_from = display_val
     )
 
+  # Also pivot mean values to find max per row for bolding
+  mean_pivot <- pivot_data %>%
+    dplyr::select(!!repeat_sym, variable, !!cat_sym, mean_val) %>%
+    tidyr::pivot_wider(
+      names_from = !!pivot_col_sym,
+      values_from = mean_val
+    )
+
   # Get p-value and ES per row (one p-value/ES per variable/row_col combination)
   stats_unique <- pivot_data %>%
     dplyr::group_by(!!row_col_sym, variable) %>%
@@ -623,6 +678,8 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
   # Rename columns for display
   names(pivot_wide)[names(pivot_wide) == row_col_name] <- "level"
   names(pivot_wide)[names(pivot_wide) == "variable"] <- "Variable"
+  names(mean_pivot)[names(mean_pivot) == row_col_name] <- "level"
+  names(mean_pivot)[names(mean_pivot) == "variable"] <- "Variable"
 
   # Split combined level column if requested and multiple vars were combined
   level_cols <- "level"
@@ -663,6 +720,18 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
   cols_to_remove <- intersect(c("p_value", "es_value"), names(pivot_wide))
   display_data <- pivot_wide %>% dplyr::select(-dplyr::all_of(cols_to_remove))
 
+  # Find highest value per row for bolding
+  bold_positions <- list()
+  group_cols <- as.character(groups)
+  for (i in seq_len(nrow(mean_pivot))) {
+    row_means <- as.numeric(mean_pivot[i, group_cols])
+    if (any(!is.na(row_means))) {
+      max_val <- max(row_means, na.rm = TRUE)
+      max_col_idx <- which(row_means == max_val)[1]  # First max if ties
+      bold_positions[[length(bold_positions) + 1]] <- list(row = i, col = group_cols[max_col_idx])
+    }
+  }
+
   # Build title and subtitle
   stat_label <- switch(pivot_stat,
     "mean" = "Mean",
@@ -673,11 +742,19 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
 
   title_text <- paste0(stat_label, " by Factor Levels")
   subtitle_text <- paste0("Columns: ", paste(groups, collapse = ", "),
-                          " | P-adjustment: ", toupper(p_adjust_method))
+                          " | P-adjustment: ", toupper(p_adjust_method), " | Bold = highest value")
 
   # Handle non-GT formats
-
   if (format %in% c("plain", "markdown", "latex", "kable")) {
+    # Apply bold markers for non-GT formats
+    for (pos in bold_positions) {
+      if (format == "markdown") {
+        display_data[pos$row, pos$col] <- paste0("**", display_data[pos$row, pos$col], "**")
+      } else if (format == "latex") {
+        display_data[pos$row, pos$col] <- paste0("\\textbf{", display_data[pos$row, pos$col], "}")
+      }
+    }
+
     result <- format_table(
       df = display_data,
       format = format,
@@ -718,10 +795,19 @@ create_pivot_table <- function(combined_data, category_name, repeat_category_nam
       table.border.bottom.color = "black"
     )
 
+  # Apply bold styling to highest values
+  for (pos in bold_positions) {
+    gt_pivot <- gt_pivot %>%
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_body(columns = pos$col, rows = pos$row)
+      )
+  }
+
   # Add footnote for p (ES) column
   gt_pivot <- gt_pivot %>%
     gt::tab_footnote(
-      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared"
+      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared; Bold = highest value"
     )
 
   return(gt_pivot)
@@ -793,6 +879,14 @@ create_pivot_table_grouped <- function(combined_data, category_name,
       values_from = display_val
     )
 
+  # Also pivot mean values to find max per row for bolding
+  mean_pivot <- pivot_agg %>%
+    dplyr::select(factor, level, variable, !!cat_sym, mean_val) %>%
+    tidyr::pivot_wider(
+      names_from = !!cat_sym,
+      values_from = mean_val
+    )
+
   # Get p-value per row
   p_values_unique <- pivot_agg %>%
     dplyr::group_by(factor, level, variable) %>%
@@ -828,6 +922,18 @@ create_pivot_table_grouped <- function(combined_data, category_name,
     display_data <- display_data %>% dplyr::select(-variable)
   }
 
+  # Find highest value per row for bolding
+  bold_positions <- list()
+  group_cols <- as.character(groups)
+  for (i in seq_len(nrow(mean_pivot))) {
+    row_means <- as.numeric(mean_pivot[i, group_cols])
+    if (any(!is.na(row_means))) {
+      max_val <- max(row_means, na.rm = TRUE)
+      max_col_idx <- which(row_means == max_val)[1]  # First max if ties
+      bold_positions[[length(bold_positions) + 1]] <- list(row = i, col = group_cols[max_col_idx])
+    }
+  }
+
   # Build title and subtitle
   stat_label <- switch(pivot_stat,
     "mean" = "Mean",
@@ -838,10 +944,19 @@ create_pivot_table_grouped <- function(combined_data, category_name,
 
   title_text <- paste0(stat_label, " by Factor Levels")
   subtitle_text <- paste0("Columns: ", paste(groups, collapse = ", "),
-                          " | P-adjustment: ", toupper(p_adjust_method))
+                          " | P-adjustment: ", toupper(p_adjust_method), " | Bold = highest value")
 
   # Handle non-GT formats
   if (format %in% c("plain", "markdown", "latex", "kable")) {
+    # Apply bold markers for non-GT formats
+    for (pos in bold_positions) {
+      if (format == "markdown") {
+        display_data[pos$row, pos$col] <- paste0("**", display_data[pos$row, pos$col], "**")
+      } else if (format == "latex") {
+        display_data[pos$row, pos$col] <- paste0("\\textbf{", display_data[pos$row, pos$col], "}")
+      }
+    }
+
     result <- format_table(
       df = display_data,
       format = format,
@@ -880,10 +995,19 @@ create_pivot_table_grouped <- function(combined_data, category_name,
       table_body.border.bottom.color = "black"
     )
 
+  # Apply bold styling to highest values
+  for (pos in bold_positions) {
+    gt_pivot <- gt_pivot %>%
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_body(columns = pos$col, rows = pos$row)
+      )
+  }
+
   # Add footnote
   gt_pivot <- gt_pivot %>%
     gt::tab_footnote(
-      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05"
+      footnote = "*** p < 0.001, ** p < 0.01, * p < 0.05; Bold = highest value"
     )
 
   return(gt_pivot)
@@ -1094,6 +1218,9 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
 
   # Build data frame for the pivot table
   rows <- list()
+  # Track raw mean values for each data row (not stats rows)
+  raw_means_list <- list()
+  row_counter <- 0
 
   for (outcome_var in names(all_results)) {
     var_results <- all_results[[outcome_var]]
@@ -1110,6 +1237,7 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
 
       for (key in names(factor_data)) {
         item <- factor_data[[key]]
+        row_counter <- row_counter + 1
 
         # Create row for this factor level
         row <- list(
@@ -1118,12 +1246,18 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
           variable = outcome_var
         )
 
+        # Track means for this row
+        row_means <- list()
+
         # Add means for each category level
         for (cat_level in category_levels) {
           mean_val <- item[[paste0(cat_level, "_mean")]]
           sd_val <- item[[paste0(cat_level, "_sd")]]
           p_val <- item[[paste0(cat_level, "_p")]]
           es_val <- item[[paste0(cat_level, "_es")]]
+
+          # Store raw mean for bolding
+          row_means[[cat_level]] <- if (!is.null(mean_val) && !is.na(mean_val)) mean_val else NA
 
           # Format display value
           if (pivot_stat == "mean") {
@@ -1148,9 +1282,11 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
         }
 
         rows[[length(rows) + 1]] <- row
+        raw_means_list[[row_counter]] <- row_means
       }
 
-      # Add Sig row for this factor
+      # Add Sig row for this factor (no bolding for this row)
+      row_counter <- row_counter + 1
       # Combined p-value (effect size) row
       stats_row <- list(
         factor = factor_var,
@@ -1185,11 +1321,33 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
       }
 
       rows[[length(rows) + 1]] <- stats_row
+      raw_means_list[[row_counter]] <- NULL  # No means for stats row
     }
   }
 
   # Convert to data frame
   df <- dplyr::bind_rows(rows)
+
+  # Find highest value per data row for bolding
+  bold_positions <- list()
+  for (i in seq_along(raw_means_list)) {
+    row_means <- raw_means_list[[i]]
+    if (!is.null(row_means)) {
+      numeric_means <- unlist(row_means)
+      numeric_means <- numeric_means[!is.na(numeric_means)]
+
+      if (length(numeric_means) > 0) {
+        max_val <- max(numeric_means, na.rm = TRUE)
+        # Find which category has the max value
+        for (cat_level in names(row_means)) {
+          if (!is.na(row_means[[cat_level]]) && row_means[[cat_level]] == max_val) {
+            bold_positions[[length(bold_positions) + 1]] <- list(row = i, col = cat_level)
+            break  # Only bold one (the first max if ties)
+          }
+        }
+      }
+    }
+  }
 
   # If only one variable, remove variable column
   if (length(unique(df$variable)) == 1) {
@@ -1207,10 +1365,19 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
 
   title_text <- paste0(stat_label, " by Factor Levels (Within-Group Analysis)")
   subtitle_text <- paste0("Columns: ", paste(category_levels, collapse = ", "),
-                          " | Sig row shows factor effect within each column")
+                          " | Sig row shows factor effect within each column | Bold = highest value")
 
   # Handle plain format
   if (format %in% c("plain", "markdown", "latex", "kable")) {
+    # Apply bold markers for non-GT formats
+    for (pos in bold_positions) {
+      if (format == "markdown") {
+        df[pos$row, pos$col] <- paste0("**", df[pos$row, pos$col], "**")
+      } else if (format == "latex") {
+        df[pos$row, pos$col] <- paste0("\\textbf{", df[pos$row, pos$col], "}")
+      }
+    }
+
     result <- format_table(
       df = df,
       format = format,
@@ -1247,9 +1414,20 @@ create_pivot_table_within <- function(all_results, category_levels, compare_by,
       table.border.bottom.color = "black",
       column_labels.border.bottom.color = "black",
       table_body.border.bottom.color = "black"
-    ) %>%
+    )
+
+  # Apply bold styling to highest values
+  for (pos in bold_positions) {
+    gt_table <- gt_table %>%
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_body(columns = pos$col, rows = pos$row)
+      )
+  }
+
+  gt_table <- gt_table %>%
     gt::tab_footnote(
-      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared"
+      footnote = "p (ES) = p-value (effect size); ES = eta-squared or epsilon-squared; Bold = highest value"
     )
 
   return(gt_table)

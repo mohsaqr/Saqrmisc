@@ -10,6 +10,9 @@ compare_groups(
   Vars = NULL,
   category_sep = " | ",
   repeat_category = NULL,
+  compare_by = NULL,
+  compare_mode = c("between", "within"),
+  repeat_combine = TRUE,
   repeat_levels = NULL,
   plots = TRUE,
   plot_style = c("points", "boxplot", "bar", "violin", "ggstatsplot"),
@@ -19,11 +22,17 @@ compare_groups(
   equivalence = FALSE,
   equivalence_bounds = c(-0.5, 0.5),
   nonparametric = FALSE,
-  p_adjust_method = "none",
+  p_adjust_method = "fdr",
   posthoc = TRUE,
   posthoc_method = "games-howell",
   posthoc_table = FALSE,
+  posthoc_format = c("wide", "long", "both"),
   pairwise_display = "significant",
+  pivot = FALSE,
+  pivot_by = c("category", "repeat_category"),
+  pivot_stat = c("mean", "mean_sd", "median", "n"),
+  pivot_stars = TRUE,
+  pivot_split_level = TRUE,
   min_threshold = 0.05,
   min_subcategory = 5,
   colors = NULL,
@@ -51,7 +60,21 @@ multiple variables are passed to category. Default: " | ".}
 
 \item{repeat_category}{Optional character. Name of a stratification variable.
 When provided, separate analyses are performed for each level (e.g., analyze
-gender differences separately for each country).}
+gender differences separately for each country). Used with compare_mode = "between".}
+
+\item{compare_by}{Optional character vector. Factors to test within each category level.
+Used with compare_mode = "within". For example, if category = "llm" and
+compare_by = c("pronoun", "support"), tests whether pronoun and support have
+effects within each LLM dataset separately.}
+
+\item{compare_mode}{Character. Analysis mode:
+"between" (default) - compare category levels (e.g., GPT vs Mistral vs Qwen),
+"within" - test compare_by factors within each category level (e.g., test
+pronoun effect within GPT, within Mistral, within Qwen separately).}
+
+\item{repeat_combine}{Logical. When multiple repeat_category variables are provided
+with compare_mode = "between", should they be combined into one grouping
+(e.g., "he/him | High")? Default TRUE.}
 
 \item{repeat_levels}{Optional character vector. Specific levels of repeat_category
 to include in the analysis. If NULL (default), all levels are used.}
@@ -79,8 +102,9 @@ Cohen's d units for TOST. Default: c(-0.5, 0.5).}
 When TRUE, uses Mann-Whitney U (2 groups) or Kruskal-Wallis (3+ groups).}
 
 \item{p_adjust_method}{Method for multiple comparison correction. Options:
-"none", "bonferroni", "holm", "hochberg", "BH", "BY", "fdr".
-Default: "none". Applied to both tables and post-hoc tests.}
+"none", "bonferroni", "holm", "hochberg", "hommel", "BH", "BY", "fdr".
+Default: "fdr" (Benjamini-Hochberg False Discovery Rate).
+Applied to both tables and post-hoc tests.}
 
 \item{posthoc}{Logical. Compute post-hoc pairwise comparisons for 3+ groups?
 Default: TRUE. Results include a comparison table and text report.}
@@ -91,8 +115,30 @@ does not assume equal variances) or "tukey" (Tukey's HSD, assumes equal variance
 \item{posthoc_table}{Logical. Include detailed post-hoc pairwise comparison table
 in the output? Default FALSE.}
 
+\item{posthoc_format}{Character. Format for post-hoc table when pivot = TRUE:
+"wide" (default, comparisons as columns), "long" (one row per comparison),
+or "both" (return both formats).}
+
 \item{pairwise_display}{Which pairwise comparisons to show on plots? Options:
 "significant" (default), "all", "none".}
+
+\item{pivot}{Logical. Pivot to wide format? Default FALSE.
+When TRUE, creates a wide table based on pivot_by parameter.}
+
+\item{pivot_by}{Character. Which variable to pivot to columns:
+"category" (default) - category groups become columns (e.g., GPT, Mistral, Qwen),
+"repeat_category" - repeat_category levels become columns (e.g., he/him, she/her).}
+
+\item{pivot_stat}{Character. Statistic to display in pivoted cells:
+"mean" (default), "mean_sd" (mean with SD in parentheses),
+"median", or "n" (count).}
+
+\item{pivot_stars}{Logical. Show significance stars in pivot table?
+Default TRUE when pivot = TRUE.}
+
+\item{pivot_split_level}{Logical. When multiple repeat_category variables are
+combined (e.g., "he/him | High"), split them back into separate columns?
+Default TRUE. When FALSE, keeps the combined "level" column.}
 
 \item{min_threshold}{Numeric. Minimum proportion (0-1) of total sample required
 to include a repeat_category level. Default: 0.05 (5 percent).}
@@ -129,6 +175,12 @@ A list with class "comparison_results" containing: plots (named list
   summary_table (formatted gt table), and summary_data (data frame with raw
   statistics). For stratified analysis (with repeat_category), returns a named
   list where each element corresponds to a level of repeat_category.
+  When pivot = TRUE, additional elements are returned:
+  \itemize{
+    \item pivot_table: gt table with groups as columns and factor levels as rows
+    \item posthoc_pivot_wide: Post-hoc comparisons in wide format (if posthoc_table = TRUE)
+    \item posthoc_pivot_long: Post-hoc comparisons in long format (if posthoc_format = "long" or "both")
+  }
 }
 \description{
 A comprehensive function for comparing groups using publication-ready
@@ -270,6 +322,73 @@ results <- compare_groups(
   category = c("strength", "gender"),
   category_sep = " x ",  # Creates "Strong x Male", etc.
   Vars = c("score")
+)
+
+# ============================================================
+# EXAMPLE 8: Pivoted Table (groups as columns)
+# ============================================================
+# LLM comparison data
+data <- data.frame(
+  Support_level = c(rnorm(100, 4, 1), rnorm(100, 6.5, 1), rnorm(100, 4.8, 1)),
+  pronoun = rep(c("he/him", "she/her", "they/them"), each = 100),
+  LA_activity = rep(c("Negative", "Positive"), 150),
+  llm = rep(c("GPT", "Mistral", "Qwen"), each = 100)
+)
+
+# Basic pivot - groups become columns
+results <- compare_groups(
+  data = data,
+  category = "llm",                    # Becomes columns: GPT | Mistral | Qwen
+  Vars = "Support_level",
+  repeat_category = "pronoun",         # Rows: he/him, she/her, they/them
+  pivot = TRUE                         # Enable pivot mode
+)
+
+# Access the pivot table
+results$pivot_table
+
+# ============================================================
+# EXAMPLE 9: Pivot with Mean and SD
+# ============================================================
+results <- compare_groups(
+  data = data,
+  category = "llm",
+  Vars = "Support_level",
+  repeat_category = c("pronoun", "LA_activity"),
+  pivot = TRUE,
+  pivot_stat = "mean_sd"              # Shows "4.32 (1.21)"
+)
+
+# ============================================================
+# EXAMPLE 10: Pivot with Post-hoc Comparisons Table
+# ============================================================
+results <- compare_groups(
+  data = data,
+  category = "llm",
+  Vars = "Support_level",
+  repeat_category = "pronoun",
+  pivot = TRUE,
+  posthoc = TRUE,
+  posthoc_table = TRUE,               # Include post-hoc table
+  posthoc_format = "wide"             # "wide", "long", or "both"
+)
+
+# Access tables
+results$pivot_table              # Main pivoted means table
+results$posthoc_pivot_wide       # Post-hoc comparisons (wide format)
+
+# ============================================================
+# EXAMPLE 11: Different P-value Adjustment Methods
+# ============================================================
+# Available methods: "none", "bonferroni", "holm", "hochberg",
+#                   "hommel", "BH", "BY", "fdr" (default)
+results <- compare_groups(
+  data = data,
+  category = "llm",
+  Vars = "Support_level",
+  repeat_category = "pronoun",
+  pivot = TRUE,
+  p_adjust_method = "bonferroni"
 )
 }
 
