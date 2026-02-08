@@ -1,0 +1,475 @@
+---
+title: "tna v1.1.0 — Debug & Test Report"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, warning = FALSE,
+  fig.width = 8, fig.height = 6
+)
+library(tna)
+```
+
+# Package Info
+
+```{r}
+cat("tna version:", as.character(packageVersion("tna")), "\n")
+cat("R version:", R.version.string, "\n")
+```
+
+# Building Models
+
+## build_model (explicit type)
+
+```{r}
+model <- build_model(group_regulation, type = "relative")
+print(model)
+```
+
+## tna() shortcut (type = "relative")
+
+```{r}
+model <- tna(group_regulation)
+summary(model)
+```
+
+## ftna() shortcut (type = "frequency")
+
+```{r}
+model_f <- ftna(group_regulation)
+print(model_f)
+```
+
+## ctna() shortcut (type = "co-occurrence")
+
+```{r}
+model_c <- ctna(group_regulation)
+print(model_c)
+```
+
+## atna() shortcut (type = "attention")
+
+```{r}
+model_a <- atna(group_regulation)
+print(model_a)
+```
+
+## group_model from mhmm
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+print(gmodel)
+```
+
+## group_model with manual groups
+
+```{r}
+group <- c(rep("High", 1000), rep("Low", 1000))
+gmodel_manual <- group_model(group_regulation, group = group)
+summary(gmodel_manual)
+```
+
+## sna (edge list)
+
+```{r}
+set.seed(42)
+d <- data.frame(
+  from = sample(LETTERS[1:4], 100, replace = TRUE),
+  to = sample(LETTERS[1:4], 100, replace = TRUE),
+  weight = rexp(100)
+)
+model_sna <- sna(d)
+```
+
+# Plotting
+
+## plot.tna
+
+```{r}
+model <- tna(group_regulation)
+plot(model)
+```
+
+## plot with spring layout and scaled nodes
+
+```{r}
+plot(model, layout = "spring", scale_nodes = "OutStrength")
+```
+
+## plot group_tna
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+plot(gmodel)
+```
+
+## plot_frequencies
+
+```{r}
+model <- tna(group_regulation)
+plot_frequencies(model)
+```
+
+## plot_frequencies (group_tna)
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+plot_frequencies(gmodel)
+```
+
+## plot_mosaic
+
+```{r}
+model_f <- ftna(group_regulation)
+plot_mosaic(model_f)
+```
+
+## plot_mosaic (group_tna)
+
+```{r}
+gmodel <- group_model(engagement_mmm, type = "frequency")
+plot_mosaic(gmodel)
+```
+
+## plot_sequences (index)
+
+```{r}
+plot_sequences(group_regulation)
+```
+
+## plot_sequences (distribution)
+
+```{r}
+plot_sequences(group_regulation, type = "distribution")
+```
+
+## plot_sequences (group_tna)
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+plot_sequences(gmodel)
+```
+
+## plot_compare
+
+```{r}
+model_a <- tna(group_regulation[1:1000, ])
+model_b <- tna(group_regulation[1001:2000, ])
+plot_compare(model_a, model_b)
+```
+
+## plot_associations
+
+```{r}
+model_f <- ftna(group_regulation)
+plot_associations(model_f)
+```
+
+## hist
+
+```{r}
+model <- tna(group_regulation)
+hist(model)
+```
+
+# Data Preparation
+
+## prepare_data
+
+```{r}
+results <- prepare_data(
+  group_regulation_long,
+  actor = "Actor", time = "Time", action = "Action"
+)
+print(results$sequence_data)
+print(results$statistics)
+```
+
+## simulate
+
+```{r}
+model <- tna(group_regulation)
+sim <- simulate(model, nsim = 5, seed = 123, max_len = 10)
+print(sim)
+```
+
+# Centrality Measures
+
+## centralities (tna)
+
+```{r}
+model <- tna(group_regulation)
+cm <- centralities(model)
+print(cm)
+```
+
+## centralities (group_tna)
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+cm_g <- centralities(gmodel)
+print(cm_g)
+```
+
+## plot centralities
+
+```{r}
+model <- tna(group_regulation)
+cm <- centralities(model)
+plot(cm, ncol = 3, reorder = TRUE)
+```
+
+## specific measures
+
+```{r}
+centralities(model, measures = c("OutStrength", "Betweenness"))
+```
+
+## normalized
+
+```{r}
+centralities(model, normalize = TRUE)
+```
+
+## betweenness_network
+
+```{r}
+bn <- betweenness_network(model)
+print(bn)
+```
+
+## estimate_cs
+
+```{r}
+cs <- estimate_cs(model,
+  measures = c("InStrength", "OutStrength"),
+  iter = 100
+)
+print(cs)
+plot(cs)
+```
+
+# Network Structure
+
+## communities (tna)
+
+```{r}
+model <- tna(group_regulation)
+comm <- communities(model)
+print(comm)
+```
+
+## plot communities
+
+```{r}
+plot(comm, method = "spinglass")
+```
+
+## communities (group_tna)
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+comm_g <- communities(gmodel)
+print(comm_g)
+```
+
+## cliques
+
+```{r}
+model <- tna(group_regulation)
+cliq <- cliques(model, size = 2)
+print(cliq)
+```
+
+## plot cliques
+
+```{r}
+plot(cliq, n = 3, ask = FALSE)
+```
+
+# Comparison
+
+## compare (group_tna)
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+comp <- compare(gmodel, i = 1, j = 2)
+print(comp)
+```
+
+## plot comparison
+
+```{r}
+plot(comp)
+```
+
+## compare_sequences (group_tna)
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+comp_seq <- compare_sequences(gmodel)
+print(head(comp_seq, 10))
+```
+
+## plot compare_sequences
+
+```{r}
+plot(comp_seq)
+```
+
+## compare_sequences (manual groups)
+
+```{r}
+group <- c(rep("High", 1000), rep("Low", 1000))
+comp_manual <- compare_sequences(group_regulation, group)
+print(head(comp_manual, 10))
+```
+
+## permutation_test
+
+```{r}
+model_x <- tna(group_regulation[1:200, ])
+model_y <- tna(group_regulation[1001:1200, ])
+perm <- permutation_test(model_x, model_y, iter = 100)
+print(perm)
+```
+
+## plot permutation_test
+
+```{r}
+plot(perm)
+```
+
+# Validation
+
+## bootstrap
+
+```{r}
+model <- tna(group_regulation)
+boot <- bootstrap(model, iter = 100)
+print(boot)
+```
+
+## summary bootstrap
+
+```{r}
+summary(boot)
+```
+
+## plot bootstrap
+
+```{r}
+plot(boot)
+```
+
+## bootstrap_cliques
+
+```{r}
+bc <- bootstrap_cliques(model, size = 2, iter = 100)
+print(bc)
+```
+
+## prune (threshold)
+
+```{r}
+model <- tna(group_regulation)
+pruned_t <- prune(model, method = "threshold", threshold = 0.1)
+print(pruned_t)
+```
+
+## prune (lowest)
+
+```{r}
+pruned_p <- prune(model, method = "lowest", lowest = 0.05)
+print(pruned_p)
+```
+
+## prune (disparity)
+
+```{r}
+pruned_d <- prune(model, method = "disparity", level = 0.5)
+print(pruned_d)
+```
+
+## pruning_details
+
+```{r}
+pruning_details(pruned_t)
+```
+
+## deprune + reprune
+
+```{r}
+restored <- deprune(pruned_t)
+cat("Deprune OK\n")
+repruned <- reprune(restored)
+cat("Reprune OK\n")
+```
+
+## plot pruned network
+
+```{r}
+plot(pruned_t)
+```
+
+# Clustering
+
+## cluster_sequences
+
+```{r}
+result <- cluster_sequences(group_regulation[1:200, ], k = 3, dissimilarity = "osa")
+print(result)
+```
+
+## group_model from clustering
+
+```{r}
+gmodel_clust <- group_model(result)
+print(gmodel_clust)
+plot(gmodel_clust)
+```
+
+## rename_groups
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+gmodel_renamed <- rename_groups(gmodel, c("A", "B", "C"))
+cat("Original:", names(group_model(engagement_mmm)), "\n")
+cat("Renamed:", names(gmodel_renamed), "\n")
+```
+
+## mmm_stats
+
+```{r}
+mmm_stats(engagement_mmm)
+```
+
+# Summary & Conversion
+
+## summary (tna)
+
+```{r}
+model <- tna(group_regulation)
+summary(model)
+```
+
+## summary (group_tna)
+
+```{r}
+gmodel <- group_model(engagement_mmm)
+summary(gmodel)
+```
+
+## as.igraph
+
+```{r}
+model <- tna(group_regulation)
+g <- as.igraph(model)
+print(g)
+```

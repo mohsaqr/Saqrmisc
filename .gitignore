@@ -15,8 +15,13 @@
 *.pdf
 *.html
 
-# Documentation
-docs/
+# Documentation (GitHub Pages from docs/)
+!docs/
+!docs/*.html
+!docs/*.md
+!docs/*.Rmd
+docs/debug_tna.html
+docs/tna_knit.html
 pkgdown/
 
 # Build artifacts

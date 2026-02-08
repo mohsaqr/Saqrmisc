@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cograph - R Package Documentation</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --border: #e5e7eb;
+    --code-bg: #f8fafc;
+    --code-border: #e2e8f0;
+    --table-stripe: #f9fafb;
+    --header-bg: #0f172a;
+    --success: #059669;
+    --warn: #d97706;
+    --sidebar-w: 280px;
+    --output-bg: #f0fdf4;
+    --output-border: #86efac;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: var(--fg);
+    line-height: 1.7;
+    background: var(--bg);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: var(--sidebar-w);
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--header-bg);
+    color: #cbd5e1;
+    padding: 1.5rem 0;
+    font-size: 0.85rem;
+    z-index: 100;
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+  .sidebar .logo {
+    padding: 0 1.5rem 1.2rem;
+    border-bottom: 1px solid #1e293b;
+    margin-bottom: 1rem;
+  }
+  .sidebar .logo h1 {
+    font-size: 1.3rem;
+    color: #f1f5f9;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .sidebar .logo p {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+  }
+
+  .sidebar nav ul { list-style: none; }
+  .sidebar nav > ul > li > a {
+    display: block;
+    padding: 0.5rem 1.5rem;
+    color: #94a3b8;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: color 0.15s;
+  }
+  .sidebar nav > ul > li > a:hover { color: #e2e8f0; }
+
+  .sidebar nav > ul > li > ul { margin-bottom: 0.5rem; }
+  .sidebar nav > ul > li > ul > li > a {
+    display: block;
+    padding: 0.3rem 1.5rem 0.3rem 2.2rem;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .sidebar nav > ul > li > ul > li > a:hover {
+    color: #e2e8f0;
+    background: rgba(255,255,255,0.04);
+    border-left-color: var(--accent);
+  }
+
+  /* ── Main content ── */
+  .main {
+    margin-left: var(--sidebar-w);
+    max-width: 900px;
+    padding: 2.5rem 3rem 5rem;
+  }
+
+  h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 3rem 0 0.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border);
+    color: var(--fg);
+    letter-spacing: -0.02em;
+  }
+  h2:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+
+  h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 2rem 0 0.5rem;
+    color: var(--fg);
+  }
+  h3 code {
+    font-size: 1.1rem;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+  }
+
+  h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.4rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  p { margin: 0.5rem 0; color: #374151; }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    color: white;
+    padding: 2.5rem 2rem;
+    border-radius: 12px;
+    margin-bottom: 2.5rem;
+  }
+  .hero h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; }
+  .hero p { color: #94a3b8; font-size: 1.05rem; margin-top: 0.5rem; }
+  .hero .badges { margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .hero .badge {
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-blue { background: #1d4ed8; color: #dbeafe; }
+  .badge-green { background: #065f46; color: #d1fae5; }
+  .badge-purple { background: #5b21b6; color: #ede9fe; }
+  .badge-amber { background: #92400e; color: #fef3c7; }
+  .badge-teal { background: #115e59; color: #ccfbf1; }
+  .badge-rose { background: #9f1239; color: #ffe4e6; }
+
+  /* ── Code blocks ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    font-size: 0.84rem;
+    line-height: 1.6;
+    margin: 0.8rem 0;
+  }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.88em;
+  }
+  p code, li code, td code {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    color: #be185d;
+    font-size: 0.85em;
+  }
+
+  /* ── Signature blocks ── */
+  .signature {
+    background: #f8fafc;
+    border-left: 3px solid var(--accent);
+    padding: 0.8rem 1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 0.8rem 0;
+    overflow-x: auto;
+  }
+  .signature code { color: var(--fg); font-size: 0.82rem; }
+
+  /* ── Output blocks ── */
+  .output {
+    background: var(--output-bg);
+    border: 1px solid var(--output-border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    font-size: 0.82rem;
+    overflow-x: auto;
+    margin: 0.5rem 0 1rem;
+    position: relative;
+  }
+  .output::before {
+    content: 'Output';
+    position: absolute;
+    top: -0.6rem;
+    left: 0.8rem;
+    background: var(--output-bg);
+    padding: 0 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--success);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .output code { color: #166534; background: none; border: none; padding: 0; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0 1.2rem;
+    font-size: 0.88rem;
+  }
+  th {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 2px solid var(--fg);
+    font-weight: 600;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.45rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:nth-child(even) { background: var(--table-stripe); }
+
+  /* ── Collapsible ── */
+  details {
+    margin: 0.8rem 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  summary {
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    background: #f9fafb;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  summary:hover { background: #f3f4f6; }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  details .detail-content { padding: 1rem; }
+
+  /* ── Lists ── */
+  ul, ol { padding-left: 1.5rem; margin: 0.4rem 0; }
+  li { margin: 0.25rem 0; color: #374151; }
+
+  /* ── Install box ── */
+  .install-box {
+    background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1rem 0 2rem;
+  }
+
+  /* ── Quick ref ── */
+  .quick-ref {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin: 1rem 0 2rem;
+  }
+  .quick-ref-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    transition: box-shadow 0.15s;
+  }
+  .quick-ref-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .quick-ref-card h4 {
+    margin: 0 0 0.4rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--fg);
+    font-size: 0.92rem;
+  }
+  .quick-ref-card .funcs {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+
+  /* ── Notes ── */
+  .note {
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+    padding: 0.6rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 0.8rem 0;
+    font-size: 0.88rem;
+  }
+
+  .returns {
+    background: #f0f9ff;
+    border-left: 3px solid #0ea5e9;
+    padding: 0.6rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 0.8rem 0;
+    font-size: 0.88rem;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 1.5rem; }
+    .quick-ref { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sidebar">
+  <div class="logo">
+    <h1>cograph</h1>
+    <p>v1.5.2 &middot; R Package</p>
+  </div>
+  <nav>
+    <ul>
+      <li><a href="#getting-started">Getting Started</a></li>
+      <li><a href="#core">Core Functions</a>
+        <ul>
+          <li><a href="#cograph">cograph()</a></li>
+          <li><a href="#as_cograph">as_cograph()</a></li>
+          <li><a href="#from_qgraph">from_qgraph()</a></li>
+          <li><a href="#from_tna">from_tna()</a></li>
+        </ul>
+      </li>
+      <li><a href="#pipe-api">Pipe API</a>
+        <ul>
+          <li><a href="#sn_nodes">sn_nodes()</a></li>
+          <li><a href="#sn_edges">sn_edges()</a></li>
+          <li><a href="#sn_layout">sn_layout()</a></li>
+          <li><a href="#sn_theme">sn_theme()</a></li>
+          <li><a href="#sn_palette">sn_palette()</a></li>
+          <li><a href="#sn_render">sn_render()</a></li>
+          <li><a href="#sn_ggplot">sn_ggplot()</a></li>
+          <li><a href="#sn_save">sn_save()</a></li>
+        </ul>
+      </li>
+      <li><a href="#plotting">Plotting Engines</a>
+        <ul>
+          <li><a href="#splot">splot()</a></li>
+          <li><a href="#soplot">soplot()</a></li>
+        </ul>
+      </li>
+      <li><a href="#specialized">Specialized Plots</a>
+        <ul>
+          <li><a href="#plot_tna">plot_tna() / tplot()</a></li>
+          <li><a href="#plot_htna">plot_htna()</a></li>
+          <li><a href="#plot_mtna">plot_mtna() / mtna()</a></li>
+          <li><a href="#plot_mlna">plot_mlna() / mlna()</a></li>
+        </ul>
+      </li>
+      <li><a href="#layouts">Layouts</a>
+        <ul>
+          <li><a href="#layout_circle">layout_circle()</a></li>
+          <li><a href="#layout_spring">layout_spring()</a></li>
+          <li><a href="#layout_groups">layout_groups()</a></li>
+          <li><a href="#layout_oval">layout_oval()</a></li>
+          <li><a href="#list_layouts">list_layouts()</a></li>
+          <li><a href="#register_layout">register_layout()</a></li>
+        </ul>
+      </li>
+      <li><a href="#themes">Themes</a>
+        <ul>
+          <li><a href="#builtin-themes">Built-in Themes</a></li>
+          <li><a href="#list_themes">list_themes()</a></li>
+          <li><a href="#register_theme">register_theme()</a></li>
+        </ul>
+      </li>
+      <li><a href="#palettes">Palettes</a>
+        <ul>
+          <li><a href="#builtin-palettes">Built-in Palettes</a></li>
+          <li><a href="#list_palettes">list_palettes()</a></li>
+        </ul>
+      </li>
+      <li><a href="#shapes">Shapes</a>
+        <ul>
+          <li><a href="#list_shapes">list_shapes()</a></li>
+          <li><a href="#register_shape">register_shape()</a></li>
+          <li><a href="#register_svg_shape">register_svg_shape()</a></li>
+        </ul>
+      </li>
+      <li><a href="#getters-setters">Getters &amp; Setters</a>
+        <ul>
+          <li><a href="#get_nodes">get_nodes()</a></li>
+          <li><a href="#set_nodes">set_nodes()</a></li>
+          <li><a href="#get_edges">get_edges()</a></li>
+          <li><a href="#set_edges">set_edges()</a></li>
+          <li><a href="#n_nodes">n_nodes() / n_edges()</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="main">
+
+<!-- Hero -->
+<div class="hero" id="getting-started">
+  <h1>cograph</h1>
+  <p>Modern, extensible network visualization for R &mdash; publication-ready plots from adjacency matrices, edge lists, igraph, qgraph, or tna objects.</p>
+  <div class="badges">
+    <span class="badge badge-blue">Pipe-Friendly API</span>
+    <span class="badge badge-green">7 Built-in Themes</span>
+    <span class="badge badge-purple">12+ Node Shapes</span>
+    <span class="badge badge-teal">CI Underlays</span>
+    <span class="badge badge-amber">qgraph Compatible</span>
+    <span class="badge badge-rose">SVG Custom Shapes</span>
+  </div>
+</div>
+
+<!-- Quick ref cards -->
+<div class="quick-ref">
+  <div class="quick-ref-card">
+    <h4>Core</h4>
+    <div class="funcs">cograph() &middot; as_cograph() &middot; from_qgraph() &middot; from_tna()</div>
+  </div>
+  <div class="quick-ref-card">
+    <h4>Pipe API</h4>
+    <div class="funcs">sn_nodes() &middot; sn_edges() &middot; sn_layout() &middot; sn_theme() &middot; sn_palette()</div>
+  </div>
+  <div class="quick-ref-card">
+    <h4>Plotting Engines</h4>
+    <div class="funcs">splot() &middot; soplot() &middot; sn_render() &middot; sn_ggplot()</div>
+  </div>
+  <div class="quick-ref-card">
+    <h4>Specialized Plots</h4>
+    <div class="funcs">plot_tna() &middot; plot_htna() &middot; plot_mtna() &middot; plot_mlna()</div>
+  </div>
+  <div class="quick-ref-card">
+    <h4>Layouts</h4>
+    <div class="funcs">layout_circle() &middot; layout_spring() &middot; layout_groups() &middot; layout_oval()</div>
+  </div>
+  <div class="quick-ref-card">
+    <h4>Themes &amp; Palettes</h4>
+    <div class="funcs">7 themes &middot; 7 palettes &middot; register_theme() &middot; register_layout()</div>
+  </div>
+  <div class="quick-ref-card">
+    <h4>Shapes</h4>
+    <div class="funcs">list_shapes() &middot; register_shape() &middot; register_svg_shape()</div>
+  </div>
+  <div class="quick-ref-card">
+    <h4>Getters &amp; Setters</h4>
+    <div class="funcs">get_nodes() &middot; set_nodes() &middot; get_edges() &middot; n_nodes() &middot; n_edges()</div>
+  </div>
+</div>
+
+<!-- Installation -->
+<div class="install-box">
+  <h4 style="margin-top:0">Installation</h4>
+<pre><code># From CRAN
+install.packages("cograph")
+
+# Development version from GitHub
+devtools::install_github("sonsoleslp/cograph")
+library(cograph)</code></pre>
+  <p style="font-size:0.85rem; color: var(--muted)">Requires R &ge; 4.4.0. Core imports: R6, grid, grDevices, ggplot2. Optional: igraph, network, qgraph, tna, scales, RColorBrewer, colorspace.</p>
+</div>
+
+<p>cograph accepts <strong>adjacency matrices</strong>, <strong>edge lists</strong>, <strong>igraph objects</strong>, <strong>statnet network objects</strong>, <strong>qgraph objects</strong>, or <strong>tna objects</strong> and creates publication-ready network visualizations. All functions support a <strong>pipe-friendly workflow</strong> using the <code>sn_*</code> family.</p>
+
+<details>
+  <summary>Quick workflow example</summary>
+  <div class="detail-content">
+<pre><code># The pipe-friendly workflow
+adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+
+cograph(adj, layout = "circle") |&gt;
+  sn_nodes(fill = "steelblue", size = 0.08) |&gt;
+  sn_edges(color = "weight", width = "weight") |&gt;
+  sn_theme("minimal") |&gt;
+  sn_palette("viridis") |&gt;
+  splot()
+
+# Or go directly
+splot(adj, layout = "circle", node_fill = "steelblue")</code></pre>
+  </div>
+</details>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="core">Core Functions</h2>
+
+<!-- cograph -->
+<h3 id="cograph"><code>cograph()</code></h3>
+<p>The main entry point. Accepts adjacency matrices, edge lists, igraph, statnet network, qgraph, or tna objects and creates a visualization-ready network object.</p>
+
+<div class="signature"><code>cograph(input, layout = "spring", directed = NULL, node_labels = NULL, seed = 42, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>input</code></td><td>Square matrix, edge list data frame, igraph, statnet, qgraph, or tna object</td><td>&mdash;</td></tr>
+  <tr><td><code>layout</code></td><td><code>"spring"</code>, <code>"circle"</code>, <code>"groups"</code>, <code>"grid"</code>, <code>"random"</code>, <code>"star"</code>, <code>"bipartite"</code>, <code>"custom"</code></td><td><code>"spring"</code></td></tr>
+  <tr><td><code>directed</code></td><td>Force directed interpretation. <code>NULL</code> for auto-detect</td><td><code>NULL</code></td></tr>
+  <tr><td><code>node_labels</code></td><td>Character vector of node labels</td><td><code>NULL</code></td></tr>
+  <tr><td><code>seed</code></td><td>Random seed for deterministic layouts. <code>NULL</code> for random</td><td><code>42</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> A <code>cograph_network</code> object that can be further customized and rendered.</div>
+
+<details>
+  <summary>Example: From adjacency matrix</summary>
+  <div class="detail-content">
+<pre><code># From adjacency matrix
+adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+cograph(adj)
+
+# From edge list
+edges &lt;- data.frame(from = c(1, 1, 2), to = c(2, 3, 3))
+cograph(edges)
+
+# Pipe-friendly workflow
+adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+cograph(adj, layout = "circle") |&gt;
+  sn_nodes(fill = "steelblue") |&gt;
+  sn_edges(color = "gray50") |&gt;
+  splot()</code></pre>
+  </div>
+</details>
+
+<details>
+  <summary>Example: Weighted network</summary>
+  <div class="detail-content">
+<pre><code># Weighted network with automatic styling
+w_adj &lt;- matrix(c(0, 0.5, -0.3, 0.5, 0, 0.4, -0.3, 0.4, 0), nrow = 3)
+cograph(w_adj) |&gt;
+  sn_edges(color = "weight", width = "weight") |&gt;
+  splot()</code></pre>
+  </div>
+</details>
+
+<!-- as_cograph -->
+<h3 id="as_cograph"><code>as_cograph()</code></h3>
+<p>Creates a lightweight <code>cograph_network</code> object from various network inputs. The resulting object is a named list with all data accessible via <code>$</code>.</p>
+
+<div class="signature"><code>as_cograph(x, directed = NULL, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>x</code></td><td>Square matrix, edge list data frame, igraph, statnet, qgraph, tna, or existing cograph_network object</td><td>&mdash;</td></tr>
+  <tr><td><code>directed</code></td><td>Force directed interpretation. <code>NULL</code> for auto-detect</td><td><code>NULL</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> A <code>cograph_network</code> named list with <code>$from</code>, <code>$to</code>, <code>$weight</code>, <code>$nodes</code>, <code>$directed</code>, <code>$n_nodes</code>, <code>$n_edges</code>, <code>$labels</code>, <code>$source</code>, <code>$layout</code>.</div>
+
+<details>
+  <summary>Example: Direct <code>$</code> access</summary>
+  <div class="detail-content">
+<pre><code>mat &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+net &lt;- as_cograph(mat)
+
+# Direct $ access to all data
+net$from       # edge sources
+net$to         # edge targets
+net$weight     # edge weights
+net$nodes      # nodes data frame
+net$directed   # TRUE/FALSE
+net$n_nodes    # 3
+net$n_edges    # 3
+
+# Getter functions
+get_nodes(net)   # nodes data frame
+get_edges(net)   # edges data frame
+get_labels(net)  # character vector of labels
+n_nodes(net)     # 3
+is_directed(net) # FALSE (symmetric matrix)
+
+# Setter functions
+net &lt;- set_nodes(net, data.frame(id = 1:3, label = c("A", "B", "C")))
+net &lt;- set_edges(net, data.frame(from = c(1,2), to = c(2,3), weight = c(0.5, 0.8)))
+net &lt;- set_layout(net, data.frame(x = c(0, 1, 0.5), y = c(0, 0, 1)))</code></pre>
+  </div>
+</details>
+
+<!-- from_qgraph -->
+<h3 id="from_qgraph"><code>from_qgraph()</code></h3>
+<p>Convert a qgraph object to cograph parameters. Extracts the network, layout, and all relevant arguments from a qgraph object and passes them to a cograph plotting engine.</p>
+
+<div class="signature"><code>from_qgraph(qgraph_object, engine = c("splot", "soplot"), plot = TRUE, weight_digits = 2, show_zero_edges = FALSE, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>qgraph_object</code></td><td>Return value of <code>qgraph::qgraph()</code></td><td>&mdash;</td></tr>
+  <tr><td><code>engine</code></td><td><code>"splot"</code> (base R) or <code>"soplot"</code> (grid)</td><td><code>"splot"</code></td></tr>
+  <tr><td><code>plot</code></td><td>Immediately plot the result</td><td><code>TRUE</code></td></tr>
+  <tr><td><code>weight_digits</code></td><td>Decimal places to round edge weights</td><td><code>2</code></td></tr>
+  <tr><td><code>show_zero_edges</code></td><td>Keep edges that round to zero</td><td><code>FALSE</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Invisibly, a named list of cograph parameters passable to <code>splot()</code> or <code>soplot()</code>.</div>
+
+<details>
+  <summary>Parameter mapping (qgraph &rarr; cograph)</summary>
+  <div class="detail-content">
+    <p><strong>Node properties:</strong> <code>labels</code>/<code>names</code> &rarr; <code>labels</code>, <code>color</code> &rarr; <code>node_fill</code>, <code>width</code> &rarr; <code>node_size</code> (1.3x), <code>shape</code> &rarr; <code>node_shape</code>, <code>border.color</code> &rarr; <code>node_border_color</code>, <code>label.cex</code> &rarr; <code>label_size</code></p>
+    <p><strong>Edge properties:</strong> <code>labels</code> &rarr; <code>edge_labels</code>, <code>label.cex</code> &rarr; <code>edge_label_size</code> (0.5x), <code>lty</code> &rarr; <code>edge_style</code>, <code>curve</code> &rarr; <code>curvature</code>, <code>asize</code> &rarr; <code>arrow_size</code> (0.3x)</p>
+    <p><strong>Graph properties:</strong> <code>minimum</code> &rarr; <code>threshold</code>, <code>maximum</code> &rarr; <code>maximum</code>, <code>groups</code> &rarr; <code>groups</code>, <code>posCol</code>/<code>negCol</code> &rarr; <code>edge_positive_color</code>/<code>edge_negative_color</code></p>
+    <p><strong>Pie/Donut:</strong> <code>pie</code> values &rarr; <code>donut_fill</code> with <code>donut_inner_ratio=0.8</code>, <code>pieColor</code> &rarr; <code>donut_color</code></p>
+    <div class="note"><strong>Note:</strong> <code>edge_color</code> and <code>edge_width</code> are NOT extracted because qgraph bakes cut-based fading into these vectors. Layout coordinates are preserved with <code>rescale=FALSE</code>.</div>
+  </div>
+</details>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>library(qgraph)
+adj &lt;- matrix(c(0, .5, .3, .5, 0, .4, .3, .4, 0), 3, 3)
+q &lt;- qgraph(adj)
+from_qgraph(q)  # Plots with splot
+
+# Use soplot engine instead
+from_qgraph(q, engine = "soplot")
+
+# Override extracted parameters
+from_qgraph(q, node_fill = "steelblue", layout = "circle")
+
+# Extract parameters without plotting
+params &lt;- from_qgraph(q, plot = FALSE)</code></pre>
+  </div>
+</details>
+
+<!-- from_tna -->
+<h3 id="from_tna"><code>from_tna()</code></h3>
+<p>Convert a tna object to cograph parameters. Extracts the transition matrix, labels, and initial state probabilities, mapping initial probabilities to donut fills.</p>
+
+<div class="signature"><code>from_tna(tna_object, engine = c("splot", "soplot"), plot = TRUE, weight_digits = 2, show_zero_edges = FALSE, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>tna_object</code></td><td>A <code>tna</code> object from <code>tna::tna()</code></td><td>&mdash;</td></tr>
+  <tr><td><code>engine</code></td><td><code>"splot"</code> or <code>"soplot"</code></td><td><code>"splot"</code></td></tr>
+  <tr><td><code>plot</code></td><td>Immediately plot the result</td><td><code>TRUE</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Invisibly, a named list of cograph parameters.</div>
+
+<details>
+  <summary>TNA visual defaults</summary>
+  <div class="detail-content">
+    <p>These defaults are applied for TNA plots (all overridable):</p>
+    <ul>
+      <li><code>layout = "oval"</code> &mdash; Oval/elliptical node arrangement</li>
+      <li><code>node_size = 7</code> &mdash; Larger nodes for readability</li>
+      <li><code>arrow_size = 0.61</code> &mdash; Prominent directional arrows</li>
+      <li><code>edge_color = "#003355"</code> &mdash; Dark blue edges</li>
+      <li><code>edge_labels = TRUE</code> &mdash; Show transition weights</li>
+      <li><code>edge_start_style = "dotted"</code> &mdash; Dotted line at edge source</li>
+    </ul>
+  </div>
+</details>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="pipe-api">Pipe API (<code>sn_*</code> Functions)</h2>
+<p>The <code>sn_*</code> family provides a chainable, pipe-friendly API for building network visualizations step by step. All functions accept a <code>cograph_network</code> object (or raw matrix/igraph, which is auto-converted) and return a modified <code>cograph_network</code>.</p>
+
+<details>
+  <summary>Pipe workflow example</summary>
+  <div class="detail-content">
+<pre><code>adj &lt;- matrix(c(0, 0.5, -0.3, 0.5, 0, 0.4, -0.3, 0.4, 0), nrow = 3)
+
+cograph(adj) |&gt;
+  sn_nodes(
+    size = c(0.08, 0.06, 0.1),
+    fill = c("red", "blue", "green"),
+    shape = "circle"
+  ) |&gt;
+  sn_edges(
+    color = "weight",
+    width = "weight",
+    edge_positive_color = "darkblue",
+    edge_negative_color = "darkred"
+  ) |&gt;
+  sn_layout("circle") |&gt;
+  sn_theme("minimal") |&gt;
+  sn_palette("viridis") |&gt;
+  splot()
+
+# Or save to file
+cograph(adj) |&gt;
+  sn_nodes(fill = "steelblue") |&gt;
+  sn_save("network.pdf", width = 7, height = 7)</code></pre>
+  </div>
+</details>
+
+<!-- sn_nodes -->
+<h3 id="sn_nodes"><code>sn_nodes()</code></h3>
+<p>Customize node appearance: size, shape, color, labels, pie charts, donut charts, and more. All parameters can be scalar (all nodes), vector (per-node), or column name (from node data frame).</p>
+
+<div class="signature"><code>sn_nodes(network, size, shape, fill, border_color, border_width, alpha,
+         label_size, label_color, label_position, show_labels,
+         pie_values, pie_colors, donut_fill, donut_color, donut_shape,
+         donut_show_value, node_svg, ...)</code></div>
+
+<details>
+  <summary>Full signature (42 parameters)</summary>
+  <div class="detail-content">
+<pre><code>sn_nodes(network, size = NULL, shape = NULL, node_svg = NULL,
+  svg_preserve_aspect = TRUE, fill = NULL, border_color = NULL,
+  border_width = NULL, alpha = NULL,
+  # ── Labels ──
+  label_size = NULL, label_color = NULL, label_position = NULL,
+  show_labels = NULL, label_fontface = NULL, label_fontfamily = NULL,
+  label_hjust = NULL, label_vjust = NULL, label_angle = NULL,
+  # ── Pie charts ──
+  pie_values = NULL, pie_colors = NULL, pie_border_width = NULL,
+  # ── Donut charts ──
+  donut_fill = NULL, donut_values = NULL, donut_color = NULL,
+  donut_colors = NULL, donut_border_width = NULL,
+  donut_inner_ratio = NULL, donut_bg_color = NULL,
+  donut_shape = NULL, donut_show_value = NULL,
+  donut_value_size = NULL, donut_value_color = NULL,
+  donut_value_fontface = NULL, donut_value_fontfamily = NULL,
+  donut_value_digits = NULL, donut_value_prefix = NULL,
+  donut_value_suffix = NULL, donut_value_format = NULL,
+  # ── Double donut ──
+  donut2_values = NULL, donut2_colors = NULL,
+  donut2_inner_ratio = NULL,
+  node_names = NULL)</code></pre>
+  </div>
+</details>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>size</code></td><td>Node size. Single value, vector, or column name</td><td><code>NULL</code></td></tr>
+  <tr><td><code>shape</code></td><td><code>"circle"</code>, <code>"square"</code>, <code>"triangle"</code>, <code>"diamond"</code>, <code>"pentagon"</code>, <code>"hexagon"</code>, <code>"ellipse"</code>, <code>"heart"</code>, <code>"star"</code>, <code>"pie"</code>, <code>"donut"</code>, <code>"cross"</code>, <code>"rectangle"</code>, or custom SVG</td><td><code>NULL</code></td></tr>
+  <tr><td><code>fill</code></td><td>Node fill color(s)</td><td><code>NULL</code></td></tr>
+  <tr><td><code>label_position</code></td><td><code>"center"</code>, <code>"above"</code>, <code>"below"</code>, <code>"left"</code>, <code>"right"</code></td><td><code>NULL</code></td></tr>
+  <tr><td><code>donut_fill</code></td><td>Numeric 0&ndash;1 proportion for donut charts. Per-node vector supported</td><td><code>NULL</code></td></tr>
+  <tr><td><code>donut_color</code></td><td>Fill color(s) for donut ring. 1 color = fill, 2 = fill+bg, N = per-node</td><td><code>NULL</code></td></tr>
+  <tr><td><code>donut_shape</code></td><td>Base shape for donut: <code>"circle"</code>, <code>"square"</code>, <code>"hexagon"</code>, <code>"triangle"</code>, <code>"diamond"</code>, <code>"pentagon"</code></td><td><code>"circle"</code></td></tr>
+  <tr><td><code>pie_values</code></td><td>List of numeric vectors for pie chart segments per node</td><td><code>NULL</code></td></tr>
+  <tr><td><code>node_svg</code></td><td>Path to SVG file or inline SVG string for custom shapes</td><td><code>NULL</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Modified <code>cograph_network</code> object.</div>
+
+<details>
+  <summary>Example: Per-node customization</summary>
+  <div class="detail-content">
+<pre><code>adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+
+cograph(adj) |&gt;
+  sn_nodes(
+    size = c(0.08, 0.06, 0.1),
+    fill = c("red", "blue", "green"),
+    label_position = c("above", "below", "center")
+  ) |&gt;
+  splot()</code></pre>
+  </div>
+</details>
+
+<details>
+  <summary>Example: Donut chart nodes</summary>
+  <div class="detail-content">
+<pre><code>cograph(adj) |&gt;
+  sn_nodes(
+    donut_fill = c(0.25, 0.75, 0.5),
+    donut_color = "steelblue",
+    donut_show_value = TRUE,
+    donut_value_suffix = "%"
+  ) |&gt;
+  splot()</code></pre>
+  </div>
+</details>
+
+<!-- sn_edges -->
+<h3 id="sn_edges"><code>sn_edges()</code></h3>
+<p>Customize edge appearance: width, color, style, curvature, arrows, labels, CI underlays, and label templates. Use <code>color = "weight"</code> or <code>width = "weight"</code> for automatic weight-based styling.</p>
+
+<div class="signature"><code>sn_edges(network, width, color, edge_positive_color, edge_negative_color,
+         alpha, style, curvature, arrow_size, show_arrows,
+         labels, label_size, label_template, ci, ci_scale, ci_alpha,
+         curves, edge_scale_mode, ...)</code></div>
+
+<details>
+  <summary>Full signature (50 parameters)</summary>
+  <div class="detail-content">
+<pre><code>sn_edges(network, width = NULL, color = NULL,
+  edge_positive_color = NULL, edge_negative_color = NULL,
+  positive_color = NULL, negative_color = NULL,
+  alpha = NULL, style = NULL, curvature = NULL,
+  arrow_size = NULL, show_arrows = NULL,
+  # ── Edge labels ──
+  labels = NULL, label_size = NULL, label_color = NULL,
+  label_position = NULL, label_offset = NULL,
+  label_bg = NULL, label_bg_padding = NULL,
+  label_fontface = NULL, label_border = NULL,
+  label_border_color = NULL, label_underline = NULL,
+  label_shadow = NULL,
+  # ── Label templates ──
+  label_template = NULL, label_style = NULL,
+  label_digits = NULL, label_ci_format = NULL,
+  label_p = NULL, label_p_digits = NULL,
+  label_p_prefix = NULL, label_stars = NULL,
+  # ── CI underlays ──
+  ci = NULL, ci_scale = NULL, ci_alpha = NULL,
+  ci_color = NULL, ci_style = NULL, ci_arrows = NULL,
+  ci_lower = NULL, ci_upper = NULL,
+  # ── Curves &amp; scaling ──
+  curves = NULL, curve_shape = NULL, curve_pivot = NULL,
+  edge_size = NULL, edge_width_range = NULL,
+  edge_scale_mode = NULL, edge_cutoff = NULL,
+  cut = NULL, maximum = NULL,
+  bidirectional = NULL, loop_rotation = NULL)</code></pre>
+  </div>
+</details>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>width</code></td><td>Edge width. Single value, vector, or <code>"weight"</code></td><td><code>NULL</code></td></tr>
+  <tr><td><code>color</code></td><td>Edge color. Single color, vector, or <code>"weight"</code> for auto sign-based coloring</td><td><code>NULL</code></td></tr>
+  <tr><td><code>edge_positive_color</code></td><td>Color for positive weights (when <code>color = "weight"</code>)</td><td><code>NULL</code></td></tr>
+  <tr><td><code>edge_negative_color</code></td><td>Color for negative weights (when <code>color = "weight"</code>)</td><td><code>NULL</code></td></tr>
+  <tr><td><code>labels</code></td><td><code>TRUE</code> (show weights), vector, or column name</td><td><code>NULL</code></td></tr>
+  <tr><td><code>label_template</code></td><td>Template: <code>"{est}"</code>, <code>"{est} [{low}, {up}]"</code>, <code>"{est}{stars}"</code></td><td><code>NULL</code></td></tr>
+  <tr><td><code>ci</code></td><td>Numeric vector of CI widths (0&ndash;1) for underlay visualization</td><td><code>NULL</code></td></tr>
+  <tr><td><code>curves</code></td><td><code>FALSE</code> (straight), <code>"mutual"</code> (curve reciprocal pairs), <code>"force"</code> (curve all)</td><td><code>NULL</code></td></tr>
+  <tr><td><code>edge_scale_mode</code></td><td><code>"linear"</code>, <code>"log"</code>, <code>"sqrt"</code>, <code>"rank"</code></td><td><code>NULL</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Modified <code>cograph_network</code> object.</div>
+
+<details>
+  <summary>Example: Weight-based styling with CI</summary>
+  <div class="detail-content">
+<pre><code>adj &lt;- matrix(c(0, 1, -0.5, 1, 0, 1, -0.5, 1, 0), nrow = 3)
+
+# Auto-style by weight
+cograph(adj) |&gt;
+  sn_edges(width = "weight", color = "weight") |&gt;
+  splot()
+
+# Statistical output with CI template
+estimates &lt;- c(0.5, -0.3, 0.8)
+ci_lo &lt;- c(0.2, -0.6, 0.5)
+ci_hi &lt;- c(0.8, -0.1, 1.1)
+
+cograph(adj) |&gt;
+  sn_edges(
+    label_template = "{est} [{low}, {up}]",
+    ci_lower = ci_lo,
+    ci_upper = ci_hi,
+    label_digits = 2
+  ) |&gt;
+  splot()</code></pre>
+  </div>
+</details>
+
+<details>
+  <summary>Edge label presets</summary>
+  <div class="detail-content">
+    <p>Set <code>label_style</code> to a preset instead of writing a template:</p>
+    <table>
+      <tr><th>Preset</th><th>Shows</th></tr>
+      <tr><td><code>"estimate"</code></td><td>Weight/estimate only</td></tr>
+      <tr><td><code>"full"</code></td><td>Estimate + CI in brackets</td></tr>
+      <tr><td><code>"range"</code></td><td>CI range only</td></tr>
+      <tr><td><code>"stars"</code></td><td>Significance stars</td></tr>
+    </table>
+  </div>
+</details>
+
+<!-- sn_layout -->
+<h3 id="sn_layout"><code>sn_layout()</code></h3>
+<p>Apply a layout algorithm to compute node positions.</p>
+
+<div class="signature"><code>sn_layout(network, layout, seed = 42, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>layout</code></td><td>Layout name, coordinate matrix, or CographLayout object</td><td>&mdash;</td></tr>
+  <tr><td><code>seed</code></td><td>Random seed. <code>NULL</code> for random</td><td><code>42</code></td></tr>
+</table>
+
+<p>Built-in layouts: <code>"spring"</code> (force-directed), <code>"circle"</code>, <code>"groups"</code>, <code>"grid"</code>, <code>"random"</code>, <code>"star"</code>, <code>"bipartite"</code>, <code>"oval"</code>. Also supports igraph two-letter codes: <code>"kk"</code> (Kamada-Kawai), <code>"fr"</code> (Fruchterman-Reingold), <code>"drl"</code>, <code>"mds"</code>, <code>"ni"</code> (nicely), <code>"tr"</code> (tree).</p>
+
+<div class="returns"><strong>Returns:</strong> Modified <code>cograph_network</code> object.</div>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+
+cograph(adj) |&gt; sn_layout("circle") |&gt; splot()
+cograph(adj) |&gt; sn_layout("spring") |&gt; splot()
+
+# Custom coordinates
+coords &lt;- matrix(c(0, 0, 1, 0, 0.5, 1), ncol = 2, byrow = TRUE)
+cograph(adj) |&gt; sn_layout(coords) |&gt; splot()</code></pre>
+  </div>
+</details>
+
+<!-- sn_theme -->
+<h3 id="sn_theme"><code>sn_theme()</code></h3>
+<p>Apply a visual theme to the network.</p>
+
+<div class="signature"><code>sn_theme(network, theme, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>theme</code></td><td>Theme name (<code>"classic"</code>, <code>"dark"</code>, <code>"minimal"</code>, <code>"colorblind"</code>, <code>"gray"</code>, <code>"nature"</code>, <code>"viridis"</code>) or CographTheme object</td><td>&mdash;</td></tr>
+  <tr><td><code>...</code></td><td>Override individual theme properties (e.g. <code>background = "lightgray"</code>)</td><td></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Modified <code>cograph_network</code> object.</div>
+
+<!-- sn_palette -->
+<h3 id="sn_palette"><code>sn_palette()</code></h3>
+<p>Apply a color palette for node and/or edge coloring.</p>
+
+<div class="signature"><code>sn_palette(network, palette, target = "nodes", by = NULL)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>palette</code></td><td>Palette name or custom function that takes <code>n</code> and returns <code>n</code> colors</td><td>&mdash;</td></tr>
+  <tr><td><code>target</code></td><td><code>"nodes"</code>, <code>"edges"</code>, or <code>"both"</code></td><td><code>"nodes"</code></td></tr>
+  <tr><td><code>by</code></td><td>Variable to map colors to (column name or <code>"group"</code>)</td><td><code>NULL</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Modified <code>cograph_network</code> object.</div>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+
+cograph(adj) |&gt; sn_palette("viridis") |&gt; splot()
+cograph(adj) |&gt; sn_palette("colorblind", target = "both") |&gt; splot()
+
+# Custom palette function
+my_pal &lt;- function(n) rainbow(n, s = 0.7)
+cograph(adj) |&gt; sn_palette(my_pal) |&gt; splot()</code></pre>
+  </div>
+</details>
+
+<!-- sn_render -->
+<h3 id="sn_render"><code>sn_render()</code></h3>
+<p>Render the network using grid graphics. Alias for <code>soplot()</code>. See <a href="#soplot">soplot()</a> for full parameter list.</p>
+
+<div class="signature"><code>sn_render(network, title = NULL, title_size = 14,
+          margins = c(0.05, 0.05, 0.1, 0.05), layout_margin = 0.15,
+          newpage = TRUE, layout = NULL, theme = NULL, seed = 42, ...)</code></div>
+<div class="note">Alias for <code>soplot()</code>. Accepts all parameters from <a href="#soplot">soplot()</a> and <a href="#splot">splot()</a>.</div>
+
+<div class="returns"><strong>Returns:</strong> Invisible <code>NULL</code>. Called for side effect of drawing.</div>
+
+<!-- sn_ggplot -->
+<h3 id="sn_ggplot"><code>sn_ggplot()</code></h3>
+<p>Convert a cograph network to a ggplot2 object for further customization.</p>
+
+<div class="signature"><code>sn_ggplot(network, title = NULL)</code></div>
+
+<div class="returns"><strong>Returns:</strong> A <code>ggplot2</code> object.</div>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+p &lt;- cograph(adj) |&gt; sn_ggplot()
+print(p)
+
+# Further ggplot2 customization
+p + ggplot2::labs(title = "My Network")</code></pre>
+  </div>
+</details>
+
+<!-- sn_save -->
+<h3 id="sn_save"><code>sn_save()</code></h3>
+<p>Save a network visualization to file. Format detected from extension.</p>
+
+<div class="signature"><code>sn_save(network, filename, width = 7, height = 7, dpi = 300, title = NULL, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>filename</code></td><td>Output filename (format from extension: .pdf, .png, .svg, etc.)</td><td>&mdash;</td></tr>
+  <tr><td><code>width</code></td><td>Width in inches</td><td><code>7</code></td></tr>
+  <tr><td><code>height</code></td><td>Height in inches</td><td><code>7</code></td></tr>
+  <tr><td><code>dpi</code></td><td>Resolution for raster formats</td><td><code>300</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Invisible filename.</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="plotting">Plotting Engines</h2>
+<p>cograph provides two rendering engines with identical parameter interfaces. Choose based on your workflow:</p>
+<ul>
+  <li><strong><code>splot()</code></strong> &mdash; Base R graphics. Faster for large networks, good for interactive exploration</li>
+  <li><strong><code>soplot()</code></strong> &mdash; Grid graphics. Better for ggplot2 integration, combining plots, and publication vector graphics</li>
+</ul>
+
+<!-- splot -->
+<h3 id="splot"><code>splot()</code></h3>
+<p>Network visualization using base R graphics. The primary plotting engine, similar to qgraph. Accepts 130+ parameters for full control over every visual element.</p>
+
+<div class="signature"><code>splot(x, layout = "oval", directed = NULL, seed = 42, theme = NULL, node_size = NULL, node_shape = "circle", node_fill = NULL, node_border_color = NULL, labels = TRUE, label_size = NULL, label_color = "black", label_position = "center", edge_color = NULL, edge_width = NULL, edge_alpha = 0.8, edge_labels = FALSE, curvature = 0, curves = TRUE, arrow_size = 1, show_arrows = TRUE, threshold = 0, maximum = NULL, edge_positive_color = "#2E7D32", edge_negative_color = "#C62828", title = NULL, background = "white", legend = FALSE, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>x</code></td><td>Square matrix, edge list, igraph, or cograph_network object</td><td>&mdash;</td></tr>
+  <tr><td><code>layout</code></td><td><code>"oval"</code>, <code>"circle"</code>, <code>"spring"</code>, <code>"groups"</code>, coordinate matrix, or igraph layout codes</td><td><code>"oval"</code></td></tr>
+  <tr><td><code>theme</code></td><td><code>"classic"</code>, <code>"dark"</code>, <code>"minimal"</code>, <code>"colorblind"</code>, etc.</td><td><code>NULL</code></td></tr>
+  <tr><td><code>node_size</code></td><td>Node size(s). Single value or vector</td><td><code>NULL</code> (3)</td></tr>
+  <tr><td><code>node_shape</code></td><td><code>"circle"</code>, <code>"square"</code>, <code>"triangle"</code>, <code>"diamond"</code>, <code>"pentagon"</code>, <code>"hexagon"</code>, <code>"star"</code>, <code>"heart"</code>, <code>"ellipse"</code>, <code>"cross"</code>, or custom SVG</td><td><code>"circle"</code></td></tr>
+  <tr><td><code>node_fill</code></td><td>Node fill color(s)</td><td><code>NULL</code></td></tr>
+  <tr><td><code>edge_color</code></td><td>Edge color(s). <code>NULL</code> = auto by weight sign</td><td><code>NULL</code></td></tr>
+  <tr><td><code>edge_labels</code></td><td><code>TRUE</code> (weights), <code>FALSE</code>, or character vector</td><td><code>FALSE</code></td></tr>
+  <tr><td><code>curves</code></td><td><code>TRUE</code> (reciprocal curve), <code>FALSE</code> (straight), <code>"force"</code> (all curved)</td><td><code>TRUE</code></td></tr>
+  <tr><td><code>threshold</code></td><td>Minimum |weight| to display</td><td><code>0</code></td></tr>
+  <tr><td><code>maximum</code></td><td>Maximum weight for scaling. <code>NULL</code> = auto</td><td><code>NULL</code></td></tr>
+  <tr><td><code>filetype</code></td><td><code>"default"</code> (screen), <code>"png"</code>, <code>"pdf"</code>, <code>"svg"</code>, <code>"jpeg"</code>, <code>"tiff"</code></td><td><code>"default"</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Invisibly returns the <code>cograph_network</code> object.</div>
+
+<details>
+  <summary>Full signature (all 130+ parameters)</summary>
+  <div class="detail-content">
+<pre><code>splot(x, layout = "oval", directed = NULL, seed = 42, theme = NULL,
+  # ── Nodes ──
+  node_size = NULL, node_size2 = NULL, node_shape = "circle",
+  node_svg = NULL, svg_preserve_aspect = TRUE,
+  node_fill = NULL, node_border_color = NULL, node_border_width = 1,
+  node_alpha = 1,
+  # ── Labels ──
+  labels = TRUE, label_size = NULL, label_color = "black",
+  label_position = "center", label_fontface = "plain",
+  label_fontfamily = "sans", label_hjust = 0.5, label_vjust = 0.5,
+  label_angle = 0,
+  # ── Pie charts ──
+  pie_values = NULL, pie_colors = NULL, pie_border_width = NULL,
+  # ── Donut charts ──
+  donut_fill = NULL, donut_color = NULL, donut_border_color = NULL,
+  donut_border_width = NULL, donut_inner_ratio = 0.8,
+  donut_bg_color = "gray90", donut_shape = "circle",
+  donut_show_value = FALSE, donut_value_size = 0.8,
+  donut_value_color = "black", donut_value_fontface = "bold",
+  donut_value_digits = 2, donut_value_prefix = "", donut_value_suffix = "",
+  donut_empty = TRUE,
+  # ── Double donut ──
+  donut2_values = NULL, donut2_colors = NULL, donut2_inner_ratio = 0.4,
+  # ── Edges ──
+  edge_color = NULL, edge_width = NULL, edge_size = NULL,
+  edge_width_range = c(0.1, 4), edge_scale_mode = "linear",
+  edge_cutoff = NULL, edge_alpha = 0.8, edge_style = 1,
+  curvature = 0, curve_scale = TRUE, curve_shape = 0, curve_pivot = 0.5,
+  curves = TRUE,
+  arrow_size = 1, arrow_angle = pi/6, show_arrows = TRUE,
+  bidirectional = FALSE, loop_rotation = NULL,
+  # ── Edge start style ──
+  edge_start_style = "solid", edge_start_length = 0.15,
+  edge_start_dot_density = "12",
+  # ── Edge labels ──
+  edge_labels = FALSE, edge_label_size = 0.8,
+  edge_label_color = "gray30", edge_label_bg = "white",
+  edge_label_position = 0.5, edge_label_offset = 0,
+  edge_label_fontface = "plain", edge_label_shadow = FALSE,
+  # ── Edge label templates ──
+  edge_label_style = "none", edge_label_template = NULL,
+  edge_label_digits = 2, edge_label_ci_format = "bracket",
+  edge_ci_lower = NULL, edge_ci_upper = NULL,
+  edge_label_p = NULL, edge_label_p_digits = 3,
+  edge_label_stars = NULL,
+  # ── CI underlays ──
+  edge_ci = NULL, edge_ci_scale = 2, edge_ci_alpha = 0.15,
+  edge_ci_color = NA, edge_ci_style = 2, edge_ci_arrows = FALSE,
+  # ── Weight processing ──
+  weight_digits = 2, threshold = 0, minimum = 0, maximum = NULL,
+  edge_positive_color = "#2E7D32", edge_negative_color = "#C62828",
+  edge_duplicates = NULL,
+  # ── Plot options ──
+  title = NULL, title_size = 1.2, margins = c(0.1, 0.1, 0.1, 0.1),
+  background = "white", rescale = TRUE, layout_scale = 1,
+  layout_margin = 0.15, aspect = TRUE, use_pch = FALSE,
+  scaling = "default",
+  # ── Legend ──
+  legend = FALSE, legend_position = "topright", legend_size = 0.8,
+  legend_edge_colors = TRUE, legend_node_sizes = FALSE,
+  groups = NULL, node_names = NULL,
+  # ── File output ──
+  filetype = "default", filename = "splot",
+  width = 7, height = 7, res = 600, ...)</code></pre>
+  </div>
+</details>
+
+<details>
+  <summary>Example: Basic and weighted networks</summary>
+  <div class="detail-content">
+<pre><code># Basic network
+adj &lt;- matrix(c(0, 1, 1, 0,
+                0, 0, 1, 1,
+                0, 0, 0, 1,
+                0, 0, 0, 0), 4, 4, byrow = TRUE)
+splot(adj)
+
+# Weighted with positive/negative colors
+w_adj &lt;- matrix(c(0, 0.5, -0.3, 0,
+                  0.8, 0, 0.4, -0.2,
+                  0, 0, 0, 0.6,
+                  0, 0, 0, 0), 4, 4, byrow = TRUE)
+splot(w_adj, edge_positive_color = "darkgreen",
+      edge_negative_color = "red")
+
+# Circle layout with labels
+splot(adj, layout = "circle", labels = c("A", "B", "C", "D"))</code></pre>
+  </div>
+</details>
+
+<details>
+  <summary>Weight scaling modes</summary>
+  <div class="detail-content">
+    <table>
+      <tr><th>Mode</th><th>Use when</th></tr>
+      <tr><td><code>"linear"</code></td><td>Weights are similar in magnitude (default, qgraph-style)</td></tr>
+      <tr><td><code>"log"</code></td><td>Weights span multiple orders of magnitude (e.g. 0.01 to 100)</td></tr>
+      <tr><td><code>"sqrt"</code></td><td>Moderately skewed distributions</td></tr>
+      <tr><td><code>"rank"</code></td><td>Equal visual spacing regardless of weight distribution</td></tr>
+    </table>
+  </div>
+</details>
+
+<!-- soplot -->
+<h3 id="soplot"><code>soplot()</code></h3>
+<p>Network visualization using grid graphics. Same parameter interface as <code>splot()</code>. <code>sn_render()</code> is an alias for this function.</p>
+
+<div class="signature"><code>soplot(network, title = NULL, title_size = 14, margins = c(0.05, 0.05, 0.1, 0.05),
+       layout_margin = 0.15, newpage = TRUE, layout = NULL, theme = NULL,
+       seed = 42, labels = NULL, threshold = NULL, maximum = NULL,
+       node_size = NULL, node_shape = NULL, node_fill = NULL,
+       edge_width = NULL, edge_color = NULL, edge_labels = NULL,
+       curvature = NULL, curves = NULL, legend = FALSE, ...)</code></div>
+<div class="note"><code>soplot()</code> accepts all node, edge, donut, pie, and label parameters from <code>splot()</code>. Only the most common parameters are shown above.</div>
+
+<div class="returns"><strong>Returns:</strong> Invisible <code>NULL</code>. Called for side effect of drawing.</div>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+
+# With cograph()
+cograph(adj) |&gt; soplot()
+
+# Direct matrix input
+adj |&gt; soplot(
+  layout = "circle",
+  node_fill = "steelblue",
+  node_size = 0.08,
+  edge_width = 2
+)</code></pre>
+  </div>
+</details>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="specialized">Specialized Plots</h2>
+
+<!-- plot_tna -->
+<h3 id="plot_tna"><code>plot_tna()</code> / <code>tplot()</code></h3>
+<p>TNA-style network plot. A drop-in replacement for <code>qgraph::qgraph()</code> that uses cograph's splot engine. Accepts qgraph parameter names for seamless migration.</p>
+
+<div class="signature"><code>plot_tna(x, color = NULL, labels = NULL, layout = "oval", theme = "colorblind", mar = c(0.1, 0.1, 0.1, 0.1), cut = NULL, edge.labels = TRUE, edge.label.position = 0.7, edge.label.cex = 0.6, edge.color = "#003355", vsize = 7, pie = NULL, pieColor = NULL, lty = NULL, directed = TRUE, minimum = NULL, posCol = NULL, negCol = NULL, arrowAngle = NULL, title = NULL, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>x</code></td><td>Weight matrix or tna object</td><td>&mdash;</td></tr>
+  <tr><td><code>layout</code></td><td><code>"oval"</code>, <code>"circle"</code>, <code>"spring"</code>, or coordinate matrix</td><td><code>"oval"</code></td></tr>
+  <tr><td><code>theme</code></td><td>Plot theme</td><td><code>"colorblind"</code></td></tr>
+  <tr><td><code>vsize</code></td><td>Node size (qgraph-compatible)</td><td><code>7</code></td></tr>
+  <tr><td><code>pie</code></td><td>Pie/donut fill values (e.g. initial probabilities)</td><td><code>NULL</code></td></tr>
+  <tr><td><code>edge.labels</code></td><td>Show edge weight labels</td><td><code>TRUE</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Invisibly returns the <code>cograph_network</code> object.</div>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>m &lt;- matrix(runif(25), 5, 5)
+plot_tna(m)
+
+# With qgraph-style parameters
+plot_tna(m, vsize = 15, edge.label.cex = 2, layout = "circle")
+
+# With custom colors
+plot_tna(m, color = rainbow(5), vsize = 10)</code></pre>
+  </div>
+</details>
+
+<!-- plot_htna -->
+<h3 id="plot_htna"><code>plot_htna()</code></h3>
+<p>Plot heterogeneous TNA networks with nodes arranged in multiple groups using geometric layouts: bipartite (2 groups), polygon (3+ groups: triangle, rectangle, pentagon, hexagon, etc.).</p>
+
+<div class="signature"><code>plot_htna(x, node_list, layout = "auto", use_list_order = TRUE, jitter = TRUE, jitter_amount = 0.8, jitter_side = "first", orientation = "vertical", group1_pos = -1.2, group2_pos = 1.2, curvature = 0.4, group1_color = "#ffd89d", group2_color = "#a68ba5", group1_shape = "circle", group2_shape = "square", group_colors = NULL, group_shapes = NULL, angle_spacing = 0.15, edge_colors = NULL, legend = TRUE, legend_position = "topright", extend_lines = FALSE, scale = 1, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>x</code></td><td>A tna object or weight matrix</td><td>&mdash;</td></tr>
+  <tr><td><code>node_list</code></td><td>List of 2+ character vectors defining node groups</td><td>&mdash;</td></tr>
+  <tr><td><code>layout</code></td><td><code>"auto"</code> (bipartite for 2, polygon for 3+), <code>"bipartite"</code>, <code>"polygon"</code>, <code>"circular"</code></td><td><code>"auto"</code></td></tr>
+  <tr><td><code>jitter</code></td><td>Horizontal spread: <code>TRUE</code> (auto), <code>FALSE</code>, numeric (0&ndash;1), named list, or per-node vector</td><td><code>TRUE</code></td></tr>
+  <tr><td><code>orientation</code></td><td><code>"vertical"</code> (two columns) or <code>"horizontal"</code> (two rows)</td><td><code>"vertical"</code></td></tr>
+  <tr><td><code>group_colors</code></td><td>Vector of colors per group. Overrides <code>group1_color</code>/<code>group2_color</code></td><td><code>NULL</code></td></tr>
+  <tr><td><code>group_shapes</code></td><td>Vector of shapes per group</td><td><code>NULL</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Invisibly returns the result from <code>tplot()</code>.</div>
+
+<details>
+  <summary>Example: Multi-group layouts</summary>
+  <div class="detail-content">
+<pre><code># 2 groups - bipartite
+node_types &lt;- list(
+  Student = c("Wrong", "Retry", "Right", "Attempt", "Instruction", "Skip"),
+  AI = c("Order", "Correct", "Hint", "Quit", "Clarify", "Question", "Praise")
+)
+plot_htna(model, node_types)
+
+# 3 groups - triangle layout
+node_types_3 &lt;- list(
+  Teacher = c("Explain", "Question", "Feedback"),
+  Student = c("Answer", "Ask", "Attempt"),
+  System = c("Hint", "Score", "Progress")
+)
+plot_htna(model, node_types_3)  # Auto-detects triangle
+
+# 4 groups - rectangle layout
+node_types_4 &lt;- list(
+  Input = c("Click", "Type", "Scroll"),
+  Process = c("Validate", "Transform"),
+  Output = c("Display", "Alert"),
+  Storage = c("Save", "Load", "Cache")
+)
+plot_htna(model, node_types_4)  # Auto-detects rectangle</code></pre>
+  </div>
+</details>
+
+<!-- plot_mtna -->
+<h3 id="plot_mtna"><code>plot_mtna()</code> / <code>mtna()</code></h3>
+<p>Multi-cluster TNA network plot. Visualizes multiple network clusters with summary edges between clusters and individual edges within clusters. Each cluster is displayed as a shape containing its nodes.</p>
+
+<div class="signature"><code>plot_mtna(x, cluster_list, layout = "circle", spacing = 3, shape_size = 1.2, node_spacing = 0.5, colors = NULL, shapes = NULL, edge_colors = NULL, bundle_edges = TRUE, bundle_strength = 0.8, summary_edges = TRUE, within_edges = TRUE, show_border = TRUE, legend = TRUE, legend_position = "topright", curvature = 0.3, node_size = 2, scale = 1, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>x</code></td><td>A tna object or weight matrix</td><td>&mdash;</td></tr>
+  <tr><td><code>cluster_list</code></td><td>List of character vectors defining clusters</td><td>&mdash;</td></tr>
+  <tr><td><code>layout</code></td><td><code>"circle"</code>, <code>"grid"</code>, <code>"horizontal"</code>, <code>"vertical"</code></td><td><code>"circle"</code></td></tr>
+  <tr><td><code>shapes</code></td><td>Per-cluster shapes: <code>"circle"</code>, <code>"square"</code>, <code>"diamond"</code>, <code>"triangle"</code></td><td>Auto-cycled</td></tr>
+  <tr><td><code>summary_edges</code></td><td>Show aggregated edges between clusters</td><td><code>TRUE</code></td></tr>
+  <tr><td><code>within_edges</code></td><td>Show individual edges within clusters</td><td><code>TRUE</code></td></tr>
+  <tr><td><code>bundle_edges</code></td><td>Bundle inter-cluster edges through channels</td><td><code>TRUE</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Invisibly returns <code>NULL</code> for summary mode.</div>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>nodes &lt;- paste0("N", 1:20)
+m &lt;- matrix(runif(400, 0, 0.3), 20, 20)
+diag(m) &lt;- 0
+colnames(m) &lt;- rownames(m) &lt;- nodes
+
+clusters &lt;- list(
+  North = paste0("N", 1:5),
+  East = paste0("N", 6:10),
+  South = paste0("N", 11:15),
+  West = paste0("N", 16:20)
+)
+
+# Summary edges between clusters + individual within
+plot_mtna(m, clusters, summary_edges = TRUE)
+
+# Control spacing and sizes
+plot_mtna(m, clusters, spacing = 4, shape_size = 1.5)</code></pre>
+  </div>
+</details>
+
+<!-- plot_mlna -->
+<h3 id="plot_mlna"><code>plot_mlna()</code> / <code>mlna()</code></h3>
+<p>Multilevel 3D layered network visualization. Multiple layers are stacked in a perspective view with parallelogram shells. Solid edges connect nodes within layers; dashed edges connect between adjacent layers.</p>
+
+<div class="signature"><code>plot_mlna(model, layer_list, layout = "horizontal", layer_spacing = 2.2, layer_width = 4.5, layer_depth = 2.2, skew_angle = 25, node_spacing = 0.7, colors = NULL, shapes = NULL, edge_colors = NULL, within_edges = TRUE, between_edges = TRUE, between_style = 2, show_border = TRUE, legend = TRUE, legend_position = "topright", curvature = 0.15, node_size = 3, minimum = 0, scale = 1, ...)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>model</code></td><td>A tna object or weight matrix</td><td>&mdash;</td></tr>
+  <tr><td><code>layer_list</code></td><td>List of character vectors defining layers (top to bottom)</td><td>&mdash;</td></tr>
+  <tr><td><code>layout</code></td><td><code>"horizontal"</code>, <code>"circle"</code>, <code>"spring"</code></td><td><code>"horizontal"</code></td></tr>
+  <tr><td><code>layer_spacing</code></td><td>Vertical distance between layers</td><td><code>2.2</code></td></tr>
+  <tr><td><code>skew_angle</code></td><td>Angle of perspective skew in degrees</td><td><code>25</code></td></tr>
+  <tr><td><code>within_edges</code></td><td>Show solid edges within layers</td><td><code>TRUE</code></td></tr>
+  <tr><td><code>between_edges</code></td><td>Show dashed edges between adjacent layers</td><td><code>TRUE</code></td></tr>
+  <tr><td><code>between_style</code></td><td>Line style for between-layer edges (1=solid, 2=dashed, 3=dotted)</td><td><code>2</code></td></tr>
+  <tr><td><code>show_border</code></td><td>Draw parallelogram shells around layers</td><td><code>TRUE</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Invisibly returns <code>NULL</code>.</div>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>set.seed(42)
+nodes &lt;- paste0("N", 1:15)
+m &lt;- matrix(runif(225, 0, 0.3), 15, 15)
+diag(m) &lt;- 0
+colnames(m) &lt;- rownames(m) &lt;- nodes
+
+layers &lt;- list(
+  Macro = paste0("N", 1:5),
+  Meso = paste0("N", 6:10),
+  Micro = paste0("N", 11:15)
+)
+
+# Basic usage
+plot_mlna(m, layers)
+
+# Customized
+plot_mlna(m, layers,
+  layer_spacing = 2.5, layer_width = 5,
+  between_style = 2, minimum = 0.1)
+
+# Circle layout within layers
+plot_mlna(m, layers, layout = "circle")</code></pre>
+  </div>
+</details>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="layouts">Layouts</h2>
+<p>Layout algorithms compute node positions. Use them via <code>sn_layout()</code>, or pass the layout name to <code>cograph()</code>/<code>splot()</code>/<code>soplot()</code>. Custom layouts can be registered with <code>register_layout()</code>.</p>
+
+<!-- layout_circle -->
+<h3 id="layout_circle"><code>layout_circle()</code></h3>
+<p>Arrange nodes evenly spaced around a circle.</p>
+
+<div class="signature"><code>layout_circle(network, order = NULL, start_angle = pi/2, clockwise = TRUE)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>order</code></td><td>Vector specifying node order (indices or labels)</td><td><code>NULL</code></td></tr>
+  <tr><td><code>start_angle</code></td><td>Starting angle in radians</td><td><code>pi/2</code> (top)</td></tr>
+  <tr><td><code>clockwise</code></td><td>Arrange nodes clockwise</td><td><code>TRUE</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Data frame with <code>x</code>, <code>y</code> coordinates.</div>
+
+<!-- layout_spring -->
+<h3 id="layout_spring"><code>layout_spring()</code></h3>
+<p>Fruchterman-Reingold force-directed layout. Connected nodes attract each other while all nodes repel. Good general-purpose layout.</p>
+
+<div class="signature"><code>layout_spring(network, iterations = 500, cooling = 0.95, repulsion = 1, attraction = 1, seed = NULL, initial = NULL)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>iterations</code></td><td>Number of simulation iterations</td><td><code>500</code></td></tr>
+  <tr><td><code>cooling</code></td><td>Temperature decrease rate</td><td><code>0.95</code></td></tr>
+  <tr><td><code>repulsion</code></td><td>Repulsion constant</td><td><code>1</code></td></tr>
+  <tr><td><code>attraction</code></td><td>Attraction constant</td><td><code>1</code></td></tr>
+  <tr><td><code>initial</code></td><td>Optional initial coordinates (matrix or data frame)</td><td><code>NULL</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Data frame with <code>x</code>, <code>y</code> coordinates.</div>
+
+<!-- layout_groups -->
+<h3 id="layout_groups"><code>layout_groups()</code></h3>
+<p>Arrange nodes based on group membership. Groups are positioned in a circular arrangement, with nodes within each group also arranged in a circle.</p>
+
+<div class="signature"><code>layout_groups(network, groups, group_positions = NULL, inner_radius = 0.15, outer_radius = 0.35)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>groups</code></td><td>Vector of group membership per node (numeric, character, or factor)</td><td>&mdash;</td></tr>
+  <tr><td><code>group_positions</code></td><td>Optional x, y coordinates for group centers</td><td><code>NULL</code></td></tr>
+  <tr><td><code>inner_radius</code></td><td>Radius of nodes within each group</td><td><code>0.15</code></td></tr>
+  <tr><td><code>outer_radius</code></td><td>Radius for positioning group centers</td><td><code>0.35</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Data frame with <code>x</code>, <code>y</code> coordinates.</div>
+
+<!-- layout_oval -->
+<h3 id="layout_oval"><code>layout_oval()</code></h3>
+<p>Arrange nodes evenly spaced around an ellipse. Creates an oval layout wider than tall (or vice versa depending on ratio).</p>
+
+<div class="signature"><code>layout_oval(network, ratio = 1.5, order = NULL, start_angle = pi/2, clockwise = TRUE, rotation = 0)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>ratio</code></td><td>Aspect ratio (width/height). &gt;1 = horizontal oval, &lt;1 = vertical</td><td><code>1.5</code></td></tr>
+  <tr><td><code>rotation</code></td><td>Angle in radians to tilt the entire oval</td><td><code>0</code></td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Data frame with <code>x</code>, <code>y</code> coordinates.</div>
+
+<!-- list_layouts -->
+<h3 id="list_layouts"><code>list_layouts()</code></h3>
+<p>List all available layout algorithms (built-in and registered).</p>
+
+<div class="signature"><code>list_layouts()</code></div>
+<div class="returns"><strong>Returns:</strong> Character vector of layout names.</div>
+
+<!-- register_layout -->
+<h3 id="register_layout"><code>register_layout()</code></h3>
+<p>Register a custom layout algorithm.</p>
+
+<div class="signature"><code>register_layout(name, layout_fn)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th></tr>
+  <tr><td><code>name</code></td><td>Name for the layout</td></tr>
+  <tr><td><code>layout_fn</code></td><td>Function accepting a CographNetwork and returning a matrix/data frame with <code>x</code>, <code>y</code> columns</td></tr>
+</table>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>register_layout("random", function(network, ...) {
+  n &lt;- network$n_nodes
+  cbind(x = runif(n), y = runif(n))
+})</code></pre>
+  </div>
+</details>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="themes">Themes</h2>
+
+<h3 id="builtin-themes">Built-in Themes</h3>
+<p>cograph ships with 7 themes. Apply via <code>sn_theme()</code> or the <code>theme</code> parameter in <code>splot()</code>/<code>soplot()</code>.</p>
+
+<table>
+  <tr><th>Theme</th><th>Function</th><th>Description</th></tr>
+  <tr><td><code>"classic"</code></td><td><code>theme_cograph_classic</code></td><td>White background, blue nodes, gray edges (default)</td></tr>
+  <tr><td><code>"dark"</code></td><td><code>theme_cograph_dark</code></td><td>Dark background with light nodes. Good for presentations</td></tr>
+  <tr><td><code>"minimal"</code></td><td><code>theme_cograph_minimal</code></td><td>Subtle styling with thin edges and muted colors</td></tr>
+  <tr><td><code>"colorblind"</code></td><td><code>theme_cograph_colorblind</code></td><td>Optimized for color vision deficiency</td></tr>
+  <tr><td><code>"gray"</code></td><td><code>theme_cograph_gray</code></td><td>Grayscale, black and white only</td></tr>
+  <tr><td><code>"nature"</code></td><td><code>theme_cograph_nature</code></td><td>Nature-inspired earthy tones</td></tr>
+  <tr><td><code>"viridis"</code></td><td><code>theme_cograph_viridis</code></td><td>Viridis perceptually uniform palette</td></tr>
+</table>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>adj &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+
+cograph(adj) |&gt; sn_theme("dark") |&gt; splot()
+cograph(adj) |&gt; sn_theme("minimal") |&gt; splot()
+
+# Override specific properties
+cograph(adj) |&gt; sn_theme("classic", background = "lightgray") |&gt; splot()</code></pre>
+  </div>
+</details>
+
+<!-- list_themes -->
+<h3 id="list_themes"><code>list_themes()</code></h3>
+<p>List all available themes (built-in and registered).</p>
+
+<div class="signature"><code>list_themes()</code></div>
+<div class="returns"><strong>Returns:</strong> Character vector of theme names.</div>
+
+<!-- register_theme -->
+<h3 id="register_theme"><code>register_theme()</code></h3>
+<p>Register a custom theme.</p>
+
+<div class="signature"><code>register_theme(name, theme)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th></tr>
+  <tr><td><code>name</code></td><td>Name for the theme</td></tr>
+  <tr><td><code>theme</code></td><td>CographTheme object or list with theme properties (background, node_fill, node_border, edge_color, etc.)</td></tr>
+</table>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>register_theme("custom", list(
+  background = "white",
+  node_fill = "steelblue",
+  node_border = "navy",
+  edge_color = "gray50"
+))</code></pre>
+  </div>
+</details>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="palettes">Palettes</h2>
+
+<h3 id="builtin-palettes">Built-in Palette Generators</h3>
+<p>Each palette is a function that takes <code>n</code> and returns <code>n</code> colors. Apply via <code>sn_palette()</code>.</p>
+
+<table>
+  <tr><th>Palette</th><th>Function</th><th>Description</th></tr>
+  <tr><td><code>"viridis"</code></td><td><code>palette_viridis</code></td><td>Perceptually uniform, colorblind-friendly</td></tr>
+  <tr><td><code>"colorblind"</code></td><td><code>palette_colorblind</code></td><td>Optimized for color vision deficiency</td></tr>
+  <tr><td><code>"pastel"</code></td><td><code>palette_pastel</code></td><td>Soft, muted colors</td></tr>
+  <tr><td><code>"blues"</code></td><td><code>palette_blues</code></td><td>Sequential blues</td></tr>
+  <tr><td><code>"reds"</code></td><td><code>palette_reds</code></td><td>Sequential reds</td></tr>
+  <tr><td><code>"rainbow"</code></td><td><code>palette_rainbow</code></td><td>Full spectrum rainbow</td></tr>
+  <tr><td><code>"diverging"</code></td><td><code>palette_diverging</code></td><td>Diverging blue&ndash;red scale</td></tr>
+</table>
+
+<!-- list_palettes -->
+<h3 id="list_palettes"><code>list_palettes()</code></h3>
+<p>List all available color palettes.</p>
+
+<div class="signature"><code>list_palettes()</code></div>
+<div class="returns"><strong>Returns:</strong> Character vector of palette names.</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="shapes">Shapes</h2>
+<p>cograph supports 12+ built-in node shapes plus custom SVG shapes. Shapes are set via <code>sn_nodes(shape = ...)</code> or <code>splot(node_shape = ...)</code>.</p>
+
+<p>Built-in shapes: <code>"circle"</code>, <code>"square"</code>, <code>"triangle"</code>, <code>"diamond"</code>, <code>"pentagon"</code>, <code>"hexagon"</code>, <code>"ellipse"</code>, <code>"heart"</code>, <code>"star"</code>, <code>"cross"</code>, <code>"rectangle"</code>, <code>"pie"</code>, <code>"donut"</code>.</p>
+
+<!-- list_shapes -->
+<h3 id="list_shapes"><code>list_shapes()</code></h3>
+<p>List all available node shapes (built-in and registered).</p>
+
+<div class="signature"><code>list_shapes()</code></div>
+<div class="returns"><strong>Returns:</strong> Character vector of shape names.</div>
+
+<!-- register_shape -->
+<h3 id="register_shape"><code>register_shape()</code></h3>
+<p>Register a custom node shape drawn with grid graphics.</p>
+
+<div class="signature"><code>register_shape(name, draw_fn)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th></tr>
+  <tr><td><code>name</code></td><td>Name for the shape</td></tr>
+  <tr><td><code>draw_fn</code></td><td>Function accepting <code>x, y, size, fill, border_color, border_width, ...</code></td></tr>
+</table>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code>register_shape("hexagon", function(x, y, size, fill, border_color, border_width, ...) {
+  angles &lt;- seq(0, 2 * pi, length.out = 7)
+  grid::polygonGrob(
+    x = x + size * cos(angles),
+    y = y + size * sin(angles),
+    gp = grid::gpar(fill = fill, col = border_color, lwd = border_width)
+  )
+})</code></pre>
+  </div>
+</details>
+
+<!-- register_svg_shape -->
+<h3 id="register_svg_shape"><code>register_svg_shape()</code></h3>
+<p>Register an SVG file or inline SVG string as a custom node shape.</p>
+
+<div class="signature"><code>register_svg_shape(name, svg_source)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th></tr>
+  <tr><td><code>name</code></td><td>Unique name for the shape (used in <code>node_shape</code>)</td></tr>
+  <tr><td><code>svg_source</code></td><td>Path to SVG file or inline SVG string</td></tr>
+</table>
+
+<details>
+  <summary>Example</summary>
+  <div class="detail-content">
+<pre><code># Register from file
+register_svg_shape("custom_icon", "path/to/icon.svg")
+
+# Register from inline SVG
+register_svg_shape("simple_star",
+  '&lt;svg viewBox="0 0 100 100"&gt;
+    &lt;polygon points="50,5 20,99 95,39 5,39 80,99" fill="currentColor"/&gt;
+  &lt;/svg&gt;')
+
+# Use in network
+cograph(adj) |&gt; sn_nodes(shape = "custom_icon") |&gt; splot()</code></pre>
+  </div>
+</details>
+
+<h4>Additional Shape Functions</h4>
+<table>
+  <tr><th>Function</th><th>Description</th></tr>
+  <tr><td><code>list_svg_shapes()</code></td><td>List all registered SVG shapes</td></tr>
+  <tr><td><code>unregister_svg_shape(name)</code></td><td>Remove a registered SVG shape</td></tr>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<h2 id="getters-setters">Getters &amp; Setters</h2>
+<p>Programmatic access to network data. All work with <code>cograph_network</code> objects.</p>
+
+<!-- get_nodes -->
+<h3 id="get_nodes"><code>get_nodes()</code></h3>
+<p>Extract the nodes data frame.</p>
+
+<div class="signature"><code>get_nodes(x)</code></div>
+<div class="returns"><strong>Returns:</strong> Data frame with columns: <code>id</code>, <code>label</code>, <code>name</code>, <code>x</code>, <code>y</code> (and possibly others).</div>
+
+<!-- set_nodes -->
+<h3 id="set_nodes"><code>set_nodes()</code></h3>
+<p>Replace the nodes data frame. Automatically updates <code>n_nodes</code> and <code>labels</code>.</p>
+
+<div class="signature"><code>set_nodes(x, nodes_df)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th></tr>
+  <tr><td><code>nodes_df</code></td><td>Data frame with <code>id</code> and <code>label</code> columns</td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Modified <code>cograph_network</code> object.</div>
+
+<!-- get_edges -->
+<h3 id="get_edges"><code>get_edges()</code></h3>
+<p>Extract edges as a data frame.</p>
+
+<div class="signature"><code>get_edges(x)</code></div>
+<div class="returns"><strong>Returns:</strong> Data frame with columns: <code>from</code>, <code>to</code>, <code>weight</code>.</div>
+
+<!-- set_edges -->
+<h3 id="set_edges"><code>set_edges()</code></h3>
+<p>Replace the edges. Updates <code>from</code>, <code>to</code>, <code>weight</code> vectors and <code>n_edges</code>.</p>
+
+<div class="signature"><code>set_edges(x, edges_df)</code></div>
+
+<table>
+  <tr><th>Parameter</th><th>Description</th></tr>
+  <tr><td><code>edges_df</code></td><td>Data frame with <code>from</code>, <code>to</code>, and optionally <code>weight</code> columns</td></tr>
+</table>
+
+<div class="returns"><strong>Returns:</strong> Modified <code>cograph_network</code> object.</div>
+
+<!-- n_nodes / n_edges -->
+<h3 id="n_nodes"><code>n_nodes()</code> / <code>n_edges()</code></h3>
+<p>Get the count of nodes or edges.</p>
+
+<div class="signature"><code>n_nodes(x)
+n_edges(x)</code></div>
+<div class="returns"><strong>Returns:</strong> Integer count.</div>
+
+<h4>Additional Getters</h4>
+<table>
+  <tr><th>Function</th><th>Description</th><th>Returns</th></tr>
+  <tr><td><code>get_labels(x)</code></td><td>Extract node labels</td><td>Character vector</td></tr>
+  <tr><td><code>get_layout(name)</code></td><td>Get a registered layout function by name</td><td>Function or <code>NULL</code></td></tr>
+  <tr><td><code>get_theme(name)</code></td><td>Get a registered theme by name</td><td>Theme object or <code>NULL</code></td></tr>
+  <tr><td><code>get_shape(name)</code></td><td>Get a registered shape function by name</td><td>Function or <code>NULL</code></td></tr>
+  <tr><td><code>is_directed(x)</code></td><td>Check if network is directed</td><td>Logical</td></tr>
+  <tr><td><code>set_layout(x, layout_df)</code></td><td>Set layout coordinates (data frame with <code>x</code>, <code>y</code>)</td><td>Modified network</td></tr>
+</table>
+
+<details>
+  <summary>Example: Full getter/setter workflow</summary>
+  <div class="detail-content">
+<pre><code>mat &lt;- matrix(c(0, 1, 1, 1, 0, 1, 1, 1, 0), nrow = 3)
+net &lt;- as_cograph(mat)
+
+# Inspect
+get_nodes(net)
+get_edges(net)
+get_labels(net)    # c("1", "2", "3")
+n_nodes(net)       # 3
+n_edges(net)       # 3
+is_directed(net)   # FALSE
+
+# Modify
+net &lt;- set_nodes(net, data.frame(id = 1:3, label = c("A", "B", "C")))
+net &lt;- set_edges(net, data.frame(from = c(1,2), to = c(2,3), weight = c(0.5, 0.8)))
+net &lt;- set_layout(net, data.frame(x = c(0, 1, 0.5), y = c(0, 0, 1)))
+
+# Plot
+splot(net)</code></pre>
+  </div>
+</details>
+
+
+<!-- Footer -->
+<div style="margin-top: 4rem; padding-top: 2rem; border-top: 2px solid var(--border); color: var(--muted); font-size: 0.85rem;">
+  <p><strong>cograph</strong> v1.5.2 &middot; MIT License &middot; Sonsoles L&oacute;pez-Pernas, Mohammed Saqr, Santtu Tikka &middot; <a href="https://github.com/sonsoleslp/cograph">GitHub</a> &middot; <a href="https://sonsoles.me/cograph/">Website</a></p>
+</div>
+
+</div><!-- /main -->
+</body>
+</html>

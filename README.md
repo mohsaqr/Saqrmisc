@@ -1,4 +1,4 @@
-# Saqrmisc: Comprehensive Data Analysis and Visualization for R
+# Saqrmisc
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/mohsaqr/Saqrmisc/workflows/R-CMD-check/badge.svg)](https://github.com/mohsaqr/Saqrmisc/actions)
@@ -6,906 +6,536 @@
 [![R](https://img.shields.io/badge/R-4.1.0+-blue.svg)](https://www.r-project.org/)
 <!-- badges: end -->
 
-## Overview
+A comprehensive R package for statistical analysis, data transformation, and visualization with publication-ready outputs. All functions use a consistent quoted-string API and support multiple output formats (gt, plain, markdown, latex, kable).
 
-**Saqrmisc** is a comprehensive R package for statistical analysis, data transformation, and visualization. It provides a consistent, user-friendly API for common data analysis tasks with publication-ready outputs.
+## Table of Contents
 
-> **See [FEATURES.md](FEATURES.md) for a complete feature reference.**
+- [Installation](#installation)
+- [Correlation Analysis](#correlation-analysis)
+  - [correlations()](#correlations)
+  - [correlation_matrix()](#correlation_matrix)
+- [Group Comparisons](#group-comparisons)
+  - [compare_groups()](#compare_groups)
+- [Descriptive Statistics](#descriptive-statistics)
+  - [descriptive_table()](#descriptive_table)
+  - [categorical_table()](#categorical_table)
+  - [auto_describe()](#auto_describe)
+- [Data Transformation](#data-transformation)
+  - [center()](#center)
+  - [standardize()](#standardize)
+  - [scale_vars()](#scale_vars)
+  - [reverse_code()](#reverse_code)
+- [Missing Data](#missing-data)
+  - [missing_analysis()](#missing_analysis)
+  - [replace_missing()](#replace_missing)
+- [Outlier Analysis](#outlier-analysis)
+  - [outlier_check()](#outlier_check)
+  - [replace_outliers()](#replace_outliers)
+- [Normality Testing](#normality-testing)
+  - [normality_check()](#normality_check)
+- [Clustering](#clustering)
+  - [clustering()](#clustering-1)
+  - [assess_cluster_stability()](#assess_cluster_stability)
+- [Network Analysis](#network-analysis)
+  - [estimate_single_network()](#estimate_single_network)
+  - [compare_networks()](#compare_networks)
+- [Categorical Analysis](#categorical-analysis)
+  - [mosaic_analysis()](#mosaic_analysis)
+- [AI Interpretation](#ai-interpretation)
+  - [pass()](#pass)
+- [Output Formats](#output-formats)
+- [Vectorized Functions](#vectorized-functions)
+- [Citation](#citation)
 
-### Key Features
-
-- **Consistent API**: All functions use quoted strings for variable names
-- **Publication-Ready Output**: Beautiful gt tables and ggplot2 visualizations
-- **Comprehensive Statistics**: From descriptives to advanced clustering and networks
-- **Pivot Tables**: Compact summary tables with categories as columns and p (ES) values
-- **Within-Group Analysis**: Test factors within each category level
-- **AI Interpretation**: Pipe any R output to GPT-4, Claude, or Gemini for scientific interpretation
-- **Multiple Output Formats**: gt, plain, markdown, latex, kable
-- **Robust Error Handling**: Clear error messages and input validation
+---
 
 ## Installation
 
 ```r
-# Install from GitHub
 devtools::install_github("mohsaqr/Saqrmisc")
-
-# Load the package
 library(Saqrmisc)
 ```
 
-### Dependencies
+**Dependencies:**
 
 ```r
 install.packages(c(
- "dplyr", "ggplot2", "gt", "tibble", "tidyr", "rlang",
- "MoEClust", "mclust", "vcd", "gridExtra",
- "bootnet", "qgraph", "mgm",
- "BayesFactor", "effectsize", "effsize"
+  "dplyr", "ggplot2", "gt", "tibble", "tidyr", "rlang",
+  "MoEClust", "mclust", "vcd", "gridExtra",
+  "bootnet", "qgraph", "mgm",
+  "BayesFactor", "effectsize", "effsize"
 ))
 
-# Optional (for full functionality)
-install.packages(c("ggstatsplot", "TOSTER", "kableExtra"))
-
-# For AI interpretation (pass function)
-install.packages("httr2")
+# Optional
+install.packages(c("ggstatsplot", "TOSTER", "kableExtra", "httr2"))
 ```
 
 ---
 
-## Function Overview
+## Correlation Analysis
 
-| Category | Functions | Description |
-|----------|-----------|-------------|
-| **Correlations** | `correlations()`, `correlation_matrix()` | Full correlation tables, matrices with CIs |
-| **Comparisons** | `compare_groups()` | t-tests, ANOVA, post-hoc, Bayesian, TOST |
-| **Descriptives** | `descriptive_table()`, `categorical_table()`, `auto_describe()` | Summary statistics, frequency tables |
-| **Transformation** | `center()`, `scale_vars()`, `standardize()`, `reverse_code()` | Data transformations with group support |
-| **Missing Data** | `missing_analysis()`, `replace_missing()` | Missing patterns, MCAR test, imputation |
-| **Outliers** | `outlier_check()`, `replace_outliers()` | Detection and treatment |
-| **Clustering** | `clustering()`, `assess_cluster_stability()` | Model-based clustering with 14 models |
-| **Networks** | `estimate_single_network()`, `compare_networks()` | Psychological network analysis |
-| **Categorical** | `mosaic_analysis()` | Mosaic plots, chi-square, Cramer's V |
-| **AI Interpretation** | `pass()` | Pipe R output to AI for scientific interpretation |
+### `correlations()`
 
----
-
-## Quick Start
+Full pairwise correlation table with coefficients, CIs, t-statistics, df, p-values, and sample sizes.
 
 ```r
-library(Saqrmisc)
-
-# Use mtcars for examples
-data(mtcars)
-
-# Correlation matrix (auto-selects all numeric variables)
-correlation_matrix(mtcars)
-
-# Full correlation table with statistics
-correlations(mtcars, Vars = c("mpg", "hp", "wt", "qsec"))
-
-# Descriptive statistics
-descriptive_table(mtcars, Vars = c("mpg", "hp", "wt"))
-
-# Group comparisons
-compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"))
-
-# Clustering
-results <- clustering(mtcars, vars = c("mpg", "hp", "wt"), n_clusters = 2:4)
+correlations(data, Vars = NULL, type = "bivariate", method = "pearson",
+             p_adjust = "none", ci_level = 0.95, min_r = NULL, sig_only = FALSE,
+             multilevel = FALSE, id = NULL, between = FALSE, group_by = NULL,
+             include = NULL, exclude = NULL, digits = 3, format = "gt")
 ```
-
----
-
-# Detailed Function Reference
-
-## 1. Correlation Analysis
-
-### `correlations()` - Full Correlation Table
-
-Generates a comprehensive pairwise correlation table with complete statistics including correlation coefficients, confidence intervals, t-statistics, degrees of freedom, p-values, and sample sizes.
-
-```r
-# Basic usage - correlate all numeric variables
-correlations(mtcars)
-
-# Specify variables
-correlations(mtcars, Vars = c("mpg", "hp", "wt", "qsec"))
-
-# Partial correlations (controlling for other variables)
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), type = "partial")
-
-# Spearman correlations
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), method = "spearman")
-
-# Filter by significance or minimum correlation
-correlations(mtcars, sig_only = TRUE)
-correlations(mtcars, min_r = 0.5)
-
-# Group-wise correlations
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = "cyl")
-
-# Multilevel (within-cluster) correlations
-correlations(mtcars, Vars = c("mpg", "hp", "wt"),
-            multilevel = TRUE, id = "cyl")
-```
-
-**Output includes:**
-- Correlation coefficient (r)
-- 95% confidence interval
-- t-statistic and degrees of freedom
-- p-value with significance stars
-- Sample size (n)
-
-**Output Formats:**
-
-```r
-# Publication-ready gt table (default)
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), format = "gt")
-
-# Plain data frame
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), format = "plain")
-
-# Markdown table
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), format = "markdown")
-
-# LaTeX table
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), format = "latex")
-
-# Hide header
-correlations(mtcars, Vars = c("mpg", "hp", "wt"), show_header = FALSE)
-```
-
-### `correlation_matrix()` - Correlation Matrix
-
-Creates a publication-ready correlation matrix with significance stars and optional heatmap.
-
-```r
-# Basic matrix (auto-selects all numeric variables)
-correlation_matrix(mtcars)
-
-# Specify variables
-correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt", "qsec", "drat"))
-
-# Include confidence intervals
-correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), show_ci = TRUE)
-
-# Partial correlations
-correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt", "qsec"), type = "partial")
-
-# Custom formatting
-correlation_matrix(mtcars,
-                  Vars = c("mpg", "hp", "wt"),
-                  title = "Motor Trend Car Variables",
-                  digits = 2,
-                  theme = "colorful")
-
-# Different output formats
-correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), format = "plain")
-correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), format = "markdown")
-correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), format = "latex")
-
-# Hide header
-correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt"), show_header = FALSE)
-```
-
----
-
-## 2. Group Comparisons
-
-### `compare_groups()` - Statistical Group Comparisons
-
-Compare groups using t-tests, ANOVA, or nonparametric alternatives with publication-ready visualizations. Supports both between-group and within-group analysis modes.
-
-```r
-# Two-group comparison (automatic t-test)
-results <- compare_groups(
- data = mtcars,
- category = "am",
- Vars = c("mpg", "hp", "wt")
-)
-
-# View results
-results$plots$am_vs_mpg
-results$summary_table
-results$summary_data
-
-# Three+ groups (automatic ANOVA with post-hoc)
-results <- compare_groups(
- data = mtcars,
- category = "cyl",
- Vars = c("mpg", "hp"),
- posthoc = TRUE,
- posthoc_method = "tukey"
-)
-
-# View post-hoc comparisons
-results$summary_data$posthoc_results[[1]]
-
-# Full ANOVA text report (APA style)
-cat(results$summary_data$anova_report[1])
-
-# Nonparametric tests
-results <- compare_groups(
- data = mtcars,
- category = "cyl",
- Vars = c("mpg"),
- type = "np"  # Kruskal-Wallis
-)
-
-# Bayesian analysis
-results <- compare_groups(
- data = mtcars,
- category = "am",
- Vars = c("mpg"),
- bayesian = TRUE
-)
-
-# Equivalence testing (TOST)
-results <- compare_groups(
- data = mtcars,
- category = "am",
- Vars = c("mpg"),
- equivalence = TRUE,
- equivalence_bounds = c(-0.5, 0.5)
-)
-
-# Stratified analysis
-results <- compare_groups(
- data = mtcars,
- category = "am",
- Vars = c("mpg", "hp"),
- repeat_category = "cyl"
-)
-
-# Access stratified results
-results$`4`$summary_data
-results$`6`$plots$am_vs_mpg
-
-# Different output formats
-compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"), format = "plain")
-compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"), format = "markdown")
-compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"), format = "latex")
-
-# Hide header
-compare_groups(mtcars, category = "am", Vars = c("mpg"), show_header = FALSE)
-```
-
-### Pivot Tables
-
-Create compact pivot tables with category levels as columns and p-value with effect size:
-
-```r
-# Pivot table: Variables as rows, category levels as columns
-results <- compare_groups(
-  data = df,
-  category = "llm",
-  Vars = c("Accuracy", "Higher_Order", "Noise"),
-  pivot = TRUE,
-  pivot_stat = "mean_sd",
-  type = "np"
-)
-
-results$pivot_table
-```
-
-**Output:**
-```
-Variable            GPT         Mistral     Qwen        p (ES)
-Accuracy            1.69 (0.50) 1.47 (0.56) 1.46 (0.50) <.001 (0.05)
-Higher_Order_Skills 0.95 (0.82) 0.79 (0.77) 0.89 (0.69) 0.160 (0.01)
-Noise               0.45 (0.32) 0.52 (0.28) 0.48 (0.30) 0.234 (0.02)
-```
-
-The `p (ES)` column shows p-value and effect size (eta-squared or epsilon-squared) together.
-
-### Within-Group Analysis
-
-Test whether factors have effects within each category level (treating categories as separate datasets):
-
-```r
-# Example: Test if pronoun and support affect scores within each LLM
-results <- compare_groups(
-  data = df,
-  category = "llm",                      # Categories become columns
-  Vars = "Support_level",                # Outcome variable
-  compare_by = c("pronoun", "support"),  # Factors to test within each LLM
-  compare_mode = "within",               # Within-group analysis
-  pivot_stat = "mean_sd"
-)
-
-# View within-group results
-results$within_table
-
-# Also get standard between-group comparison
-results$summary_table
-```
-
-**Within Table Output:**
-```
-factor   level    GPT          Mistral      Qwen
-pronoun  he/him   5.19 (1.88)  5.26 (1.98)  4.57 (2.08)
-         she/her  6.31 (1.86)  6.74 (2.00)  6.66 (2.04)
-         p (ES)   0.003 (0.09) <.001 (0.12) <.001 (0.23)
-support  Low      5.42 (2.01)  5.80 (2.10)  5.30 (2.15)
-         Medium   5.65 (1.95)  5.90 (1.88)  5.55 (2.00)
-         High     6.25 (1.90)  6.45 (2.05)  6.10 (2.08)
-         p (ES)   0.045 (0.04) 0.120 (0.03) 0.035 (0.05)
-```
-
-Each factor is tested separately within each category level (LLM). The `p (ES)` row shows the p-value and effect size for that factor's effect within each column.
-
-**Parameters:**
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `category` | Grouping variable (quoted string) | Required |
-| `Vars` | Numeric variables to compare | Required |
-| `repeat_category` | Stratification variable | `NULL` |
-| `compare_by` | Factors to test within each category (for `compare_mode = "within"`) | `NULL` |
-| `compare_mode` | `"between"` (compare categories) or `"within"` (test factors within each category) | `"between"` |
-| `type` | `"auto"`, `"p"`, `"np"`, `"bayes"` | `"auto"` |
-| `posthoc` | Compute post-hoc tests? | `TRUE` |
+| `Vars` | Variables to correlate (`NULL` = all numeric) | `NULL` |
+| `type` | `"bivariate"`, `"partial"`, `"semi-partial"` | `"bivariate"` |
+| `method` | `"pearson"`, `"spearman"`, `"kendall"` | `"pearson"` |
+| `p_adjust` | `"none"`, `"bonferroni"`, `"holm"`, `"fdr"` | `"none"` |
+| `min_r` | Show only correlations above this threshold | `NULL` |
+| `sig_only` | Show only significant correlations | `FALSE` |
+| `multilevel` | Within-cluster correlations (requires `id`) | `FALSE` |
+| `group_by` | Stratified correlations by group | `NULL` |
+
+```r
+correlations(mtcars, Vars = c("mpg", "hp", "wt"))
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), type = "partial", sig_only = TRUE)
+```
+
+**Returns:** List with `$table`, `$data`, `$n_pairs`, `$n_significant`.
+
+---
+
+### `correlation_matrix()`
+
+Publication-ready correlation matrix with significance stars and optional heatmap.
+
+```r
+correlation_matrix(data, Vars = NULL, type = "bivariate", method = "pearson",
+                   triangle = "lower", diagonal = "dash", show_n = FALSE,
+                   show_ci = FALSE, show_p = FALSE, p_adjust = "none",
+                   stars = TRUE, heatmap = FALSE, digits = 2, format = "gt")
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `triangle` | `"lower"`, `"upper"`, `"full"` | `"lower"` |
+| `show_ci` | Display confidence intervals | `FALSE` |
+| `show_n` | Display pairwise sample sizes | `FALSE` |
+| `heatmap` | Generate heatmap visualization | `FALSE` |
+
+```r
+correlation_matrix(mtcars, Vars = c("mpg", "hp", "wt", "qsec"), show_ci = TRUE)
+```
+
+**Returns:** List with `$table`, `$correlation_matrix`, `$p_matrix`, `$heatmap`.
+
+---
+
+## Group Comparisons
+
+### `compare_groups()`
+
+Compare groups using t-tests, ANOVA, or nonparametric alternatives with publication-ready tables and plots. Automatically selects the appropriate test based on group count and data properties.
+
+```r
+compare_groups(data, category, Vars = NULL, repeat_category = NULL,
+               compare_by = NULL, compare_mode = "between", type = "auto",
+               posthoc = TRUE, posthoc_method = "games-howell",
+               bayesian = FALSE, equivalence = FALSE, equivalence_bounds = NULL,
+               pivot = FALSE, pivot_stat = "mean", format = "gt")
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `category` | Grouping variable (required) | -- |
+| `Vars` | Numeric variables to compare (`NULL` = all) | `NULL` |
+| `type` | `"auto"`, `"p"` (parametric), `"np"` (nonparametric), `"bayes"` | `"auto"` |
+| `posthoc` | Compute post-hoc tests (3+ groups) | `TRUE` |
 | `posthoc_method` | `"games-howell"` or `"tukey"` | `"games-howell"` |
-| `bayesian` | Compute Bayes Factors? | `FALSE` |
-| `equivalence` | Perform TOST? | `FALSE` |
-| `pivot` | Create pivot table with categories as columns? | `FALSE` |
-| `pivot_stat` | Statistic for pivot: `"mean"`, `"mean_sd"`, `"median"`, `"n"` | `"mean"` |
-| `format` | `"gt"`, `"plain"`, `"markdown"`, `"latex"`, `"kable"` | `"gt"` |
-| `show_header` | Show table title/subtitle? | `TRUE` |
-
----
-
-## 3. Descriptive Statistics
-
-### `descriptive_table()` - Summary Statistics
-
-Generate publication-ready descriptive statistics with flexible statistics selection.
+| `bayesian` | Compute Bayes Factors | `FALSE` |
+| `equivalence` | Perform TOST equivalence testing | `FALSE` |
+| `repeat_category` | Stratify analysis by this variable | `NULL` |
+| `pivot` | Compact table with categories as columns | `FALSE` |
+| `pivot_stat` | `"mean"`, `"mean_sd"`, `"median"`, `"n"` | `"mean"` |
+| `compare_by` | Factors to test within each category | `NULL` |
+| `compare_mode` | `"between"` or `"within"` | `"between"` |
 
 ```r
-# Default statistics (n, mean, sd, median, min, max)
-descriptive_table(mtcars, Vars = c("mpg", "hp", "wt"))
+# Two-group comparison (t-test)
+results <- compare_groups(mtcars, category = "am", Vars = c("mpg", "hp"))
 
-# Extended statistics
-descriptive_table(
- mtcars,
- Vars = c("mpg", "hp", "wt"),
- stats = c("n", "mean", "sd", "se", "median", "iqr", "skewness", "kurtosis")
-)
-
-# Stratified by group
-descriptive_table(
- mtcars,
- Vars = c("mpg", "hp"),
- group_by = "cyl",
- overall = TRUE
-)
-
-# Custom labels and themes
-descriptive_table(
- mtcars,
- Vars = c("mpg", "hp", "wt"),
- labels = c(mpg = "Miles per Gallon", hp = "Horsepower", wt = "Weight (1000 lbs)"),
- title = "Motor Trend Car Data",
- theme = "colorful"
-)
+# ANOVA with post-hoc
+results <- compare_groups(mtcars, category = "cyl", Vars = c("mpg", "hp"))
 ```
 
-**Available Statistics:**
-`n`, `missing`, `missing_pct`, `mean`, `sd`, `se`, `var`, `median`, `min`, `max`, `range`, `iqr`, `q1`, `q3`, `skewness`, `kurtosis`, `cv`
+**Returns:** List with `$summary_table`, `$summary_data`, `$plots`, `$pivot_table`, `$within_table`.
 
-### `categorical_table()` - Frequency Tables
+#### Pivot Tables
+
+Compact summary with category levels as columns and a `p (ES)` column:
 
 ```r
-# Single variable frequency table
-categorical_table(mtcars, var = "cyl")
-
-# Cross-tabulation with chi-square
-categorical_table(
- mtcars,
- var = "cyl",
- by = "am",
- chi_square = TRUE,
- cramers_v = TRUE
-)
-
-# Stratified analysis
-categorical_table(
- mtcars,
- var = "am",
- by = "gear",
- group_by = "cyl"
-)
+results <- compare_groups(df, category = "group", Vars = c("x", "y"),
+                          pivot = TRUE, pivot_stat = "mean_sd")
+results$pivot_table
 ```
 
-### Table Output Formats
+#### Within-Group Analysis
 
-Both `descriptive_table()` and `categorical_table()` support multiple output formats:
-
-```r
-# Publication-ready gt table (default)
-descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "gt")
-
-# Plain data frame
-descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "plain")
-
-# Markdown table (for reports/documents)
-descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "markdown")
-
-# LaTeX table (for academic papers)
-descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "latex")
-
-# knitr::kable format
-descriptive_table(mtcars, Vars = c("mpg", "hp"), format = "kable")
-
-# Hide title/subtitle header
-descriptive_table(mtcars, Vars = c("mpg", "hp"), show_header = FALSE)
-
-# Combine format options
-descriptive_table(mtcars, Vars = c("mpg", "hp"),
-                  format = "markdown", show_header = FALSE)
-```
-
-**Available Formats:**
-
-| Format | Description | Use Case |
-|--------|-------------|----------|
-| `"gt"` | Publication-ready gt table | Default, interactive reports |
-| `"plain"` | Raw data frame | Further processing |
-| `"markdown"` | Markdown table | R Markdown, GitHub |
-| `"latex"` | LaTeX tabular | Academic papers |
-| `"kable"` | knitr::kable | R Markdown documents |
-
-### `auto_describe()` - Automatic Description
-
-Automatically detects and describes all variables in a data frame.
+Test whether factors have effects within each category level:
 
 ```r
-# Describe all variables
-results <- auto_describe(mtcars)
-
-# With grouping
-results <- auto_describe(mtcars, group_by = "am")
-
-# Access results
-results$numeric      # Numeric variables table
-results$categorical  # List of categorical tables
-results$variable_types
+results <- compare_groups(df, category = "llm", Vars = "score",
+                          compare_by = c("pronoun", "support"),
+                          compare_mode = "within")
+results$within_table
 ```
 
 ---
 
-## 4. Data Transformation
+## Descriptive Statistics
 
-All transformation functions support group-wise operations for multilevel data.
+### `descriptive_table()`
 
-### `center()` - Mean Centering
+Flexible summary statistics table with selectable statistics.
 
 ```r
-# Grand-mean centering
-mtcars_c <- center(mtcars, Vars = c("mpg", "hp", "wt"))
-
-# Group-mean centering
-mtcars_c <- center(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
-
-# With dplyr (vectorized version)
-library(dplyr)
-mtcars %>% mutate(mpg_c = center_vec(mpg))
-mtcars %>% group_by(cyl) %>% mutate(mpg_c = center_vec(mpg))
+descriptive_table(data, Vars = NULL,
+                  stats = c("n", "mean", "sd", "median", "min", "max"),
+                  group_by = NULL, overall = FALSE, labels = NULL,
+                  digits = 3, format = "gt")
 ```
 
-### `standardize()` - Z-Score Standardization
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `stats` | Statistics to include (see below) | `c("n","mean","sd","median","min","max")` |
+| `group_by` | Compute statistics by group | `NULL` |
+| `overall` | Include overall/total row | `FALSE` |
+| `labels` | Named vector of variable labels | `NULL` |
+
+**Available statistics:** `n`, `missing`, `missing_pct`, `mean`, `sd`, `se`, `var`, `median`, `min`, `max`, `range`, `iqr`, `q1`, `q3`, `skewness`, `kurtosis`, `cv`
 
 ```r
-# Grand standardization
-mtcars_z <- standardize(mtcars, Vars = c("mpg", "hp", "wt"))
-
-# Group-wise standardization
-mtcars_z <- standardize(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
-
-# With dplyr
-mtcars %>% mutate(mpg_z = standardize_vec(mpg))
-```
-
-### `scale_vars()` - Scaling
-
-```r
-# Scale by SD
-mtcars_s <- scale_vars(mtcars, Vars = c("mpg", "hp"), method = "sd")
-
-# Min-max scaling (0-1)
-mtcars_s <- scale_vars(mtcars, Vars = c("mpg", "hp"), method = "range")
-
-# Scale to custom range (1-10)
-mtcars_s <- scale_vars(mtcars, Vars = c("mpg"), method = "range", range = c(1, 10))
-
-# Group-wise scaling
-mtcars_s <- scale_vars(mtcars, Vars = c("mpg"), method = "sd", group_by = "cyl")
-```
-
-### `reverse_code()` - Reverse Coding
-
-For Likert scales and similar measures.
-
-```r
-# Create sample data
-df <- data.frame(
- item1 = c(1, 2, 3, 4, 5),
- item2 = c(5, 4, 3, 2, 1),  # reverse-worded
- item3 = c(2, 3, 4, 3, 2)
-)
-
-# Reverse code with auto-detected scale
-df <- reverse_code(df, Vars = "item2")
-
-# Explicit 1-5 Likert scale
-df <- reverse_code(df, Vars = c("item2", "item3"), min = 1, max = 5)
-
-# With dplyr
-df %>% mutate(item2_r = reverse_code_vec(item2, min = 1, max = 5))
+descriptive_table(mtcars, Vars = c("mpg", "hp", "wt"), group_by = "cyl", overall = TRUE)
 ```
 
 ---
 
-## 5. Missing Data Analysis
+### `categorical_table()`
 
-### `missing_analysis()` - Comprehensive Missing Data Analysis
+Frequency and cross-tabulation tables with optional chi-square test.
 
 ```r
-# Add some missing values
-df <- mtcars
-df$mpg[c(1, 5, 10)] <- NA
-df$hp[c(2, 5, 15)] <- NA
-
-# Run analysis
-results <- missing_analysis(df)
-
-# Components
-results$summary      # gt table with per-variable missing counts
-results$patterns     # Missing data patterns
-results$mcar         # Little's MCAR test results
-results$plot         # Missing pattern visualization
+categorical_table(data, var, by = NULL, chi_square = FALSE,
+                  cramers_v = FALSE, group_by = NULL, format = "gt")
 ```
 
-### `replace_missing()` - Imputation
-
 ```r
-# Replace with mean
-df_imp <- replace_missing(df, Vars = "mpg", method = "mean")
-
-# Replace with median
-df_imp <- replace_missing(df, Vars = "mpg", method = "median")
-
-# Group-wise imputation
-df_imp <- replace_missing(df, Vars = "mpg", method = "mean", group_by = "cyl")
-
-# Keep original and add new column
-df_imp <- replace_missing(df, Vars = "mpg", method = "mean", suffix = "_imp")
+categorical_table(mtcars, var = "cyl", by = "am", chi_square = TRUE, cramers_v = TRUE)
 ```
 
 ---
 
-## 6. Outlier Analysis
+### `auto_describe()`
 
-### `outlier_check()` - Detection
+Automatically detects variable types and produces appropriate summaries for each.
 
 ```r
-# IQR method (default)
-results <- outlier_check(mtcars, Vars = c("mpg", "hp", "wt"))
-
-# Z-score method
-results <- outlier_check(mtcars, Vars = c("mpg", "hp"), method = "zscore", threshold = 3)
-
-# Mahalanobis distance (multivariate)
-results <- outlier_check(mtcars, Vars = c("mpg", "hp", "wt"), method = "mahalanobis")
-
-# Components
-results$summary      # Outlier counts per variable
-results$outliers     # Data frame of outlier rows
-results$plot         # Box plot visualization
+auto_describe(data, group_by = NULL, format = "gt")
 ```
 
-### `replace_outliers()` - Treatment
+**Returns:** List with `$numeric`, `$categorical`, `$variable_types`.
+
+---
+
+## Data Transformation
+
+All transformation functions add new columns with a configurable suffix and support group-wise operations via `group_by`. Each has a `_vec()` variant for use in `dplyr::mutate()`.
+
+### `center()`
+
+Mean centering (grand-mean or group-mean).
 
 ```r
-# Winsorize outliers
-mtcars_w <- replace_outliers(mtcars, Vars = c("mpg", "hp"), method = "winsorize")
+center(data, Vars, suffix = "_c", group_by = NULL)
+```
 
-# Replace with NA
-mtcars_na <- replace_outliers(mtcars, Vars = c("mpg", "hp"), method = "na")
-
-# Replace with median
-mtcars_med <- replace_outliers(mtcars, Vars = c("mpg", "hp"), method = "median")
+```r
+center(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
 ```
 
 ---
 
-## 7. Normality Testing
+### `standardize()`
 
-### `normality_check()` - Normality Assessment
+Z-score standardization.
 
 ```r
-# Check normality
-results <- normality_check(mtcars, Vars = c("mpg", "hp", "wt"))
-
-# Components
-results$summary      # Test results (Shapiro-Wilk, skewness, kurtosis)
-results$plots        # Q-Q plots and histograms
-results$overall      # Overall assessment
+standardize(data, Vars, suffix = "_z", group_by = NULL)
 ```
 
 ---
 
-## 8. Model-Based Clustering
+### `scale_vars()`
 
-### `clustering()` - Gaussian Mixture Models
+Scale by standard deviation or rescale to a custom range.
 
 ```r
-# Run clustering analysis
-results <- clustering(
- data = mtcars,
- vars = c("mpg", "hp", "wt"),
- n_clusters = 2:5,
- scaling = "standardize"
-)
-
-# View results
-print(results)
-plot(results)                      # Profile plot
-plot(results, type = "heatmap")    # Cluster means heatmap
-plot(results, type = "comparison") # Model comparison (BIC)
-
-# Model comparison table
-model_comparison_table(results)
-
-# Get cluster assignments
-mtcars_clustered <- get_cluster_assignments(results)
-mtcars_clustered <- get_cluster_assignments(results, include_probabilities = TRUE)
-
-# Assess cluster stability
-stability <- assess_cluster_stability(results, n_boot = 100)
-print(stability)
-
-# Generate report
-generate_cluster_report(results)
+scale_vars(data, Vars, method = "sd", range = c(0, 1), suffix = "_s", group_by = NULL)
 ```
 
-**Covariance Models:**
-The function tests 14 different covariance structures (EII, VII, EEI, VEI, EVI, VVI, EEE, VEE, EVE, VVE, EEV, VEV, EVV, VVV) representing different assumptions about volume, shape, and orientation of clusters.
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `method` | `"sd"` (divide by SD) or `"range"` (min-max) | `"sd"` |
+| `range` | Target range for `"range"` method | `c(0, 1)` |
 
 ---
 
-## 9. Network Analysis
+### `reverse_code()`
 
-### `estimate_single_network()` - Network Estimation
+Reverse code items for Likert scales. Auto-detects or accepts explicit `min`/`max`.
 
 ```r
-# Estimate network
-results <- estimate_single_network(
- data = mtcars,
- variables = c("mpg", "hp", "wt", "qsec", "drat")
-)
-
-# Components
-results$plot         # Network visualization
-results$centrality   # Centrality measures
-results$edges        # Edge weights
+reverse_code(data, Vars, min = NULL, max = NULL, suffix = "_r")
 ```
 
-### `compare_networks()` - Network Comparison
-
 ```r
-# Compare networks between groups
-mtcars$am_factor <- factor(mtcars$am, labels = c("Automatic", "Manual"))
-
-comparison <- compare_networks(
- data = mtcars,
- group_var = "am_factor",
- variables = c("mpg", "hp", "wt", "qsec")
-)
+reverse_code(df, Vars = c("item2", "item5"), min = 1, max = 5)
 ```
 
 ---
 
-## 10. Categorical Analysis
+## Missing Data
 
-### `mosaic_analysis()` - Mosaic Plots
+### `missing_analysis()`
+
+Comprehensive missing data diagnostics including patterns, Little's MCAR test, and visualizations.
 
 ```r
-# Analyze categorical relationship
-mtcars$cyl_f <- factor(mtcars$cyl)
-mtcars$am_f <- factor(mtcars$am, labels = c("Auto", "Manual"))
+missing_analysis(data, Vars = NULL, pattern_plot = TRUE,
+                 mcar_test = TRUE, correlations = FALSE, digits = 2)
+```
 
-results <- mosaic_analysis(
- data = mtcars,
- var1 = "cyl_f",
- var2 = "am_f"
-)
+**Returns:** List with `$summary`, `$patterns`, `$mcar`, `$plot`.
 
-# Components
-print(results)       # Summary statistics
-summary(results)     # Detailed summary
-results$plot         # Mosaic plot
-results$chi_test     # Chi-square test results
-results$cramers_v    # Effect size
+---
+
+### `replace_missing()`
+
+Simple imputation by mean or median, with optional group-wise computation.
+
+```r
+replace_missing(data, Vars, method = "mean", group_by = NULL, suffix = "_imp")
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `method` | `"mean"` or `"median"` | `"mean"` |
+| `suffix` | Suffix for new column (`NULL` to replace in-place) | `"_imp"` |
+
+---
+
+## Outlier Analysis
+
+### `outlier_check()`
+
+Detect outliers using multiple methods.
+
+```r
+outlier_check(data, Vars, method = "zscore", threshold = 3,
+              flag = TRUE, plot = TRUE)
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `method` | `"zscore"`, `"iqr"`, `"percentile"`, `"mahalanobis"` | `"zscore"` |
+| `threshold` | Detection threshold (method-dependent) | `3` |
+
+**Returns:** List with `$summary`, `$data`, `$outlier_indices`, `$plot`.
+
+---
+
+### `replace_outliers()`
+
+Treat outliers by winsorizing, replacing with NA, or substituting with median/mean.
+
+```r
+replace_outliers(data, Vars, method = "winsorize", threshold = 0.05,
+                 suffix = "_treated")
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `method` | `"winsorize"`, `"na"`, `"median"`, `"mean"` | `"winsorize"` |
+
+---
+
+## Normality Testing
+
+### `normality_check()`
+
+Shapiro-Wilk test, skewness, kurtosis, Q-Q plots, and histograms.
+
+```r
+normality_check(data, Vars, digits = 3)
+```
+
+**Returns:** List with `$summary`, `$plots`, `$overall`.
+
+---
+
+## Clustering
+
+### `clustering()`
+
+Model-based clustering using Gaussian Mixture Models. Tests 14 covariance structures (EII through VVV) and selects the best model by BIC.
+
+```r
+clustering(data, vars, n_clusters, scaling = "standardize",
+           n_init = 10, seed = NULL, verbose = TRUE)
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `n_clusters` | Range of clusters to test (e.g., `2:5`) | required |
+| `scaling` | `"standardize"`, `"center"`, `"minmax"`, `"none"` | `"standardize"` |
+
+```r
+results <- clustering(mtcars, vars = c("mpg", "hp", "wt"), n_clusters = 2:4)
+plot(results)                          # Profile plot
+model_comparison_table(results)        # Compare all models
+```
+
+**Returns:** Object of class `"moe_analysis"` with `print()` and `plot()` methods.
+
+#### Helper Functions
+
+| Function | Description |
+|----------|-------------|
+| `get_cluster_assignments(results)` | Extract cluster labels (optionally with probabilities) |
+| `assess_cluster_stability(results, n_boot)` | Bootstrap stability assessment (Jaccard similarity) |
+| `model_comparison_table(results)` | Publication-ready model comparison table |
+| `generate_cluster_report(results)` | Full text report of the analysis |
+
+---
+
+## Network Analysis
+
+### `estimate_single_network()`
+
+Estimate psychological networks using EBICglasso regularized partial correlations.
+
+```r
+estimate_single_network(df, Vars = NULL, layout = "circle",
+                        default = "EBICglasso", verbose = TRUE,
+                        compute_centrality = TRUE)
+```
+
+**Returns:** Object with `$plot`, `$centrality`, `$edges`, `$network_obj`.
+
+---
+
+### `compare_networks()`
+
+Estimate and compare networks between groups.
+
+```r
+compare_networks(data, group_var, variables = NULL,
+                 method = "EBICglasso", layout = "circle")
 ```
 
 ---
 
-## 11. AI Interpretation
+## Categorical Analysis
 
-### `pass()` - Pipe R Output to AI
+### `mosaic_analysis()`
 
-Pass any R output (test results, model summaries, tables) to an AI model for publication-ready scientific interpretation.
+Mosaic plot with chi-square test and Cramer's V.
 
 ```r
-# Basic usage - pipe test results to AI
+mosaic_analysis(data, var1, var2, show_percentages = TRUE,
+                percentage_base = "total")
+```
+
+**Returns:** Object with `$plot`, `$chi_test`, `$cramers_v`, `$summary`.
+
+---
+
+## AI Interpretation
+
+### `pass()`
+
+Pipe any R output to an AI model for scientific interpretation.
+
+```r
+pass(result, action = "interpret", style = "scientific", output = "text",
+     provider = "openai", model = NULL, context = NULL,
+     system_message = NULL, prompt = NULL, base_url = NULL)
+```
+
+| Parameter | Options | Default |
+|-----------|---------|---------|
+| `action` | `"interpret"`, `"explain"`, `"write"`, `"summarize"`, `"critique"`, `"suggest"` | `"interpret"` |
+| `style` | `"scientific"`, `"simple"`, `"detailed"`, `"brief"` | `"scientific"` |
+| `output` | `"text"`, `"markdown"`, `"latex"`, `"html"` | `"text"` |
+| `provider` | `"openai"`, `"anthropic"`, `"gemini"`, `"openrouter"`, or use `base_url` for local | `"openai"` |
+
+```r
 t.test(mpg ~ am, data = mtcars) |> pass()
-
-# Regression with equation and references
 lm(mpg ~ wt + hp, data = mtcars) |> summary() |> pass(action = "write")
-
-# Correlation interpretation
-cor.test(mtcars$mpg, mtcars$wt) |> pass(action = "write")
-
-# ANOVA with post-hoc interpretation
-aov(mpg ~ factor(cyl), data = mtcars) |> summary() |> pass(action = "write")
 ```
 
-**Providers:**
+#### API Key Setup
 
 ```r
-# Cloud providers
-pass(result, provider = "openai")      # GPT-4 (default)
-pass(result, provider = "anthropic")   # Claude
-pass(result, provider = "gemini")      # Gemini
-pass(result, provider = "openrouter")  # OpenRouter (access to many models)
+set_openai_key("sk-...")
+set_claude_key("sk-ant-...")
+set_gemini_key("AIza...")
+set_openrouter_key("sk-or-...")
 
-# Local servers (LM Studio, Ollama, vLLM)
-pass(result, base_url = "http://127.0.0.1:1234")
-```
-
-**Actions:**
-
-```r
-pass(result, action = "interpret")  # Interpret results (default)
-pass(result, action = "explain")    # Explain methodology
-pass(result, action = "write")      # Publication-ready Methods & Results
-pass(result, action = "summarize")  # Brief summary
-pass(result, action = "critique")   # Critical evaluation
-pass(result, action = "suggest")    # Suggest follow-up analyses
-```
-
-**Styles:**
-
-```r
-pass(result, style = "scientific")  # APA-style (default)
-pass(result, style = "simple")      # Plain language
-pass(result, style = "detailed")    # Comprehensive (default for action="write")
-pass(result, style = "brief")       # Key takeaway only
-```
-
-**Output Formats:**
-
-```r
-pass(result, output = "text")      # Plain text (default)
-pass(result, output = "markdown")  # Markdown formatted
-pass(result, output = "latex")     # LaTeX for papers
-pass(result, output = "html")      # HTML formatted
-```
-
-**Customization:**
-
-```r
-# Add study context
-t.test(score ~ group, data = mydata) |>
-  pass(context = "RCT comparing drug vs placebo, N=200 patients")
-
-# Custom AI instructions
-result |> pass(system_message = "Focus on clinical implications")
-
-# Specific request
-result |> pass(prompt = "Explain the interaction effect")
-
-# Combine all
-lm(outcome ~ treatment * age, data = mydata) |> summary() |>
-  pass(
-    action = "write",
-    output = "latex",
-    context = "Phase 3 clinical trial for hypertension",
-    system_message = "Emphasize clinical significance",
-    prompt = "Focus on the treatment-age interaction"
-  )
-```
-
-**Example Output (action = "write"):**
-
-```
-**Methods**
-
-A multiple linear regression was conducted to examine the relationship between
-miles per gallon (mpg) and two predictor variables: vehicle weight (wt) and
-horsepower (hp). The analysis was performed in R (R Core Team, 2024) using the
-base `lm()` function. The regression equation is:
-
-  mpg = β₀ + β₁(wt) + β₂(hp) + ε
-
-**Results**
-
-The regression model was statistically significant, F(2, 29) = 69.21, p < .001.
-The model explained 82.7% of variance in mpg (R² = .827, Adjusted R² = .815).
-
-| Predictor | Estimate | SE   | t      | p      |
-|-----------|----------|------|--------|--------|
-| Intercept | 37.23    | 1.60 | 23.29  | < .001 |
-| wt        | –3.88    | 0.63 | –6.13  | < .001 |
-| hp        | –0.032   | 0.009| –3.52  | .001   |
-
-**References**
-
-R Core Team. (2024). R: A language and environment for statistical computing.
-R Foundation for Statistical Computing. https://www.R-project.org/
-```
-
-**Setup:**
-
-```r
-# Set API key for session (convenient aliases)
-set_openai_key("sk-...")           # OpenAI (default provider)
-set_claude_key("sk-ant-...")       # Anthropic Claude
-set_gemini_key("AIza...")          # Google Gemini
-set_openrouter_key("sk-or-...")    # OpenRouter
-
-# Set key with custom default model
-set_openai_key("sk-...", model = "gpt-4o")
-set_claude_key("sk-ant-...", model = "claude-opus-4-20250514")
-set_openrouter_key("sk-or-...", model = "openai/gpt-4o")
-
-# Set key with custom base URL (for Azure OpenAI, etc.)
-set_openai_key("sk-...", model = "gpt-4", base_url = "https://my-azure.openai.azure.com")
-
-# Or use the generic function
-set_api_key("your-api-key", provider = "openai", model = "gpt-4o")
-
-# Or use environment variables (recommended)
-# Add to .Renviron:
+# Or via environment variables in .Renviron:
 # OPENAI_API_KEY=your-key
 # ANTHROPIC_API_KEY=your-key
-# GEMINI_API_KEY=your-key
-# OPENROUTER_API_KEY=your-key
 ```
 
 ---
 
-## API Design
+## Output Formats
 
-All functions use a **consistent quoted-string API**:
+All table-producing functions share these parameters:
 
-```r
-# Variable names as quoted strings
-compare_groups(data, category = "gender", Vars = c("score1", "score2"))
-correlations(data, Vars = c("x", "y", "z"), group_by = "group")
-center(data, Vars = "score", group_by = "cluster")
+| Parameter | Options | Default |
+|-----------|---------|---------|
+| `format` | `"gt"`, `"plain"`, `"markdown"`, `"latex"`, `"kable"` | `"gt"` |
+| `show_header` | `TRUE` / `FALSE` | `TRUE` |
 
-# NULL for auto-selection of all numeric variables
-correlations(data)  # Correlates all numeric variables
-correlation_matrix(data)  # Matrix of all numeric variables
-```
+Results can also be converted after the fact with `to_gt()`, `to_markdown()`, `to_latex()`, `to_html()`, `to_kable()`, and `to_dataframe()`.
+
+---
+
+## Vectorized Functions
+
+For use in `dplyr::mutate()` and `across()` workflows:
+
+| Function | Description |
+|----------|-------------|
+| `center_vec(x)` | Mean-center a vector |
+| `standardize_vec(x)` | Z-score standardize |
+| `scale_vec(x, method, range)` | Scale by SD or range |
+| `reverse_code_vec(x, min, max)` | Reverse code |
+| `winsorize_vec(x, probs)` | Cap extreme values |
+| `is_outlier(x, method, threshold)` | Logical outlier flag |
+
+These respect `dplyr::group_by()` for group-wise operations.
 
 ---
 
 ## Citation
 
-If you use this package in your research, please cite:
-
-```r
-citation("Saqrmisc")
-```
-
 ```
 Saqr, M. (2025). Saqrmisc: Comprehensive Data Analysis and Visualization Tools for R.
 GitHub: https://github.com/mohsaqr/Saqrmisc
 ```
-
----
 
 ## License
 
@@ -913,15 +543,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Author
 
-**Mohammed Saqr**
-- Email: saqr@saqr.me
-- GitHub: [@mohsaqr](https://github.com/mohsaqr)
-
-## Links
-
-- **GitHub Repository**: https://github.com/mohsaqr/Saqrmisc
-- **Bug Reports**: https://github.com/mohsaqr/Saqrmisc/issues
-
----
-
-**Made with care for the R community**
+**Mohammed Saqr** - [saqr@saqr.me](mailto:saqr@saqr.me) - [@mohsaqr](https://github.com/mohsaqr)
