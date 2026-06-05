@@ -1,3 +1,9 @@
+# Saqrmisc 0.9.1
+
+* `mosaic_analysis()` no longer draws the variable-name axis titles by default,
+  which previously overprinted the category labels (especially next to thin
+  categories). Set `show_varnames = TRUE` to restore them.
+
 # Saqrmisc 0.1.0
 
 ## Initial Release

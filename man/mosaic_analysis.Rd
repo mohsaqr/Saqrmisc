@@ -14,6 +14,17 @@ mosaic_analysis(
   var1_label = NULL,
   var2_label = NULL,
   show_varnames = FALSE,
+  plot_style = c("flat", "classic"),
+  tile_label = c("count", "percent", "residual", "category", "none"),
+  col_label_side = c("top", "bottom", "both", "none"),
+  row_label_side = c("left", "right", "both", "none"),
+  col_label_angle = 0,
+  row_label_angle = 0,
+  show_legend = TRUE,
+  legend_position = "right",
+  legend_size = 0.7,
+  legend_title = "Std.\\nresidual",
+  label_size = 3.5,
   show_percentages = TRUE,
   percentage_base = "total",
   use_fisher = FALSE,
@@ -48,6 +59,37 @@ plot axes (e.g. the row and column variable names). Defaults to FALSE because
 these titles often overprint the category labels, especially when a thin
 category sits next to them. The category labels and column headers remain
 visible either way.}
+
+\item{plot_style}{The mosaic plot style: "flat" (a modern flat ggplot2 mosaic
+shaded by standardized residuals; the default) or "classic" (the \pkg{vcd}
+shaded mosaic).}
+
+\item{tile_label}{(flat style) What to print inside each tile: "count" (the
+default actual counts), "percent" (using \code{percentage_base}), "residual"
+(standardized residual), "category" (the second-variable level name), or
+"none".}
+
+\item{col_label_side}{(flat style) Placement of the first-variable labels:
+"top" (default), "bottom", "both", or "none".}
+
+\item{row_label_side}{(flat style) Placement of the second-variable labels:
+"left" (default), "right", "both", or "none".}
+
+\item{col_label_angle, row_label_angle}{(flat style) Rotation in degrees for
+the column and row category labels (0 = horizontal, 90 = vertical).}
+
+\item{show_legend}{Logical. Show the residual colour legend. Defaults to TRUE.}
+
+\item{legend_position}{Legend placement for the flat style: one of "right"
+(default), "left", "top", "bottom", or "none".}
+
+\item{legend_size}{Numeric multiplier (> 0) scaling the legend key and text in
+the flat style. Smaller is more compact. Defaults to 0.7.}
+
+\item{legend_title}{Legend title for the flat style. Defaults to
+"Std.\\nresidual".}
+
+\item{label_size}{Tile-label text size for the flat style. Defaults to 3.5.}
 
 \item{show_percentages}{Logical. If TRUE, includes percentages in the summary table.
 Defaults to TRUE.}

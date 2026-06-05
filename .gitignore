@@ -46,4 +46,8 @@ Thumbs.db
 
 # Backup files
 *.bak
-*.backup 
+*.backup
+
+# Session/build artifacts (local only)
+tmp/
+.playwright-mcp/

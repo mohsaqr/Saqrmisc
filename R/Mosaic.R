@@ -100,7 +100,7 @@ create_consolidated_table <- function(observed, expected, show_percentages = TRU
       total_pct <- tibble::tibble(
         Variable = "",
         Type = paste0("% (", percentage_base, ")"),
-        !!!rep(100.0, ncol(observed)),
+        !!!stats::setNames(rep(100.0, ncol(observed)), colnames(observed)),
         Total = 100.0
       )
     } else {
@@ -173,6 +173,27 @@ interpret_cramers_v <- function(v, df) {
 #'   these titles often overprint the category labels, especially when a thin
 #'   category sits next to them. The category labels and column headers remain
 #'   visible either way.
+#' @param plot_style The mosaic plot style: "flat" (a modern flat ggplot2 mosaic
+#'   shaded by standardized residuals; the default) or "classic" (the \pkg{vcd}
+#'   shaded mosaic).
+#' @param tile_label (flat style) What to print inside each tile: "count" (the
+#'   default actual counts), "percent" (using \code{percentage_base}), "residual"
+#'   (standardized residual), "category" (the second-variable level name), or
+#'   "none".
+#' @param col_label_side (flat style) Placement of the first-variable labels:
+#'   "top" (default), "bottom", "both", or "none".
+#' @param row_label_side (flat style) Placement of the second-variable labels:
+#'   "left" (default), "right", "both", or "none".
+#' @param col_label_angle,row_label_angle (flat style) Rotation in degrees for
+#'   the column and row category labels (0 = horizontal, 90 = vertical).
+#' @param show_legend Logical. Show the residual colour legend. Defaults to TRUE.
+#' @param legend_position Legend placement for the flat style: one of "right"
+#'   (default), "left", "top", "bottom", or "none".
+#' @param legend_size Numeric multiplier (> 0) scaling the legend key and text in
+#'   the flat style. Smaller is more compact. Defaults to 0.7.
+#' @param legend_title Legend title for the flat style. Defaults to
+#'   "Std.\\nresidual".
+#' @param label_size Tile-label text size for the flat style. Defaults to 3.5.
 #' @param show_percentages Logical. If TRUE, includes percentages in the summary table.
 #'   Defaults to TRUE.
 #' @param percentage_base The base for calculating percentages ("total", "row", or "column").
@@ -244,6 +265,18 @@ mosaic_analysis <- function(data, var1, var2, min_count = 10,
                             fontsize = 8, title = "",
                             var1_label = NULL, var2_label = NULL,
                             show_varnames = FALSE,
+                            plot_style = c("flat", "classic"),
+                            tile_label = c("count", "percent", "residual",
+                                           "category", "none"),
+                            col_label_side = c("top", "bottom", "both", "none"),
+                            row_label_side = c("left", "right", "both", "none"),
+                            col_label_angle = 0,
+                            row_label_angle = 0,
+                            show_legend = TRUE,
+                            legend_position = "right",
+                            legend_size = 0.7,
+                            legend_title = "Std.\nresidual",
+                            label_size = 3.5,
                             show_percentages = TRUE,
                             percentage_base = "total",
                             use_fisher = FALSE,
@@ -269,6 +302,27 @@ if (!is.data.frame(data)) {
 
   if (!is.logical(show_varnames) || length(show_varnames) != 1 || is.na(show_varnames)) {
     stop("'show_varnames' must be a single logical value (TRUE or FALSE)")
+  }
+
+  plot_style     <- match.arg(plot_style)
+  tile_label     <- match.arg(tile_label)
+  col_label_side <- match.arg(col_label_side)
+  row_label_side <- match.arg(row_label_side)
+
+  if (!is.numeric(col_label_angle) || length(col_label_angle) != 1 ||
+      !is.numeric(row_label_angle) || length(row_label_angle) != 1) {
+    stop("'col_label_angle' and 'row_label_angle' must each be a single number")
+  }
+
+  if (!is.logical(show_legend) || length(show_legend) != 1 || is.na(show_legend)) {
+    stop("'show_legend' must be a single logical value (TRUE or FALSE)")
+  }
+
+  legend_position <- match.arg(legend_position,
+                               c("right", "left", "top", "bottom", "none"))
+
+  if (!is.numeric(legend_size) || length(legend_size) != 1 || legend_size <= 0) {
+    stop("'legend_size' must be a single positive number")
   }
 
   # Handle variable names (expects quoted strings)
@@ -386,35 +440,36 @@ if (!is.data.frame(data)) {
   df_for_interpretation <- k - 1
   cramers_v_interpretation <- interpret_cramers_v(cramers_v, df_for_interpretation)
 
-  # Create the mosaic plot using the formula approach
-  formula_str <- paste("~", var1_name, "+", var2_name)
-  formula_obj <- stats::as.formula(formula_str)
+  # Standardized Pearson residuals — computed once and reused by both the plot
+  # and the residuals table below.
+  if (use_fisher) {
+    stdres_mat <- stats::chisq.test(filtered_table)$stdres
+  } else {
+    stdres_mat <- stat_test$stdres
+  }
 
-  # Create set_varnames for proper labeling
-  set_varnames_vector <- c(var1_label, var2_label)
-  names(set_varnames_vector) <- c(var1_name, var2_name)
-
-  # Shared labeling arguments so the on-screen and saved plots stay identical.
-  # Variable-name titles are off by default (show_varnames = FALSE): vcd draws
-  # them right on top of the category labels, which collides badly when a thin
-  # category sits beside the axis.
-  mosaic_labeling_args <- list(
-    varnames = c(left = show_varnames, top = show_varnames),
-    varnames_label = c(left = "", top = ""),
-    rot_labels = c(left = 0, top = 0),
-    offset_labels = c(left = 2.5, top = 0.5),
-    set_varnames = set_varnames_vector,
-    gp_text = grid::gpar(fontsize = fontsize)
+  # Bundle everything the plot needs so it can be re-rendered later (e.g. by
+  # plot.mosaic_analysis) without recomputing the test.
+  plot_parts <- list(
+    table = filtered_table, residuals = stdres_mat, data = filtered_data,
+    var1_name = var1_name, var2_name = var2_name,
+    var1_label = var1_label, var2_label = var2_label
+  )
+  plot_style_args <- list(
+    plot_style = plot_style, title = title, tile_label = tile_label,
+    percentage_base = percentage_base,
+    col_label_side = col_label_side, row_label_side = row_label_side,
+    col_label_angle = col_label_angle, row_label_angle = row_label_angle,
+    show_varnames = show_varnames, fontsize = fontsize,
+    show_legend = show_legend, legend_position = legend_position,
+    legend_size = legend_size, legend_title = legend_title,
+    label_size = label_size
   )
 
-  # Create the mosaic plot
-  mosaic_plot <- vcd::mosaic(formula_obj,
-                              data = filtered_data,
-                              main = title,
-                              shade = TRUE,
-                              legend = TRUE,
-                              labeling = vcd::labeling_values,
-                              labeling_args = mosaic_labeling_args)
+  # Build the mosaic plot. flat returns a ggplot (drawn via print); classic
+  # draws as a side effect and returns a structable.
+  mosaic_plot <- build_mosaic_plot(plot_parts, plot_style_args)
+  draw_mosaic_plot(mosaic_plot, plot_style_args)
 
   # Save plot if requested
   if (!is.null(save_plot)) {
@@ -430,13 +485,7 @@ if (!is.data.frame(data)) {
     }
 
     if (ext %in% c("png", "pdf", "svg")) {
-      vcd::mosaic(formula_obj,
-                  data = filtered_data,
-                  main = title,
-                  shade = TRUE,
-                  legend = TRUE,
-                  labeling = vcd::labeling_values,
-                  labeling_args = mosaic_labeling_args)
+      draw_mosaic_plot(build_mosaic_plot(plot_parts, plot_style_args), plot_style_args)
       grDevices::dev.off()
       if (verbose) cat("Plot saved to:", save_plot, "\n")
     }
@@ -453,13 +502,8 @@ if (!is.data.frame(data)) {
   consolidated_table <- create_consolidated_table(filtered_table, expected_values,
                                                   show_percentages, percentage_base)
 
-  # Create standardized residuals table
-  if (use_fisher) {
-    chi_for_resid <- stats::chisq.test(filtered_table)
-    residuals_df <- as.data.frame.matrix(round(chi_for_resid$stdres, 2))
-  } else {
-    residuals_df <- as.data.frame.matrix(round(stat_test$stdres, 2))
-  }
+  # Create standardized residuals table (reusing the residuals computed above)
+  residuals_df <- as.data.frame.matrix(round(stdres_mat, 2))
   residuals_df$Variable <- rownames(residuals_df)
   residuals_df <- residuals_df %>% dplyr::select(Variable, dplyr::everything())
 
@@ -534,6 +578,10 @@ if (!is.data.frame(data)) {
       var1 = removed_var1,
       var2 = removed_var2
     ),
+    # Stored so the plot can be re-rendered with new styling (see
+    # plot.mosaic_analysis) without re-running the statistical test.
+    plot_parts = plot_parts,
+    plot_args = plot_style_args,
     call = match.call()
   )
 
@@ -579,6 +627,45 @@ if (!is.data.frame(data)) {
   }
 
   return(invisible(results))
+}
+
+#' Plot method for mosaic_analysis objects
+#'
+#' @description
+#' Re-renders the mosaic plot from a fitted \code{mosaic_analysis} object using
+#' the stored contingency table and residuals, so styling can be changed without
+#' re-running the statistical test. Any styling argument accepted by
+#' \code{\link{mosaic_analysis}} (e.g. \code{plot_style}, \code{tile_label},
+#' \code{col_label_side}, \code{legend_size}) can be overridden via \code{...};
+#' unspecified arguments keep the values from the original call.
+#'
+#' @param x A \code{mosaic_analysis} object.
+#' @param ... Styling overrides (see \code{\link{mosaic_analysis}}).
+#' @return Invisibly, the plot object (a ggplot for the flat style). Called for
+#'   its side effect of drawing the plot.
+#' @examples
+#' set.seed(1)
+#' d <- data.frame(
+#'   a = sample(c("X", "Y", "Z"), 200, replace = TRUE),
+#'   b = sample(c("P", "Q"), 200, replace = TRUE)
+#' )
+#' res <- mosaic_analysis(d, "a", "b", min_count = 5, verbose = FALSE)
+#' \donttest{
+#' plot(res, tile_label = "percent", legend_size = 0.4)
+#' plot(res, plot_style = "classic")
+#' }
+#' @export
+plot.mosaic_analysis <- function(x, ...) {
+  overrides <- list(...)
+  unknown <- setdiff(names(overrides), names(x$plot_args))
+  if (length(unknown)) {
+    stop("Unknown styling argument(s): ", paste(unknown, collapse = ", "),
+         call. = FALSE)
+  }
+  style <- utils::modifyList(x$plot_args, overrides)
+  style$plot_style <- match.arg(style$plot_style, c("flat", "classic"))
+  plot_obj <- build_mosaic_plot(x$plot_parts, style)
+  draw_mosaic_plot(plot_obj, style)
 }
 
 #' Print method for mosaic_analysis objects
