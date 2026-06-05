@@ -13,6 +13,7 @@ mosaic_analysis(
   title = "",
   var1_label = NULL,
   var2_label = NULL,
+  show_varnames = FALSE,
   show_percentages = TRUE,
   percentage_base = "total",
   use_fisher = FALSE,
@@ -41,6 +42,12 @@ variable name.}
 
 \item{var2_label}{The label for the second variable in the plot. If NULL, uses the
 variable name.}
+
+\item{show_varnames}{Logical. If TRUE, draws the variable-name titles along the
+plot axes (e.g. the row and column variable names). Defaults to FALSE because
+these titles often overprint the category labels, especially when a thin
+category sits next to them. The category labels and column headers remain
+visible either way.}
 
 \item{show_percentages}{Logical. If TRUE, includes percentages in the summary table.
 Defaults to TRUE.}

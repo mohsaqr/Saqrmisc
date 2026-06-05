@@ -168,6 +168,11 @@ interpret_cramers_v <- function(v, df) {
 #'   variable name.
 #' @param var2_label The label for the second variable in the plot. If NULL, uses the
 #'   variable name.
+#' @param show_varnames Logical. If TRUE, draws the variable-name titles along the
+#'   plot axes (e.g. the row and column variable names). Defaults to FALSE because
+#'   these titles often overprint the category labels, especially when a thin
+#'   category sits next to them. The category labels and column headers remain
+#'   visible either way.
 #' @param show_percentages Logical. If TRUE, includes percentages in the summary table.
 #'   Defaults to TRUE.
 #' @param percentage_base The base for calculating percentages ("total", "row", or "column").
@@ -238,6 +243,7 @@ interpret_cramers_v <- function(v, df) {
 mosaic_analysis <- function(data, var1, var2, min_count = 10,
                             fontsize = 8, title = "",
                             var1_label = NULL, var2_label = NULL,
+                            show_varnames = FALSE,
                             show_percentages = TRUE,
                             percentage_base = "total",
                             use_fisher = FALSE,
@@ -259,6 +265,10 @@ if (!is.data.frame(data)) {
 
   if (!percentage_base %in% c("total", "row", "column")) {
     stop("'percentage_base' must be one of: 'total', 'row', 'column'")
+  }
+
+  if (!is.logical(show_varnames) || length(show_varnames) != 1 || is.na(show_varnames)) {
+    stop("'show_varnames' must be a single logical value (TRUE or FALSE)")
   }
 
   # Handle variable names (expects quoted strings)
@@ -384,6 +394,19 @@ if (!is.data.frame(data)) {
   set_varnames_vector <- c(var1_label, var2_label)
   names(set_varnames_vector) <- c(var1_name, var2_name)
 
+  # Shared labeling arguments so the on-screen and saved plots stay identical.
+  # Variable-name titles are off by default (show_varnames = FALSE): vcd draws
+  # them right on top of the category labels, which collides badly when a thin
+  # category sits beside the axis.
+  mosaic_labeling_args <- list(
+    varnames = c(left = show_varnames, top = show_varnames),
+    varnames_label = c(left = "", top = ""),
+    rot_labels = c(left = 0, top = 0),
+    offset_labels = c(left = 2.5, top = 0.5),
+    set_varnames = set_varnames_vector,
+    gp_text = grid::gpar(fontsize = fontsize)
+  )
+
   # Create the mosaic plot
   mosaic_plot <- vcd::mosaic(formula_obj,
                               data = filtered_data,
@@ -391,14 +414,7 @@ if (!is.data.frame(data)) {
                               shade = TRUE,
                               legend = TRUE,
                               labeling = vcd::labeling_values,
-                              labeling_args = list(
-                                varnames = c(left = FALSE, top = TRUE),
-                                varnames_label = c(left = "", top = ""),
-                                rot_labels = c(left = 0, top = 0),
-                                offset_labels = c(left = 2.5, top = 0.5),
-                                set_varnames = set_varnames_vector,
-                                gp_text = grid::gpar(fontsize = fontsize)
-                              ))
+                              labeling_args = mosaic_labeling_args)
 
   # Save plot if requested
   if (!is.null(save_plot)) {
@@ -420,14 +436,7 @@ if (!is.data.frame(data)) {
                   shade = TRUE,
                   legend = TRUE,
                   labeling = vcd::labeling_values,
-                  labeling_args = list(
-                    varnames = c(left = FALSE, top = TRUE),
-                    varnames_label = c(left = "", top = ""),
-                    rot_labels = c(left = 0, top = 0),
-                    offset_labels = c(left = 2.5, top = 0.5),
-                    set_varnames = set_varnames_vector,
-                    gp_text = grid::gpar(fontsize = fontsize)
-                  ))
+                  labeling_args = mosaic_labeling_args)
       grDevices::dev.off()
       if (verbose) cat("Plot saved to:", save_plot, "\n")
     }

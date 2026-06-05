@@ -57,3 +57,30 @@ test_that("mosaic_analysis works with custom parameters", {
   expect_type(result, "list")
   expect_true("mosaic_plot" %in% names(result))
 })
+
+test_that("show_varnames defaults to FALSE and validates input", {
+  # Default value is FALSE (variable-name titles off)
+  expect_false(formals(mosaic_analysis)$show_varnames)
+
+  test_data <- data.frame(
+    var1 = sample(c("A", "B"), 60, replace = TRUE),
+    var2 = sample(c("X", "Y"), 60, replace = TRUE)
+  )
+
+  # Both settings produce a valid plot without error
+  expect_no_error(
+    mosaic_analysis(test_data, "var1", "var2", min_count = 5,
+                    show_varnames = FALSE, verbose = FALSE)
+  )
+  expect_no_error(
+    mosaic_analysis(test_data, "var1", "var2", min_count = 5,
+                    show_varnames = TRUE, verbose = FALSE)
+  )
+
+  # Non-logical input is rejected
+  expect_error(
+    mosaic_analysis(test_data, "var1", "var2", min_count = 5,
+                    show_varnames = "yes", verbose = FALSE),
+    "show_varnames"
+  )
+})
