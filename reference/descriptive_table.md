@@ -1,0 +1,235 @@
+# Generate Publication-Ready Descriptive Statistics Table
+
+Creates a comprehensive, publication-ready table of descriptive
+statistics for numeric variables. Supports stratification by grouping
+variables and outputs beautifully formatted gt tables.
+
+## Usage
+
+``` r
+descriptive_table(
+  data,
+  Vars = NULL,
+  group_by = NULL,
+  stats = c("n", "mean", "sd", "median", "min", "max"),
+  digits = 2,
+  labels = NULL,
+  title = "Descriptive Statistics",
+  subtitle = NULL,
+  overall = FALSE,
+  transpose = FALSE,
+  format = c("gt", "plain", "markdown", "latex", "kable"),
+  show_header = TRUE,
+  theme = "default",
+  compare = FALSE,
+  bold_highest = NULL,
+  sig_color = "red",
+  interpret = FALSE,
+  ...
+)
+```
+
+## Arguments
+
+- data:
+
+  A data frame containing the variables to summarize.
+
+- Vars:
+
+  Column specification for variables to describe. Can be NULL (default,
+  all numeric columns), a character vector of column names, a numeric
+  vector of column indices, or a single number (from that column to
+  end).
+
+- group_by:
+
+  Optional character. Name of a grouping variable for stratified
+  statistics. When provided, statistics are calculated separately for
+  each group level.
+
+- stats:
+
+  Character vector specifying which statistics to compute. Default:
+  c("n", "mean", "sd", "median", "min", "max"). Available options: "n",
+  "missing", "missing_pct", "mean", "sd", "se", "var", "median", "min",
+  "max", "range", "iqr", "q1", "q3", "skewness", "kurtosis", "cv".
+
+- digits:
+
+  Integer. Number of decimal places for numeric output. Default: \`2\`.
+
+- labels:
+
+  Optional named character vector for variable labels. Example: \`c(age
+  = "Age (years)", score1 = "Test Score")\`. If NULL, variable names are
+  used as-is.
+
+- title:
+
+  Optional character string for table title. Default: \`"Descriptive
+  Statistics"\`.
+
+- subtitle:
+
+  Optional character string for table subtitle.
+
+- overall:
+
+  Logical. When \`group_by\` is specified, also include overall
+  (ungrouped) statistics? Default: FALSE.
+
+- transpose:
+
+  Logical. Transpose the table so variables are columns and statistics
+  are rows? Default: FALSE.
+
+- format:
+
+  Character. Output format: "gt" (default, publication-ready gt table),
+  "plain" (data frame), "markdown", "latex", or "kable".
+
+- show_header:
+
+  Logical. Show title/subtitle header? Default TRUE. Set to FALSE to
+  hide the table header.
+
+- theme:
+
+  Character. Visual theme for gt table: "default" (clean scientific
+  style), "fancy" (blue with striped rows), "minimal" (bottom border
+  only), "dark" (dark background), or "colorful" (purple accents).
+  Default: "default".
+
+- compare:
+
+  Logical. When \`group_by\` is specified, run statistical tests (t-test
+  for 2 groups, ANOVA for 3+ groups) and report p-values and effect
+  sizes? Default: FALSE.
+
+- bold_highest:
+
+  Logical. When \`group_by\` is specified, bold the highest mean for
+  each variable? Default: TRUE when compare is \`TRUE\`.
+
+- sig_color:
+
+  Character. Color for significant p-values (\< 0.05). Default:
+  \`"red"\`. Set to \`NULL\` to disable coloring.
+
+- interpret:
+
+  Logical. Pass results to AI for automatic interpretation? Default
+  FALSE. When TRUE, generates clean Methods and Results text using AI.
+  Requires API key setup (see
+  [`set_api_key`](https://pak.dynasite.org/Saqrmisc/reference/set_api_key.md)).
+
+- ...:
+
+  Additional arguments passed to
+  [`pass`](https://pak.dynasite.org/Saqrmisc/reference/pass.md) when
+  interpret = TRUE (e.g., provider, model, context, append_prompt).
+
+## Value
+
+A saqr_result object containing:
+
+- `table`: The formatted gt table (or other format if specified)
+
+- `data`: Raw data frame with computed statistics
+
+- `markdown`: Markdown version of the table for AI interpretation
+
+- `type`: "descriptive"
+
+- `variables`: Variables analyzed
+
+- `statistics`: Statistics computed
+
+- `n`: Total sample size
+
+When printed, displays the formatted table. Use `result$markdown` to get
+a text version suitable for
+[`pass`](https://pak.dynasite.org/Saqrmisc/reference/pass.md).
+
+## Exporting Tables
+
+The gt output can be exported using gtsave(): HTML (.html), Word
+(.docx), PDF (.pdf), or PNG (.png). Example: gtsave(table,
+"descriptives.html").
+
+## See also
+
+[`gt`](https://gt.rstudio.com/reference/gt.html) for gt table
+customization
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# ============================================================
+# EXAMPLE 1: Basic Descriptive Statistics
+# ============================================================
+data <- data.frame(
+  age = rnorm(100, mean = 35, sd = 10),
+  score = rnorm(100, mean = 75, sd = 15),
+  income = rnorm(100, mean = 50000, sd = 15000)
+)
+
+# Default statistics (n, mean, sd, median, min, max)
+descriptive_table(data, Vars = c("age", "score", "income"))
+
+# ============================================================
+# EXAMPLE 2: Custom Statistics Selection
+# ============================================================
+descriptive_table(
+  data = data,
+  Vars = c("age", "score"),
+  stats = c("n", "mean", "sd", "se", "median", "iqr", "skewness", "kurtosis")
+)
+
+# ============================================================
+# EXAMPLE 3: Stratified by Group
+# ============================================================
+data$gender <- sample(c("Male", "Female"), 100, replace = TRUE)
+
+descriptive_table(
+  data = data,
+  Vars = c("age", "score"),
+  group_by = gender,
+  overall = TRUE  # Include overall statistics
+)
+
+# ============================================================
+# EXAMPLE 4: Custom Labels and Title
+# ============================================================
+descriptive_table(
+  data = data,
+  Vars = c("age", "score", "income"),
+  labels = c(
+    age = "Age (years)",
+    score = "Test Score",
+    income = "Annual Income ($)"
+  ),
+  title = "Sample Characteristics",
+  subtitle = "N = 100 participants"
+)
+
+# ============================================================
+# EXAMPLE 5: Export to Data Frame
+# ============================================================
+df <- descriptive_table(
+  data = data,
+  Vars = c("age", "score"),
+  format = "data.frame"
+)
+print(df)
+
+# ============================================================
+# EXAMPLE 6: Different Themes
+# ============================================================
+descriptive_table(data, Vars = c("age", "score"), theme = "minimal")
+descriptive_table(data, Vars = c("age", "score"), theme = "dark")
+descriptive_table(data, Vars = c("age", "score"), theme = "colorful")
+} # }
+```

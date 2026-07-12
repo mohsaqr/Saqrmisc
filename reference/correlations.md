@@ -1,0 +1,210 @@
+# Full Pairwise Correlation Table
+
+Creates a comprehensive long-format correlation table showing all
+pairwise correlations with full statistics including r, confidence
+intervals, test statistics, degrees of freedom, p-values, and sample
+sizes. Supports multilevel/repeated measures correlations for nested
+data.
+
+## Usage
+
+``` r
+correlations(
+  data,
+  Vars = NULL,
+  type = c("bivariate", "partial", "semi-partial"),
+  method = c("pearson", "spearman", "kendall"),
+  p_adjust = c("none", "bonferroni", "holm", "fdr"),
+  ci_level = 0.95,
+  min_r = NULL,
+  sig_only = FALSE,
+  multilevel = FALSE,
+  id = NULL,
+  between = FALSE,
+  group_by = NULL,
+  include = NULL,
+  exclude = NULL,
+  auto_consolidate = TRUE,
+  digits = 3,
+  title = NULL,
+  format = c("gt", "plain", "markdown", "latex", "kable"),
+  show_header = TRUE,
+  interpret = FALSE,
+  ...
+)
+```
+
+## Arguments
+
+- data:
+
+  A data frame containing the variables to correlate.
+
+- Vars:
+
+  Character vector of variable names to include. If NULL (default), all
+  numeric variables in the data frame are used.
+
+- type:
+
+  Type of correlation: "bivariate" (default), "partial", or
+  "semi-partial".
+
+- method:
+
+  Correlation method: "pearson" (default), "spearman", or "kendall".
+
+- p_adjust:
+
+  Method for p-value adjustment: "none" (default), "bonferroni", "holm",
+  "fdr".
+
+- ci_level:
+
+  Confidence level for intervals. Default 0.95.
+
+- min_r:
+
+  Numeric. Only show correlations with \|r\| \>= this value. Default
+  NULL (show all).
+
+- sig_only:
+
+  Logical. Only show significant correlations (p \< .05)? Default FALSE.
+
+- multilevel:
+
+  Logical. Calculate multilevel (within-cluster) correlations? Default
+  FALSE. When TRUE, removes between-cluster variance to estimate
+  within-cluster associations.
+
+- id:
+
+  Character. Name of the clustering/ID variable for multilevel
+  correlations. Required when multilevel = TRUE.
+
+- between:
+
+  Logical. Also report between-cluster correlations? Default FALSE. Only
+  used when multilevel = TRUE.
+
+- group_by:
+
+  Character. Name of grouping variable to compute correlations
+  separately per group. Results are combined into one table with a
+  "Group" column.
+
+- include:
+
+  Character vector. Statistics to include in the table. Options: "r",
+  "ci", "stat" (t/S/z), "df", "p", "n", "sig". Default NULL includes
+  all. Use this OR exclude, not both.
+
+- exclude:
+
+  Character vector. Statistics to exclude from the table. Options: "r",
+  "ci", "stat" (t/S/z), "df", "p", "n", "sig". Default NULL excludes
+  none. Use this OR include, not both.
+
+- auto_consolidate:
+
+  Logical. If TRUE (default), when df or n are constant across all
+  pairs, they are moved to the subtitle instead of shown as columns.
+
+- digits:
+
+  Number of decimal places. Default 3.
+
+- title:
+
+  Optional title for the table.
+
+- format:
+
+  Character. Output format: "gt" (default, publication-ready gt table),
+  "plain" (data frame), "markdown", "latex", or "kable".
+
+- show_header:
+
+  Logical. Show title/subtitle header? Default TRUE. Set to FALSE to
+  hide the table header.
+
+- interpret:
+
+  Logical. Pass results to AI for automatic interpretation? Default
+  FALSE. When TRUE, generates clean Methods and Results text using AI.
+  Requires API key setup (see
+  [`set_api_key`](https://pak.dynasite.org/Saqrmisc/reference/set_api_key.md)).
+
+- ...:
+
+  Additional arguments passed to
+  [`pass`](https://pak.dynasite.org/Saqrmisc/reference/pass.md) when
+  interpret = TRUE (e.g., provider, model, context, append_prompt).
+
+## Value
+
+A list containing: table (formatted output), data (raw statistics),
+display (formatted display data frame), n_pairs, n_significant,
+consolidated (values moved to subtitle), between_data (if multilevel).
+
+## Details
+
+When `multilevel = TRUE`, the function calculates within-cluster
+correlations by group-mean centering variables before computing
+correlations. This removes between-cluster variance and estimates the
+pooled within-cluster association, appropriate for repeated measures or
+hierarchically nested data.
+
+The degrees of freedom for multilevel correlations are adjusted as: df =
+n_observations - n_clusters - 1
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Correlate all numeric variables in data frame
+correlations(mtcars)
+
+# Full correlation table with specific variables
+correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"))
+
+# Only strong correlations
+correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp"), min_r = 0.5)
+
+# Partial correlations with Bonferroni correction
+correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp"),
+             type = "partial", p_adjust = "bonferroni")
+
+# Only significant correlations
+correlations(mtcars, Vars = c("mpg", "cyl", "disp", "hp", "wt"),
+             sig_only = TRUE)
+
+# Multilevel correlations (within-person)
+correlations(longitudinal_data, Vars = c("anxiety", "depression", "stress"),
+             multilevel = TRUE, id = "participant_id")
+
+# Multilevel with between-cluster correlations
+correlations(longitudinal_data, Vars = c("anxiety", "depression"),
+             multilevel = TRUE, id = "participant_id", between = TRUE)
+
+# Correlations by group (stratified)
+correlations(mtcars, Vars = c("mpg", "hp", "wt"), group_by = "cyl")
+
+# Correlations by group with significance filter
+correlations(mtcars, Vars = c("mpg", "hp", "wt", "disp"),
+             group_by = "am", sig_only = TRUE)
+
+# Include only specific statistics
+correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+             include = c("r", "ci", "p", "sig"))
+
+# Exclude statistics you don't need
+correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+             exclude = c("stat", "df"))
+
+# Disable auto-consolidation (always show df and n columns)
+correlations(mtcars, Vars = c("mpg", "hp", "wt"),
+             auto_consolidate = FALSE)
+} # }
+```

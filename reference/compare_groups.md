@@ -1,0 +1,487 @@
+# Generate Group Comparison Plots and Statistics
+
+A comprehensive function for comparing groups using publication-ready
+visualizations and statistical tests. Creates \`ggbetweenstats\` plots
+from the ggstatsplot package with automatic test selection based on the
+number of groups:
+
+For 2 groups: t-test (parametric) or Mann-Whitney U (nonparametric). For
+3+ groups: ANOVA (parametric) or Kruskal-Wallis (nonparametric) with
+post-hoc pairwise comparisons. Also supports Bayesian analysis,
+equivalence testing (TOST), and stratified analyses using
+repeat_category.
+
+## Usage
+
+``` r
+compare_groups(
+  data,
+  category,
+  Vars = NULL,
+  category_sep = " | ",
+  repeat_category = NULL,
+  compare_by = NULL,
+  compare_mode = c("between", "within"),
+  repeat_combine = TRUE,
+  repeat_levels = NULL,
+  plots = TRUE,
+  plot_style = c("points", "boxplot", "bar", "violin", "ggstatsplot"),
+  table = TRUE,
+  type = "auto",
+  bayesian = FALSE,
+  equivalence = FALSE,
+  equivalence_bounds = c(-0.5, 0.5),
+  nonparametric = FALSE,
+  p_adjust_method = "fdr",
+  posthoc = TRUE,
+  posthoc_method = "games-howell",
+  posthoc_table = FALSE,
+  posthoc_format = c("wide", "long", "both"),
+  pairwise_display = "significant",
+  pivot = FALSE,
+  pivot_by = c("category", "repeat_category"),
+  pivot_stat = c("mean", "mean_sd", "median", "n"),
+  pivot_stars = TRUE,
+  pivot_split_level = TRUE,
+  min_threshold = 0.05,
+  min_subcategory = 5,
+  colors = NULL,
+  verbose = TRUE,
+  combined_table = TRUE,
+  format = c("gt", "plain", "markdown", "latex", "kable"),
+  show_header = TRUE,
+  interpret = FALSE,
+  ...
+)
+```
+
+## Arguments
+
+- data:
+
+  A data frame containing the variables to analyze.
+
+- category:
+
+  Character. Name(s) of the grouping variable(s). Can be a single
+  variable (e.g., "gender") or multiple variables for interaction groups
+  (e.g., c("gender", "treatment") creates "Male \| Treatment", etc.).
+
+- Vars:
+
+  Column specification for variables to compare. Can be NULL (default,
+  all numeric columns), a character vector of column names, a numeric
+  vector of column indices, or a single number (from that column to
+  end).
+
+- category_sep:
+
+  Character. Separator for combined group labels when multiple variables
+  are passed to category. Default: " \| ".
+
+- repeat_category:
+
+  Optional character. Name of a stratification variable. When provided,
+  separate analyses are performed for each level (e.g., analyze gender
+  differences separately for each country). Used with compare_mode =
+  "between".
+
+- compare_by:
+
+  Optional character vector. Factors to test within each category level.
+  Used with compare_mode = "within". For example, if category = "llm"
+  and compare_by = c("pronoun", "support"), tests whether pronoun and
+  support have effects within each LLM dataset separately.
+
+- compare_mode:
+
+  Character. Analysis mode: "between" (default) - compare category
+  levels (e.g., GPT vs Mistral vs Qwen), "within" - test compare_by
+  factors within each category level (e.g., test pronoun effect within
+  GPT, within Mistral, within Qwen separately).
+
+- repeat_combine:
+
+  Logical. When multiple repeat_category variables are provided with
+  compare_mode = "between", should they be combined into one grouping
+  (e.g., "he/him \| High")? Default TRUE.
+
+- repeat_levels:
+
+  Optional character vector. Specific levels of repeat_category to
+  include in the analysis. If NULL (default), all levels are used.
+
+- plots:
+
+  Logical. Generate visualizations? Default TRUE.
+
+- plot_style:
+
+  Character. Style of plots: "points" (default, jittered with CI),
+  "boxplot", "bar", "violin", or "ggstatsplot" (requires ggstatsplot
+  package).
+
+- table:
+
+  Logical. Generate summary statistics table? Default TRUE.
+
+- type:
+
+  Character. Type of statistical test: "auto" (default),
+  "parametric"/"p", "nonparametric"/"np", "kw" (Kruskal-Wallis), "mw"
+  (Mann-Whitney), or "bayes"/"bf".
+
+- bayesian:
+
+  Logical. Compute Bayesian t-tests with Bayes Factors? Default: FALSE.
+  Requires the BayesFactor package. Can also use \`type = "bayes"\`.
+
+- equivalence:
+
+  Logical. Perform equivalence testing (TOST)? Default: FALSE. Requires
+  the TOSTER package.
+
+- equivalence_bounds:
+
+  Numeric vector of length 2. Equivalence bounds in Cohen's d units for
+  TOST. Default: c(-0.5, 0.5).
+
+- nonparametric:
+
+  Logical. Use nonparametric tests? Default: FALSE. When TRUE, uses
+  Mann-Whitney U (2 groups) or Kruskal-Wallis (3+ groups).
+
+- p_adjust_method:
+
+  Method for multiple comparison correction. Options: "none",
+  "bonferroni", "holm", "hochberg", "hommel", "BH", "BY", "fdr".
+  Default: "fdr" (Benjamini-Hochberg False Discovery Rate). Applied to
+  both tables and post-hoc tests.
+
+- posthoc:
+
+  Logical. Compute post-hoc pairwise comparisons for 3+ groups? Default:
+  TRUE. Results include a comparison table and text report.
+
+- posthoc_method:
+
+  Method for post-hoc comparisons: "games-howell" (default, does not
+  assume equal variances) or "tukey" (Tukey's HSD, assumes equal
+  variances).
+
+- posthoc_table:
+
+  Logical. Include detailed post-hoc pairwise comparison table in the
+  output? Default FALSE.
+
+- posthoc_format:
+
+  Character. Format for post-hoc table when pivot = TRUE: "wide"
+  (default, comparisons as columns), "long" (one row per comparison), or
+  "both" (return both formats).
+
+- pairwise_display:
+
+  Which pairwise comparisons to show on plots? Options: "significant"
+  (default), "all", "none".
+
+- pivot:
+
+  Logical. Pivot to wide format? Default FALSE. When TRUE, creates a
+  wide table based on pivot_by parameter.
+
+- pivot_by:
+
+  Character. Which variable to pivot to columns: "category" (default) -
+  category groups become columns (e.g., GPT, Mistral, Qwen),
+  "repeat_category" - repeat_category levels become columns (e.g.,
+  he/him, she/her).
+
+- pivot_stat:
+
+  Character. Statistic to display in pivoted cells: "mean" (default),
+  "mean_sd" (mean with SD in parentheses), "median", or "n" (count).
+
+- pivot_stars:
+
+  Logical. Show significance stars in pivot table? Default TRUE when
+  pivot = TRUE.
+
+- pivot_split_level:
+
+  Logical. When multiple repeat_category variables are combined (e.g.,
+  "he/him \| High"), split them back into separate columns? Default
+  TRUE. When FALSE, keeps the combined "level" column.
+
+- min_threshold:
+
+  Numeric. Minimum proportion (0-1) of total sample required to include
+  a repeat_category level. Default: 0.05 (5 percent).
+
+- min_subcategory:
+
+  Integer. Minimum observations required per group. Groups with fewer
+  observations are excluded from analysis. Default: 5.
+
+- colors:
+
+  Character vector of colors for groups. Default: NULL uses a built-in
+  palette.
+
+- verbose:
+
+  Logical. Print progress messages? Default: TRUE.
+
+- combined_table:
+
+  Logical. When \`repeat_category\` is used, combine all results into a
+  single table? Default: TRUE. The combined table shows all
+  repeat_category levels together with bold highest means and red
+  significant p-values.
+
+- format:
+
+  Character. Output format for tables: "gt" (default,
+  publication-ready), "plain" (data frame), "markdown", "latex", or
+  "kable".
+
+- show_header:
+
+  Logical. Show title/subtitle header? Default TRUE. Set to FALSE to
+  hide the table header.
+
+- interpret:
+
+  Logical. Pass results to AI for automatic interpretation? Default
+  FALSE. When TRUE, generates clean Methods and Results text using AI.
+  Requires API key setup (see
+  [`set_api_key`](https://pak.dynasite.org/Saqrmisc/reference/set_api_key.md)).
+
+- ...:
+
+  Additional arguments passed to
+  [`pass`](https://pak.dynasite.org/Saqrmisc/reference/pass.md) when
+  interpret = TRUE (e.g., provider, model, context).
+
+## Value
+
+A list with class "comparison_results" containing: plots (named list of
+ggplot objects), grid_plot (combined plot grid if multiple variables),
+summary_table (formatted gt table), and summary_data (data frame with
+raw statistics). For stratified analysis (with repeat_category), returns
+a named list where each element corresponds to a level of
+repeat_category. When pivot = TRUE, additional elements are returned:
+
+- pivot_table: gt table with groups as columns and factor levels as rows
+
+- posthoc_pivot_wide: Post-hoc comparisons in wide format (if
+  posthoc_table = TRUE)
+
+- posthoc_pivot_long: Post-hoc comparisons in long format (if
+  posthoc_format = "long" or "both")
+
+## See also
+
+[`ggbetweenstats`](https://www.indrapatil.com/ggstatsplot/reference/ggbetweenstats.html)
+for the underlying plot function
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# ============================================================
+# EXAMPLE 1: Basic Two-Group Comparison (t-test)
+# ============================================================
+data <- data.frame(
+  gender = rep(c("Male", "Female"), each = 50),
+  score = c(rnorm(50, mean = 100, sd = 15),
+            rnorm(50, mean = 105, sd = 15))
+)
+
+results <- compare_groups(
+  data = data,
+  category = "gender",
+  Vars = c("score")
+)
+
+# View the plot
+results$plots$gender_vs_score
+
+# View summary statistics
+results$summary_data
+
+# ============================================================
+# EXAMPLE 2: Three-Group Comparison (ANOVA with post-hoc)
+# ============================================================
+data <- data.frame(
+  country = rep(c("USA", "UK", "Germany"), each = 40),
+  score1 = c(rnorm(40, 75, 10), rnorm(40, 70, 11), rnorm(40, 85, 9)),
+  score2 = c(rnorm(40, 50, 8), rnorm(40, 55, 9), rnorm(40, 48, 7))
+)
+
+results <- compare_groups(
+  data = data,
+  category = "country",
+  Vars = c("score1", "score2"),
+  posthoc = TRUE,
+  posthoc_method = "tukey",
+  pairwise_display = "all"
+)
+
+# View post-hoc pairwise comparisons
+results$summary_data$posthoc_results[[1]]
+
+# Print full ANOVA report
+cat(results$summary_data$anova_report[1])
+
+# ============================================================
+# EXAMPLE 3: Bayesian Analysis
+# ============================================================
+results <- compare_groups(
+  data = data,
+  category = "country",
+  Vars = c("score1"),
+  bayesian = TRUE
+)
+
+# View Bayes Factors
+results$summary_data[, c("country", "mean", "bf10", "bf_interpretation")]
+
+# ============================================================
+# EXAMPLE 4: Nonparametric Tests
+# ============================================================
+results <- compare_groups(
+  data = data,
+  category = "country",
+  Vars = c("score1"),
+  nonparametric = TRUE  # Uses Kruskal-Wallis + pairwise Wilcoxon
+)
+
+# ============================================================
+# EXAMPLE 5: Stratified Analysis (separate tests per subgroup)
+# ============================================================
+data <- data.frame(
+  country = rep(c("USA", "UK", "Germany"), each = 60),
+  gender = rep(c("Male", "Female"), times = 90),
+  score = rnorm(180, mean = 100, sd = 15)
+)
+
+# Compare gender WITHIN each country
+results <- compare_groups(
+  data = data,
+  category = "gender",
+  Vars = c("score"),
+  repeat_category = "country"
+)
+
+# Access results by country
+results$USA$summary_data
+results$UK$plots$gender_vs_score
+results$Germany$summary_table
+
+# ============================================================
+# EXAMPLE 6: Equivalence Testing (TOST)
+# ============================================================
+results <- compare_groups(
+  data = data,
+  category = "gender",
+  Vars = c("score"),
+  equivalence = TRUE,
+  equivalence_bounds = c(-0.3, 0.3)  # Small effect bounds
+)
+
+# Check equivalence conclusions
+results$summary_data[, c("gender", "mean", "equivalence_conclusion")]
+
+# ============================================================
+# EXAMPLE 7: Combined/Interaction Groups
+# ============================================================
+data <- data.frame(
+  strength = rep(c("Strong", "Weak"), each = 60),
+  gender = rep(c("Male", "Female"), times = 60),
+  score = rnorm(120, mean = 100, sd = 15)
+)
+
+# Pass multiple variables to category for interaction groups
+results <- compare_groups(
+  data = data,
+  category = c("strength", "gender"),  # Creates "Strong | Male", "Strong | Female", etc.
+  Vars = c("score")
+)
+
+# Custom separator
+results <- compare_groups(
+  data = data,
+  category = c("strength", "gender"),
+  category_sep = " x ",  # Creates "Strong x Male", etc.
+  Vars = c("score")
+)
+
+# ============================================================
+# EXAMPLE 8: Pivoted Table (groups as columns)
+# ============================================================
+# LLM comparison data
+data <- data.frame(
+  Support_level = c(rnorm(100, 4, 1), rnorm(100, 6.5, 1), rnorm(100, 4.8, 1)),
+  pronoun = rep(c("he/him", "she/her", "they/them"), each = 100),
+  LA_activity = rep(c("Negative", "Positive"), 150),
+  llm = rep(c("GPT", "Mistral", "Qwen"), each = 100)
+)
+
+# Basic pivot - groups become columns
+results <- compare_groups(
+  data = data,
+  category = "llm",                    # Becomes columns: GPT | Mistral | Qwen
+  Vars = "Support_level",
+  repeat_category = "pronoun",         # Rows: he/him, she/her, they/them
+  pivot = TRUE                         # Enable pivot mode
+)
+
+# Access the pivot table
+results$pivot_table
+
+# ============================================================
+# EXAMPLE 9: Pivot with Mean and SD
+# ============================================================
+results <- compare_groups(
+  data = data,
+  category = "llm",
+  Vars = "Support_level",
+  repeat_category = c("pronoun", "LA_activity"),
+  pivot = TRUE,
+  pivot_stat = "mean_sd"              # Shows "4.32 (1.21)"
+)
+
+# ============================================================
+# EXAMPLE 10: Pivot with Post-hoc Comparisons Table
+# ============================================================
+results <- compare_groups(
+  data = data,
+  category = "llm",
+  Vars = "Support_level",
+  repeat_category = "pronoun",
+  pivot = TRUE,
+  posthoc = TRUE,
+  posthoc_table = TRUE,               # Include post-hoc table
+  posthoc_format = "wide"             # "wide", "long", or "both"
+)
+
+# Access tables
+results$pivot_table              # Main pivoted means table
+results$posthoc_pivot_wide       # Post-hoc comparisons (wide format)
+
+# ============================================================
+# EXAMPLE 11: Different P-value Adjustment Methods
+# ============================================================
+# Available methods: "none", "bonferroni", "holm", "hochberg",
+#                   "hommel", "BH", "BY", "fdr" (default)
+results <- compare_groups(
+  data = data,
+  category = "llm",
+  Vars = "Support_level",
+  repeat_category = "pronoun",
+  pivot = TRUE,
+  p_adjust_method = "bonferroni"
+)
+} # }
+```

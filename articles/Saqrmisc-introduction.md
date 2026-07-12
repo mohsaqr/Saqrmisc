@@ -1,0 +1,673 @@
+# Introduction to Saqrmisc: Comprehensive Data Analysis and Visualization
+
+## Introduction
+
+The **Saqrmisc** package provides a comprehensive suite of functions for
+data processing, statistical analysis, and visualization. This vignette
+demonstrates the main features and capabilities of the package through
+practical examples.
+
+## Installation and Loading
+
+``` r
+
+# Install from GitHub (if not already installed)
+# devtools::install_github("mohsaqr/Saqrmisc")
+
+# Load the package
+library(Saqrmisc)
+```
+
+## Package Overview
+
+The Saqrmisc package includes ten main functional areas:
+
+1.  **Group Comparisons** (`compare_groups`)
+2.  **Correlation Matrix** (`correlation_matrix`)
+3.  **Full Correlation Tables** (`correlations`)
+4.  **Descriptive Statistics** (`descriptive_table`)
+5.  **Categorical Frequency Tables** (`categorical_table`)
+6.  **Data Transformation** (`center`, `scale_vars`, `standardize`,
+    `reverse_code`)
+7.  **Missing Data Analysis** (`missing_analysis`, `replace_missing`)
+8.  **Model-Based Clustering** (`clustering`)
+9.  **Categorical Variable Analysis** (`mosaic_analysis`)
+10. **Network Estimation** (`estimate_single_network`)
+
+## API Design
+
+All functions use a **consistent quoted-string API** for variable names:
+
+``` r
+
+# Variable names as quoted strings
+compare_groups(data, category = "gender", Vars = c("score1", "score2"))
+correlations(data, Vars = c("x", "y", "z"), group_by = "group")
+center(data, Vars = "score", group_by = "cluster")
+
+# NULL for auto-selection of all numeric variables
+correlations(data)  # Correlates all numeric variables
+correlation_matrix(data)  # Matrix of all numeric variables
+```
+
+## 1. Group Comparisons
+
+The
+[`compare_groups()`](https://pak.dynasite.org/Saqrmisc/reference/compare_groups.md)
+function creates comprehensive comparison plots using `ggbetweenstats`
+to compare groups across multiple variables.
+
+### Example: Treatment Effect Analysis
+
+``` r
+
+# Generate sample treatment data
+set.seed(456)
+treatment_data <- data.frame(
+  patient_id = 1:200,
+  group = sample(c("Control", "Treatment"), 200, replace = TRUE),
+  anxiety = rnorm(200, mean = 5, sd = 1.5),
+  depression = rnorm(200, mean = 4, sd = 1.2),
+  stress = rnorm(200, mean = 6, sd = 1.8),
+  study_site = sample(c("Site_A", "Site_B", "Site_C"), 200, replace = TRUE),
+  gender = sample(c("Male", "Female"), 200, replace = TRUE)
+)
+
+# Basic comparison analysis
+comparison_results <- compare_groups(
+  data = treatment_data,
+  category = "group",
+  Vars = c("anxiety", "depression", "stress"),
+  plots = TRUE,
+  table = TRUE
+)
+
+# View results
+comparison_results$plots$group_vs_anxiety
+comparison_results$summary_table
+
+# Stratified analysis by study site
+stratified_results <- compare_groups(
+  data = treatment_data,
+  category = "group",
+  Vars = c("anxiety", "depression"),
+  repeat_category = "study_site",
+  plots = TRUE,
+  table = TRUE
+)
+```
+
+### Advanced Features
+
+#### Multiple Stratification Variables
+
+Stratify by multiple variables simultaneously using
+[`c()`](https://rdrr.io/r/base/c.html):
+
+``` r
+
+# Stratify by both study_site AND gender
+multi_stratified <- compare_groups(
+  data = treatment_data,
+  category = "group",
+  Vars = c("anxiety", "depression"),
+  repeat_category = c("study_site", "gender"),
+  table = TRUE
+)
+
+# Results are organized by combined groups (e.g., "Site_A | Male")
+```
+
+#### Filtering Specific Levels
+
+Use `repeat_levels` to analyze only specific subgroups:
+
+``` r
+
+# Analyze only Site_A and Site_B
+filtered_results <- compare_groups(
+  data = treatment_data,
+  category = "group",
+  Vars = c("anxiety", "stress"),
+  repeat_category = "study_site",
+  repeat_levels = c("Site_A", "Site_B"),
+  table = TRUE
+)
+```
+
+#### Post-hoc Comparison Table
+
+Generate a formatted table of all pairwise comparisons:
+
+``` r
+
+# Generate sample data with 3+ groups
+set.seed(123)
+multi_group_data <- data.frame(
+  condition = sample(c("A", "B", "C"), 150, replace = TRUE),
+  score = rnorm(150, mean = 50, sd = 10),
+  performance = rnorm(150, mean = 75, sd = 15)
+)
+
+# Get post-hoc comparison table
+posthoc_results <- compare_groups(
+  data = multi_group_data,
+  category = "condition",
+  Vars = c("score", "performance"),
+  posthoc = TRUE,
+  posthoc_table = TRUE,
+  table = TRUE
+)
+
+# Access the formatted post-hoc table
+posthoc_results$posthoc_table
+```
+
+#### Nonparametric Tests
+
+Use type shortcuts for different test types:
+
+``` r
+
+# Mann-Whitney U test (2 groups)
+mw_results <- compare_groups(
+  data = treatment_data,
+  category = "group",
+  Vars = c("anxiety", "depression"),
+  type = "np",  # nonparametric
+  table = TRUE
+)
+
+# Kruskal-Wallis test (3+ groups)
+kw_results <- compare_groups(
+  data = multi_group_data,
+  category = "condition",
+  Vars = c("score", "performance"),
+  type = "np",
+  table = TRUE
+)
+```
+
+### Key Features
+
+- **Automatic test selection**: t-test (2 groups) or ANOVA (3+ groups)
+- **Post-hoc tests**: Tukey HSD or Games-Howell for multiple comparisons
+- **Effect sizes**: Cohen’s d, eta-squared, epsilon-squared,
+  rank-biserial
+- **Multiple stratification**: Use `repeat_category = c("var1", "var2")`
+  for combined grouping
+- **Level filtering**: Use `repeat_levels` to select specific subgroups
+- **Post-hoc table**: Use `posthoc_table = TRUE` for formatted pairwise
+  comparisons
+- **Type shortcuts**: `type = "np"` for nonparametric
+  (Mann-Whitney/Kruskal-Wallis)
+
+## 2. Correlation Matrix
+
+The
+[`correlation_matrix()`](https://pak.dynasite.org/Saqrmisc/reference/correlation_matrix.md)
+function creates publication-ready correlation tables with significance
+stars and optional heatmap visualization. Supports bivariate, partial,
+and semi-partial correlations.
+
+``` r
+
+# Basic correlation matrix (all numeric variables)
+correlation_matrix(mtcars)
+
+# Specific variables with title
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp", "wt"),
+  title = "Motor Trend Car Correlations"
+)
+
+# With confidence intervals
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "hp", "wt"),
+  show_ci = TRUE
+)
+
+# Partial correlations (controlling for other variables)
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  type = "partial",
+  title = "Partial Correlations"
+)
+
+# Spearman correlations with Bonferroni correction
+correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp"),
+  method = "spearman",
+  p_adjust = "bonferroni"
+)
+
+# Full matrix with heatmap
+result <- correlation_matrix(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  triangle = "full",
+  heatmap = TRUE
+)
+
+# Access the heatmap plot
+result$heatmap
+```
+
+## 3. Full Correlation Tables
+
+The
+[`correlations()`](https://pak.dynasite.org/Saqrmisc/reference/correlations.md)
+function creates comprehensive long-format correlation tables with full
+statistics for each variable pair. This is ideal for detailed reporting
+and when you need complete statistics (r, CI, t, df, p, n) for each
+correlation.
+
+### Basic Usage
+
+``` r
+
+# Full correlation table - all numeric variables
+correlations(mtcars)
+
+# Specify variables
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp", "wt")
+)
+
+# Only show strong correlations (|r| >= 0.7)
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp", "wt"),
+  min_r = 0.7
+)
+
+# Only show significant correlations
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp", "wt", "qsec"),
+  sig_only = TRUE
+)
+
+# With p-value adjustment
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "cyl", "disp", "hp"),
+  p_adjust = "bonferroni"
+)
+```
+
+### Stratified Correlations by Group
+
+Compute correlations separately for each group level, with results
+combined into one table:
+
+``` r
+
+# Correlations by number of cylinders
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "hp", "wt"),
+  group_by = "cyl"
+)
+
+# Correlations by transmission type, only significant
+correlations(
+  data = mtcars,
+  Vars = c("mpg", "hp", "wt", "disp"),
+  group_by = "am",
+  sig_only = TRUE
+)
+```
+
+### Multilevel Correlations
+
+For repeated measures or hierarchically nested data, use multilevel
+correlations to estimate within-cluster associations while removing
+between-cluster variance:
+
+``` r
+
+# Create sample longitudinal data
+set.seed(123)
+n_subjects <- 30
+n_timepoints <- 4
+
+longitudinal_data <- data.frame(
+  participant_id = rep(1:n_subjects, each = n_timepoints),
+  time = rep(1:n_timepoints, n_subjects),
+  anxiety = rnorm(n_subjects * n_timepoints, mean = 5, sd = 1.5),
+  depression = rnorm(n_subjects * n_timepoints, mean = 4, sd = 1.2),
+  stress = rnorm(n_subjects * n_timepoints, mean = 6, sd = 1.8)
+)
+
+# Within-person correlations (multilevel)
+correlations(
+  data = longitudinal_data,
+  Vars = c("anxiety", "depression", "stress"),
+  multilevel = TRUE,
+  id = "participant_id"
+)
+
+# Include between-person correlations
+correlations(
+  data = longitudinal_data,
+  Vars = c("anxiety", "depression"),
+  multilevel = TRUE,
+  id = "participant_id",
+  between = TRUE
+)
+```
+
+## 4. Data Transformation
+
+The package provides consistent transformation functions with group-wise
+support.
+
+### Mean Centering
+
+``` r
+
+# Grand-mean centering
+mtcars_c <- center(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Group-mean centering
+mtcars_c <- center(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
+
+# With dplyr (vectorized version)
+library(dplyr)
+mtcars %>% mutate(mpg_c = center_vec(mpg))
+mtcars %>% group_by(cyl) %>% mutate(mpg_c = center_vec(mpg))
+```
+
+### Z-Score Standardization
+
+``` r
+
+# Grand standardization
+mtcars_z <- standardize(mtcars, Vars = c("mpg", "hp", "wt"))
+
+# Group-wise standardization
+mtcars_z <- standardize(mtcars, Vars = c("mpg", "hp"), group_by = "cyl")
+
+# With dplyr
+mtcars %>% mutate(mpg_z = standardize_vec(mpg))
+```
+
+### Scaling
+
+``` r
+
+# Scale by SD
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg", "hp"), method = "sd")
+
+# Min-max scaling (0-1)
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg", "hp"), method = "range")
+
+# Scale to custom range (1-10)
+mtcars_s <- scale_vars(mtcars, Vars = c("mpg"), method = "range", range = c(1, 10))
+```
+
+### Reverse Coding
+
+For Likert scales and similar measures:
+
+``` r
+
+# Create sample data
+df <- data.frame(
+  item1 = c(1, 2, 3, 4, 5),
+  item2 = c(5, 4, 3, 2, 1),  # reverse-worded
+  item3 = c(2, 3, 4, 3, 2)
+)
+
+# Reverse code with auto-detected scale
+df <- reverse_code(df, Vars = "item2")
+
+# Explicit 1-5 Likert scale
+df <- reverse_code(df, Vars = c("item2", "item3"), min = 1, max = 5)
+
+# With dplyr
+df %>% mutate(item2_r = reverse_code_vec(item2, min = 1, max = 5))
+```
+
+## 5. Descriptive Statistics
+
+The
+[`descriptive_table()`](https://pak.dynasite.org/Saqrmisc/reference/descriptive_table.md)
+function creates publication-ready descriptive statistics tables.
+
+``` r
+
+# Generate sample data
+data <- data.frame(
+  age = rnorm(100, mean = 35, sd = 10),
+  score = rnorm(100, mean = 75, sd = 15),
+  income = rnorm(100, mean = 50000, sd = 15000),
+  gender = sample(c("Male", "Female"), 100, replace = TRUE)
+)
+
+# Basic descriptive table
+descriptive_table(
+  data = data,
+  Vars = c("age", "score", "income")
+)
+
+# With grouping and extended statistics
+descriptive_table(
+  data = data,
+  Vars = c("age", "score"),
+  group_by = "gender",
+  stats = c("n", "mean", "sd", "median", "iqr", "skewness"),
+  title = "Sample Characteristics",
+  theme = "colorful"
+)
+```
+
+## 6. Categorical Frequency Tables
+
+The
+[`categorical_table()`](https://pak.dynasite.org/Saqrmisc/reference/categorical_table.md)
+function creates frequency tables with chi-square tests.
+
+``` r
+
+# Generate sample data
+data <- data.frame(
+  gender = sample(c("Male", "Female", "Other"), 200, replace = TRUE),
+  education = sample(c("High School", "Bachelor", "Master", "PhD"), 200, replace = TRUE)
+)
+
+# Single variable frequency table
+categorical_table(data, var = "gender")
+
+# Cross-tabulation with chi-square test
+categorical_table(
+  data = data,
+  var = "gender",
+  by = "education",
+  chi_square = TRUE,
+  cramers_v = TRUE
+)
+```
+
+## 7. Missing Data Analysis
+
+### Comprehensive Analysis
+
+``` r
+
+# Add some missing values
+df <- mtcars
+df$mpg[c(1, 5, 10)] <- NA
+df$hp[c(2, 5, 15)] <- NA
+
+# Run missing data analysis
+results <- missing_analysis(df)
+
+# Components
+results$summary      # gt table with per-variable missing counts
+results$patterns     # Missing data patterns
+results$mcar         # Little's MCAR test results
+results$plot         # Missing pattern visualization
+```
+
+### Imputation
+
+``` r
+
+# Replace with mean
+df_imp <- replace_missing(df, Vars = "mpg", method = "mean")
+
+# Replace with median
+df_imp <- replace_missing(df, Vars = "mpg", method = "median")
+
+# Group-wise imputation
+df_imp <- replace_missing(df, Vars = "mpg", method = "mean", group_by = "cyl")
+```
+
+## 8. Model-Based Clustering
+
+The
+[`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
+function performs comprehensive model-based clustering using MoEClust.
+
+``` r
+
+# Generate sample customer data
+set.seed(123)
+customer_data <- data.frame(
+  customer_id = 1:300,
+  age = rnorm(300, mean = 45, sd = 15),
+  income = rnorm(300, mean = 50000, sd = 20000),
+  spending = rnorm(300, mean = 2000, sd = 800),
+  satisfaction = rnorm(300, mean = 7, sd = 2)
+)
+
+# Run clustering analysis
+clustering_results <- clustering(
+  data = customer_data,
+  vars = c("age", "income", "spending", "satisfaction"),
+  n_clusters = 3,
+  scaling = "standardize"
+)
+
+# View results
+print(clustering_results)
+summary(clustering_results)
+
+# Plot cluster profiles
+plot(clustering_results, type = "profile")
+plot(clustering_results, type = "heatmap")
+
+# Get cluster assignments
+assignments <- get_cluster_assignments(clustering_results)
+
+# Model comparison table
+model_comparison_table(clustering_results)
+```
+
+## 9. Categorical Variable Analysis
+
+The
+[`mosaic_analysis()`](https://pak.dynasite.org/Saqrmisc/reference/mosaic_analysis.md)
+function performs comprehensive analysis of categorical variables.
+
+``` r
+
+# Generate sample demographic data
+set.seed(789)
+demographic_data <- data.frame(
+  gender = sample(c("Male", "Female", "Other"), 500, replace = TRUE, prob = c(0.45, 0.45, 0.1)),
+  education = sample(c("High School", "Bachelor", "Master", "PhD"), 500, replace = TRUE),
+  region = sample(c("North", "South", "East", "West"), 500, replace = TRUE)
+)
+
+# Perform mosaic analysis
+mosaic_results <- mosaic_analysis(
+  data = demographic_data,
+  var1 = "gender",
+  var2 = "education",
+  min_count = 10,
+  title = "Gender Distribution by Education Level",
+  show_percentages = TRUE
+)
+
+# Access results
+print(mosaic_results$chi_test)
+print(mosaic_results$cramers_v)
+print(mosaic_results$consolidated_table)
+```
+
+## 10. Network Estimation
+
+The
+[`estimate_single_network()`](https://pak.dynasite.org/Saqrmisc/reference/estimate_single_network.md)
+function estimates psychological networks.
+
+``` r
+
+# Generate sample data
+set.seed(123)
+network_data <- data.frame(
+  var1 = rnorm(200),
+  var2 = rnorm(200),
+  var3 = rnorm(200),
+  var4 = rnorm(200),
+  var5 = rnorm(200)
+)
+
+# Estimate network
+network_results <- estimate_single_network(
+  data = network_data,
+  vars = c("var1", "var2", "var3", "var4", "var5"),
+  method = "EBICglasso"
+)
+
+# View results
+print(network_results)
+summary(network_results)
+```
+
+## Best Practices
+
+### Data Preparation
+
+1.  **Clean your data** before analysis
+2.  **Check for missing values** and handle them appropriately
+3.  **Verify variable types** (numeric for clustering, categorical for
+    mosaic)
+4.  **Consider sample sizes** - larger samples provide more reliable
+    results
+
+### Parameter Selection
+
+1.  **Clustering**: Start with 2-5 clusters and use domain knowledge
+2.  **Scaling**: Use “standardize” for most cases
+3.  **Minimum counts**: Set appropriate thresholds based on your data
+    size
+
+### Interpretation
+
+1.  **Effect sizes**: Consider effect sizes, not just p-values
+2.  **Multiple testing**: Use p-value adjustments when appropriate
+3.  **Practical significance**: Look beyond statistical significance
+
+## Getting Help
+
+- Use `?function_name` for detailed documentation
+- Check the package vignettes for examples
+- Report issues on the GitHub repository
+
+## Conclusion
+
+The Saqrmisc package provides a comprehensive toolkit for data analysis
+and visualization. The functions are designed to work together
+seamlessly while also being useful independently.
+
+For more information, visit the package documentation or GitHub
+repository.
