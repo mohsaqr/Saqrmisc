@@ -20,7 +20,9 @@ plot(x, type = "profile", model = NULL, scale = "original", ...)
 - type:
 
   Type of plot: "profile" (default), "heatmap", "barchart", "sizes",
-  "comparison", or "all" (displays all plot types)
+  "bic", "aic", "icl", "comparison" (all three information criteria as
+  separate plots), or "all" (all plot types for every fitted model, plus
+  all model-comparison plots)
 
 - model:
 
@@ -36,8 +38,9 @@ plot(x, type = "profile", model = NULL, scale = "original", ...)
 
 ## Value
 
-The plot object(s) invisibly. When type = "all", returns a list of all
-generated plots.
+The plot object(s) invisibly. `type = "comparison"` returns the three
+criterion plots. `type = "all"` returns a nested list containing every
+fitted model's plots and all comparison plots.
 
 ## Examples
 
@@ -53,6 +56,11 @@ plot(results, type = "heatmap")
 
 # All plot types
 plot(results, type = "all")
+
+# Information criteria, separately
+plot(results, type = "bic")
+plot(results, type = "aic")
+plot(results, type = "icl")
 
 # Specific model with scaled data
 plot(results, type = "profile", model = "VVV", scale = "scaled")

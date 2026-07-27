@@ -18,3 +18,8 @@ summary(object, ...)
 - ...:
 
   Additional arguments (ignored)
+
+## Value
+
+A tibble with one row per fitted model, sorted from best to worst by
+BIC. The `best` column identifies the selected model.

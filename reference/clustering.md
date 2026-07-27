@@ -17,6 +17,16 @@ clustering(
   verbose = TRUE,
   na_action = "omit"
 )
+
+cluster(
+  data,
+  vars,
+  n_clusters,
+  scaling = "standardize",
+  models = "all",
+  verbose = TRUE,
+  na_action = "omit"
+)
 ```
 
 ## Arguments

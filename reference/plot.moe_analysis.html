@@ -11,7 +11,7 @@ and model comparison charts."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -65,7 +65,9 @@ and model comparison charts.</p>
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
 <dd><p>Type of plot: "profile" (default), "heatmap", "barchart",
-"sizes", "comparison", or "all" (displays all plot types)</p></dd>
+"sizes", "bic", "aic", "icl", "comparison" (all three information
+criteria as separate plots), or "all" (all plot types for every fitted
+model, plus all model-comparison plots)</p></dd>
 
 
 <dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>
@@ -82,8 +84,9 @@ and model comparison charts.</p>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>The plot object(s) invisibly. When type = "all", returns a list
-  of all generated plots.</p>
+    <p>The plot object(s) invisibly. <code>type = "comparison"</code> returns the
+three criterion plots. <code>type = "all"</code> returns a nested list containing
+every fitted model's plots and all comparison plots.</p>
     </div>
 
     <div class="section level2">
@@ -99,6 +102,11 @@ and model comparison charts.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># All plot types</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span>, type <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Information criteria, separately</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span>, type <span class="op">=</span> <span class="st">"bic"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span>, type <span class="op">=</span> <span class="st">"aic"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span>, type <span class="op">=</span> <span class="st">"icl"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Specific model with scaled data</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span>, type <span class="op">=</span> <span class="st">"profile"</span>, model <span class="op">=</span> <span class="st">"VVV"</span>, scale <span class="op">=</span> <span class="st">"scaled"</span><span class="op">)</span></span></span>

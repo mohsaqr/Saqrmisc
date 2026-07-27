@@ -1,5 +1,42 @@
 # Changelog
 
+## Saqrmisc 0.9.2
+
+- Added
+  [`cluster()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
+  as a short alias for
+  [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md).
+- Added optional `cluster_*` aliases for the existing clustering
+  helpers. All original function names remain unchanged.
+- Fixed
+  [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
+  model comparisons by storing the scalar fitted log-likelihood instead
+  of each model’s variable-length iteration history.
+- [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
+  now stores a comparison table containing BIC, AIC, and ICL.
+  `plot(..., type = "all")` plots each criterion separately, while
+  `"bic"`, `"aic"`, and `"icl"` can be requested individually.
+- Information-criterion plots now place the number of clusters on the
+  x-axis and draw one line per covariance model.
+- Corrected MoEClust information-criterion ranking so larger values
+  select the best model.
+- Preserved both the complete input data and the complete-case analysis
+  data in clustering results.
+- [`get_cluster_assignments()`](https://pak.dynasite.org/Saqrmisc/reference/get_cluster_assignments.md)
+  now preserves rows omitted during complete-case fitting and marks
+  their assignments and probabilities as `NA`.
+- Added a tidy interface:
+  [`summary()`](https://rdrr.io/r/base/summary.html) returns a ranked
+  model tibble, [`fitted()`](https://rdrr.io/r/stats/fitted.values.html)
+  returns original rows with fitted clusters, and
+  `get_best_model(..., what = "fit")` extracts the raw MoEClust fit.
+- `plot(..., type = "all")` now means every plot for every fitted model.
+  Added
+  [`plot_best_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_best_model.md)
+  and
+  [`plot_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_model.md)
+  for focused plotting.
+
 ## Saqrmisc 0.9.1
 
 - [`mosaic_analysis()`](https://pak.dynasite.org/Saqrmisc/reference/mosaic_analysis.md)

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,22 @@
       <small>Source: <a href="https://github.com/mohsaqr/Saqrmisc/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.2" id="saqrmisc-092">Saqrmisc 0.9.2<a class="anchor" aria-label="anchor" href="#saqrmisc-092"></a></h2>
+<ul><li>Added <code><a href="../reference/clustering.html">cluster()</a></code> as a short alias for <code><a href="../reference/clustering.html">clustering()</a></code>.</li>
+<li>Added optional <code>cluster_*</code> aliases for the existing clustering helpers. All original function names remain unchanged.</li>
+<li>Fixed <code><a href="../reference/clustering.html">clustering()</a></code> model comparisons by storing the scalar fitted log-likelihood instead of each model’s variable-length iteration history.</li>
+<li>
+<code><a href="../reference/clustering.html">clustering()</a></code> now stores a comparison table containing BIC, AIC, and ICL. <code>plot(..., type = "all")</code> plots each criterion separately, while <code>"bic"</code>, <code>"aic"</code>, and <code>"icl"</code> can be requested individually.</li>
+<li>Information-criterion plots now place the number of clusters on the x-axis and draw one line per covariance model.</li>
+<li>Corrected MoEClust information-criterion ranking so larger values select the best model.</li>
+<li>Preserved both the complete input data and the complete-case analysis data in clustering results.</li>
+<li>
+<code><a href="../reference/get_cluster_assignments.html">get_cluster_assignments()</a></code> now preserves rows omitted during complete-case fitting and marks their assignments and probabilities as <code>NA</code>.</li>
+<li>Added a tidy interface: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> returns a ranked model tibble, <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> returns original rows with fitted clusters, and <code>get_best_model(..., what = "fit")</code> extracts the raw MoEClust fit.</li>
+<li>
+<code>plot(..., type = "all")</code> now means every plot for every fitted model. Added <code><a href="../reference/plot_best_model.html">plot_best_model()</a></code> and <code><a href="../reference/plot_model.html">plot_model()</a></code> for focused plotting.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.1" id="saqrmisc-091">Saqrmisc 0.9.1<a class="anchor" aria-label="anchor" href="#saqrmisc-091"></a></h2>
 <ul><li>

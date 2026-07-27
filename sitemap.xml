@@ -17,6 +17,7 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/center.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/center_vec.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/clustering.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/compare_groups.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/compare_models.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/compare_networks.html</loc></url>
@@ -28,6 +29,7 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/descriptive_table.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/estimate_grouped_networks.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/estimate_single_network.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/fitted.moe_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/generate_cluster_report.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/get_best_model.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/get_cluster_assignments.html</loc></url>
@@ -44,6 +46,8 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/pass.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot.moe_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot.mosaic_analysis.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot_best_model.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot_model.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.cluster_stability.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.grouped_network_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.html_table.html</loc></url>
