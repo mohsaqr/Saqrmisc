@@ -10,6 +10,7 @@
 ^\.gitignore$
 ^build_prompt\.md$
 ^\.claude$
+^\.playwright-mcp$
 ^LICENSE\.md$ Rplots.pdf
 USAGE.md
 install.R

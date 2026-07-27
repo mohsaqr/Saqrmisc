@@ -1,3 +1,27 @@
+# Saqrmisc 0.9.2
+
+* Added `cluster()` as a short alias for `clustering()`.
+* Added optional `cluster_*` aliases for the existing clustering helpers.
+  All original function names remain unchanged.
+* Fixed `clustering()` model comparisons by storing the scalar fitted
+  log-likelihood instead of each model's variable-length iteration history.
+* `clustering()` now stores a comparison table containing BIC, AIC, and ICL.
+  `plot(..., type = "all")` plots each criterion separately, while `"bic"`,
+  `"aic"`, and `"icl"` can be requested individually.
+* Information-criterion plots now place the number of clusters on the x-axis
+  and draw one line per covariance model.
+* Corrected MoEClust information-criterion ranking so larger values select the
+  best model.
+* Preserved both the complete input data and the complete-case analysis data
+  in clustering results.
+* `get_cluster_assignments()` now preserves rows omitted during complete-case
+  fitting and marks their assignments and probabilities as `NA`.
+* Added a tidy interface: `summary()` returns a ranked model tibble,
+  `fitted()` returns original rows with fitted clusters, and
+  `get_best_model(..., what = "fit")` extracts the raw MoEClust fit.
+* `plot(..., type = "all")` now means every plot for every fitted model.
+  Added `plot_best_model()` and `plot_model()` for focused plotting.
+
 # Saqrmisc 0.9.1
 
 * `mosaic_analysis()` no longer draws the variable-name axis titles by default,
@@ -50,4 +74,4 @@ This is the initial release of the Saqrmisc package, providing comprehensive too
 ### Dependencies
 
 * Core: MoEClust, mclust, dplyr, ggplot2, ggstatsplot, vcd, grid, tibble, rlang, gridExtra, gt, janitor, prcr, ggcharts, MASS, tidyverse
-* Suggested: testthat, knitr, rmarkdown, devtools, roxygen2 
+* Suggested: testthat, knitr, rmarkdown, devtools, roxygen2

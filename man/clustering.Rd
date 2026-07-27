@@ -2,9 +2,20 @@
 % Please edit documentation in R/clustering.R
 \name{clustering}
 \alias{clustering}
+\alias{cluster}
 \title{Model-Based Clustering Analysis}
 \usage{
 clustering(
+  data,
+  vars,
+  n_clusters,
+  scaling = "standardize",
+  models = "all",
+  verbose = TRUE,
+  na_action = "omit"
+)
+
+cluster(
   data,
   vars,
   n_clusters,

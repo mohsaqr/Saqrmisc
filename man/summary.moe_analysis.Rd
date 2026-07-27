@@ -11,6 +11,10 @@
 
 \item{...}{Additional arguments (ignored)}
 }
+\value{
+A tibble with one row per fitted model, sorted from best to worst
+  by BIC. The \code{best} column identifies the selected model.
+}
 \description{
 Summary method for moe_analysis objects
 }

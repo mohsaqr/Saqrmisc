@@ -4,15 +4,18 @@
 \alias{get_best_model}
 \title{Get Best Model}
 \usage{
-get_best_model(results, criterion = "bic")
+get_best_model(results, criterion = "bic", what = c("name", "result", "fit"))
 }
 \arguments{
 \item{results}{Object from run_full_moe_analysis}
 
 \item{criterion}{Selection criterion: "bic", "aic", or "icl"}
+
+\item{what}{What to return: the model "name", the complete stored "result",
+or the raw fitted MoEClust "fit".}
 }
 \value{
-Name of best model
+The requested representation of the best model.
 }
 \description{
 Get Best Model

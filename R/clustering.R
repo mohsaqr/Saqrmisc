@@ -296,7 +296,8 @@ clustering <- function(data,
   # Data Preparation
   # -------------------------------------------------------------------------
   cluster_data <- data[, vars, drop = FALSE]
-  input_data <- data  # Keep reference to original
+  full_input_data <- data
+  input_data <- data
   cluster_vars <- vars  # Keep reference for internal use
   scaling_method <- scaling
   model_names <- models
@@ -509,7 +510,7 @@ clustering <- function(data,
             n_observations = nrow(cluster_data),
             variables = cluster_vars,
             scaling_method = scaling_method,
-            loglik = fit_result$loglik,
+            loglik = fit_result$LOGLIK,
             aic = fit_result$aic,
             bic = fit_result$bic,
             icl = fit_result$icl
@@ -551,7 +552,9 @@ clustering <- function(data,
     data = list(
       original_data = cluster_data,
       scaled_data = scaled_data,
-      full_input_data = input_data,
+      full_input_data = full_input_data,
+      analysis_data = input_data,
+      complete_rows = complete_rows,
       n_removed = n_removed
     ),
     parameters = list(
@@ -579,11 +582,11 @@ clustering <- function(data,
   if (successful_models > 0) {
     bic_values <- sapply(results, function(x) {
       bic <- x$model_info$bic
-      if (is.null(bic) || is.na(bic)) Inf else bic
+      if (is.null(bic) || is.na(bic)) -Inf else bic
     })
     if (any(is.finite(bic_values))) {
-      output$summary$best_model_bic <- names(which.min(bic_values))
-      output$summary$best_bic_value <- min(bic_values, na.rm = TRUE)
+      output$summary$best_model_bic <- names(which.max(bic_values))
+      output$summary$best_bic_value <- max(bic_values, na.rm = TRUE)
 
       if (verbose) {
         cat("Best model (BIC):", output$summary$best_model_bic,
@@ -593,7 +596,28 @@ clustering <- function(data,
   }
 
   class(output) <- c("moe_analysis", "list")
+  output$comparison <- compare_models(output, sort_by = "bic")
   return(output)
+}
+
+#' @rdname clustering
+#' @export
+cluster <- function(data,
+                    vars,
+                    n_clusters,
+                    scaling = "standardize",
+                    models = "all",
+                    verbose = TRUE,
+                    na_action = "omit") {
+  clustering(
+    data = data,
+    vars = vars,
+    n_clusters = n_clusters,
+    scaling = scaling,
+    models = models,
+    verbose = verbose,
+    na_action = na_action
+  )
 }
 
 # =============================================================================
@@ -750,7 +774,7 @@ compare_models <- function(results, sort_by = "bic") {
     stringsAsFactors = FALSE
   )
 
-  comparison <- comparison[order(comparison[[sort_by]]), ]
+  comparison <- comparison[order(comparison[[sort_by]], decreasing = TRUE), ]
   rownames(comparison) <- NULL
 
   comparison
@@ -760,18 +784,28 @@ compare_models <- function(results, sort_by = "bic") {
 #'
 #' @param results Object from run_full_moe_analysis
 #' @param criterion Selection criterion: "bic", "aic", or "icl"
+#' @param what What to return: the model "name", the complete stored "result",
+#'   or the raw fitted MoEClust "fit".
 #'
-#' @return Name of best model
+#' @return The requested representation of the best model.
 #' @export
-get_best_model <- function(results, criterion = "bic") {
+get_best_model <- function(results, criterion = "bic",
+                           what = c("name", "result", "fit")) {
   if (!criterion %in% c("bic", "aic", "icl")) {
     stop("criterion must be 'bic', 'aic', or 'icl'")
   }
 
+  what <- match.arg(what)
   models_data <- if ("models" %in% names(results)) results$models else results
   values <- sapply(models_data, function(x) x$model_info[[criterion]])
+  best_name <- names(which.max(values))
 
-  names(which.min(values))
+  switch(
+    what,
+    name = best_name,
+    result = models_data[[best_name]],
+    fit = models_data[[best_name]]$model_fit
+  )
 }
 
 #' List Available Models
@@ -833,32 +867,132 @@ print.moe_analysis <- function(x, ...) {
 #'
 #' @param object An moe_analysis object
 #' @param ... Additional arguments (ignored)
+#' @return A tibble with one row per fitted model, sorted from best to worst
+#'   by BIC. The `best` column identifies the selected model.
 #' @export
 summary.moe_analysis <- function(object, ...) {
-  cat("\n=== MoEClust Analysis Summary ===\n\n")
-
-  cat("Analysis Parameters:\n")
-  cat("  Date:", as.character(object$call$analysis_date), "\n")
-  cat("  Variables:", paste(object$parameters$cluster_vars, collapse = ", "), "\n")
-  cat("  Scaling:", object$parameters$scaling_method, "\n")
-  cat("  Clusters tested:", paste(object$parameters$n_clusters, collapse = ", "), "\n")
-  cat("  Sample size:", object$parameters$sample_size, "\n")
-
-  cat("\nResults:\n")
-  cat("  Successful models:", object$summary$n_successful, "\n")
-  cat("  Failed models:", object$summary$n_failed, "\n")
-
-  if (!is.null(object$summary$best_model_bic)) {
-    cat("  Best model (BIC):", object$summary$best_model_bic, "\n")
-    cat("  Best BIC value:", round(object$summary$best_bic_value, 2), "\n")
+  comparison <- object$comparison
+  if (is.null(comparison)) {
+    comparison <- compare_models(object, sort_by = "bic")
   }
 
-  if (length(object$summary$failed_models) > 0) {
-    cat("\nFailed models:", paste(object$summary$failed_models, collapse = ", "), "\n")
+  comparison$best <- comparison$model == get_best_model(object, "bic")
+  comparison <- comparison[
+    c("model", "best", "n_clusters", "loglik", "aic", "bic", "icl")
+  ]
+
+  tibble::as_tibble(comparison)
+}
+
+#' Extract Fitted Clustering Data
+#'
+#' @param object An moe_analysis object.
+#' @param model Model name. If NULL, uses the best model by BIC.
+#' @param probabilities Include cluster-membership probabilities and certainty.
+#' @param ... Additional arguments (ignored).
+#'
+#' @return A tibble containing the original data and a `cluster` column.
+#'   Rows omitted during fitting are retained with `NA` fitted values.
+#' @export
+fitted.moe_analysis <- function(object, model = NULL,
+                                probabilities = FALSE, ...) {
+  if (is.null(model)) {
+    model <- get_best_model(object, criterion = "bic")
   }
 
-  cat("\n")
-  invisible(compare_models(object))
+  fitted_data <- get_cluster_assignments(
+    object,
+    model_name = model,
+    include_probabilities = probabilities
+  )
+
+  tibble::as_tibble(fitted_data)
+}
+
+#' Plot One Fitted Clustering Model
+#'
+#' @param results An moe_analysis object.
+#' @param model Name of the fitted model.
+#' @param type Plot type: "profile", "heatmap", "barchart", "sizes", or "all".
+#' @param scale Data scale: "original" or "scaled".
+#'
+#' @return A ggplot object, or a named list of four ggplot objects when
+#'   `type = "all"`.
+#' @export
+plot_model <- function(results, model,
+                       type = c("all", "profile", "heatmap", "barchart", "sizes"),
+                       scale = c("original", "scaled")) {
+  type <- match.arg(type)
+  scale <- match.arg(scale)
+
+  if (!inherits(results, "moe_analysis")) {
+    stop("results must be from clustering()")
+  }
+  if (!model %in% names(results$models)) {
+    stop("Model '", model, "' not found. Available models: ",
+         paste(names(results$models), collapse = ", "))
+  }
+
+  model_result <- results$models[[model]]
+  cluster_vars <- results$parameters$cluster_vars
+  plots <- list()
+
+  if (type %in% c("profile", "all")) {
+    plots$profile <- if (scale == "original") {
+      model_result$original_scale$plot
+    } else {
+      model_result$scaled_data$plot
+    }
+  }
+  if (type %in% c("heatmap", "all")) {
+    plots$heatmap <- create_cluster_heatmap(
+      model_result, cluster_vars, scale, model
+    )
+  }
+  if (type %in% c("barchart", "all")) {
+    plots$barchart <- create_cluster_barchart(
+      model_result, cluster_vars, scale, model
+    )
+  }
+  if (type %in% c("sizes", "all")) {
+    plots$sizes <- create_cluster_sizes_chart(model_result, model)
+  }
+
+  invisible(lapply(plots, print))
+
+  if (type == "all") {
+    invisible(plots)
+  } else {
+    invisible(plots[[1]])
+  }
+}
+
+#' Plot the Best Fitted Clustering Model
+#'
+#' @param results An moe_analysis object.
+#' @param type Plot type: "profile", "heatmap", "barchart", "sizes", or "all".
+#' @param criterion Criterion used to select the best model.
+#' @param scale Data scale: "original" or "scaled".
+#'
+#' @return A ggplot object, or a named list of four ggplot objects when
+#'   `type = "all"`.
+#' @export
+plot_best_model <- function(
+    results,
+    type = c("all", "profile", "heatmap", "barchart", "sizes"),
+    criterion = c("bic", "aic", "icl"),
+    scale = c("original", "scaled")) {
+  type <- match.arg(type)
+  criterion <- match.arg(criterion)
+  scale <- match.arg(scale)
+  model <- get_best_model(results, criterion = criterion)
+
+  plot_model(
+    results,
+    model = model,
+    type = type,
+    scale = scale
+  )
 }
 
 #' Plot method for moe_analysis objects
@@ -870,13 +1004,16 @@ summary.moe_analysis <- function(object, ...) {
 #'
 #' @param x An moe_analysis object
 #' @param type Type of plot: "profile" (default), "heatmap", "barchart",
-#'   "sizes", "comparison", or "all" (displays all plot types)
+#'   "sizes", "bic", "aic", "icl", "comparison" (all three information
+#'   criteria as separate plots), or "all" (all plot types for every fitted
+#'   model, plus all model-comparison plots)
 #' @param model Model to plot. If NULL (default), uses best model by BIC.
 #' @param scale Data scale for plots: "original" (default) or "scaled"
 #' @param ... Additional arguments (currently ignored)
 #'
-#' @return The plot object(s) invisibly. When type = "all", returns a list
-#'   of all generated plots.
+#' @return The plot object(s) invisibly. `type = "comparison"` returns the
+#'   three criterion plots. `type = "all"` returns a nested list containing
+#'   every fitted model's plots and all comparison plots.
 #'
 #' @examples
 #' \dontrun{
@@ -891,6 +1028,11 @@ summary.moe_analysis <- function(object, ...) {
 #' # All plot types
 #' plot(results, type = "all")
 #'
+#' # Information criteria, separately
+#' plot(results, type = "bic")
+#' plot(results, type = "aic")
+#' plot(results, type = "icl")
+#'
 #' # Specific model with scaled data
 #' plot(results, type = "profile", model = "VVV", scale = "scaled")
 #' }
@@ -900,7 +1042,10 @@ plot.moe_analysis <- function(x, type = "profile", model = NULL, scale = "origin
 
   # Validate type
 
-  valid_types <- c("profile", "heatmap", "barchart", "sizes", "comparison", "all")
+  valid_types <- c(
+    "profile", "heatmap", "barchart", "sizes",
+    "bic", "aic", "icl", "comparison", "all"
+  )
   if (!type %in% valid_types) {
     stop("type must be one of: ", paste(valid_types, collapse = ", "))
   }
@@ -908,6 +1053,35 @@ plot.moe_analysis <- function(x, type = "profile", model = NULL, scale = "origin
   # Validate scale
   if (!scale %in% c("original", "scaled")) {
     stop("scale must be 'original' or 'scaled'")
+  }
+
+  # "all" means every plot for every fitted model.
+  if (type == "all") {
+    if (!is.null(model)) {
+      return(plot_model(
+        x,
+        model = model,
+        type = "all",
+        scale = scale
+      ))
+    }
+
+    model_plots <- lapply(names(x$models), function(model_name) {
+      plot_model(
+        x,
+        model = model_name,
+        type = "all",
+        scale = scale
+      )
+    })
+    names(model_plots) <- names(x$models)
+
+    comparison_plots <- plot(x, type = "comparison", scale = scale)
+
+    return(invisible(list(
+      models = model_plots,
+      comparison = comparison_plots
+    )))
   }
 
   # Get model name
@@ -960,36 +1134,72 @@ plot.moe_analysis <- function(x, type = "profile", model = NULL, scale = "origin
     print(plots$sizes)
   }
 
-  # Model comparison (BIC across models)
-  if (type %in% c("comparison", "all")) {
-    comparison <- compare_models(x, sort_by = "bic")
+  # Model comparisons
+  if (type %in% c("bic", "aic", "icl", "comparison", "all")) {
+    comparison <- x$comparison
+    if (is.null(comparison)) {
+      comparison <- compare_models(x, sort_by = "bic")
+    }
+
     if (!is.null(comparison) && nrow(comparison) > 1) {
-      comparison$model <- factor(comparison$model, levels = comparison$model)
+      criteria <- if (type %in% c("comparison", "all")) {
+        c("bic", "aic", "icl")
+      } else {
+        type
+      }
 
-      plots$comparison <- ggplot2::ggplot(comparison,
-                                          ggplot2::aes(x = model, y = bic, fill = factor(n_clusters))) +
-        ggplot2::geom_col(alpha = 0.8, color = "white") +
-        ggplot2::geom_text(ggplot2::aes(label = round(bic, 0)),
-                           vjust = -0.3, size = 3) +
-        ggplot2::labs(title = "Model Comparison by BIC",
-                      subtitle = "Lower BIC indicates better fit",
-                      x = "Model", y = "BIC", fill = "Clusters") +
-        ggplot2::theme_minimal() +
-        ggplot2::theme(
-          axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-          plot.title = ggplot2::element_text(size = 12, hjust = 0.5),
-          plot.subtitle = ggplot2::element_text(size = 10, hjust = 0.5, color = "gray40")
+      comparison$model_type <- sub("_G[0-9]+$", "", comparison$model)
+      comparison$model_type <- factor(
+        comparison$model_type,
+        levels = MOECLUST_MODELS
+      )
+
+      for (criterion in criteria) {
+        plot_data <- comparison
+        plot_data$value <- plot_data[[criterion]]
+        criterion_label <- toupper(criterion)
+
+        criterion_plot <- ggplot2::ggplot(
+          plot_data,
+          ggplot2::aes(
+            x = .data$n_clusters,
+            y = .data$value,
+            color = .data$model_type,
+            group = .data$model_type
+          )
         ) +
-        ggplot2::scale_fill_viridis_d()
+          ggplot2::geom_line(linewidth = 0.7) +
+          ggplot2::geom_point(size = 2.4) +
+          ggplot2::scale_x_continuous(
+            breaks = sort(unique(plot_data$n_clusters))
+          ) +
+          ggplot2::labs(
+            title = paste("Model Comparison by", criterion_label),
+            subtitle = "Higher values indicate better fit in MoEClust",
+            x = "Number of Clusters",
+            y = criterion_label,
+            color = "Covariance Model"
+          ) +
+          ggplot2::theme_minimal() +
+          ggplot2::theme(
+            axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+            plot.title = ggplot2::element_text(size = 12, hjust = 0.5),
+            plot.subtitle = ggplot2::element_text(
+              size = 10, hjust = 0.5, color = "gray40"
+            )
+          ) +
+          ggplot2::scale_color_viridis_d()
 
-      print(plots$comparison)
-    } else if (type == "comparison") {
+        plots[[criterion]] <- criterion_plot
+        print(criterion_plot)
+      }
+    } else if (type %in% c("bic", "aic", "icl", "comparison")) {
       message("Model comparison requires more than one successful model")
     }
   }
 
   # Return
-  if (type == "all") {
+  if (type %in% c("all", "comparison")) {
     invisible(plots)
   } else if (length(plots) == 1) {
     invisible(plots[[1]])
@@ -1205,10 +1415,21 @@ get_cluster_assignments <- function(results, model_name = NULL,
   original_data <- results$data$full_input_data
   model_result <- results$models[[model_name]]
   assignments <- model_result$cluster_assignments
+  complete_rows <- results$data$complete_rows
+
+  if (is.null(complete_rows)) {
+    complete_rows <- rep(TRUE, nrow(original_data))
+  }
+
+  if (sum(complete_rows) != length(assignments)) {
+    stop("Stored analysis rows do not match the model assignments")
+  }
 
   # Add cluster column
   output_data <- original_data
-  output_data[[cluster_col_name]] <- assignments
+  full_assignments <- rep(NA_integer_, nrow(original_data))
+  full_assignments[complete_rows] <- assignments
+  output_data[[cluster_col_name]] <- full_assignments
 
   # Add probabilities if requested
   if (include_probabilities) {
@@ -1219,10 +1440,20 @@ get_cluster_assignments <- function(results, model_name = NULL,
       n_clusters <- ncol(probs)
       names(probs) <- paste0("prob_cluster_", 1:n_clusters)
 
-      # Add max probability (certainty)
-      probs$cluster_certainty <- apply(probs, 1, max)
+      full_probs <- as.data.frame(
+        matrix(
+          NA_real_,
+          nrow = nrow(original_data),
+          ncol = n_clusters
+        )
+      )
+      names(full_probs) <- names(probs)
+      full_probs[complete_rows, ] <- probs
 
-      output_data <- cbind(output_data, probs)
+      full_probs$cluster_certainty <- NA_real_
+      full_probs$cluster_certainty[complete_rows] <- apply(probs, 1, max)
+
+      output_data <- cbind(output_data, full_probs)
     } else {
       warning("Membership probabilities not available for this model")
     }
@@ -1785,3 +2016,59 @@ generate_cluster_report <- function(results, model_name = NULL,
     return(paste(md, collapse = "\n"))
   }
 }
+
+# =============================================================================
+# CONSISTENT OPTIONAL ALIASES
+# =============================================================================
+
+#' Optional `cluster_*` aliases
+#'
+#' These aliases provide a consistent naming family without replacing or
+#' deprecating the original function names.
+#'
+#' @name clustering_aliases
+NULL
+
+#' @rdname clustering_aliases
+#' @export
+cluster_fit <- clustering
+
+#' @rdname clustering_aliases
+#' @export
+cluster_models <- list_models
+
+#' @rdname clustering_aliases
+#' @export
+cluster_best <- get_best_model
+
+#' @rdname clustering_aliases
+#' @export
+cluster_compare <- compare_models
+
+#' @rdname clustering_aliases
+#' @export
+cluster_compare_table <- model_comparison_table
+
+#' @rdname clustering_aliases
+#' @export
+cluster_assignments <- get_cluster_assignments
+
+#' @rdname clustering_aliases
+#' @export
+cluster_view <- view_results
+
+#' @rdname clustering_aliases
+#' @export
+cluster_plot_model <- plot_model
+
+#' @rdname clustering_aliases
+#' @export
+cluster_plot_best <- plot_best_model
+
+#' @rdname clustering_aliases
+#' @export
+cluster_stability <- assess_cluster_stability
+
+#' @rdname clustering_aliases
+#' @export
+cluster_report <- generate_cluster_report
