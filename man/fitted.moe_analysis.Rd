@@ -16,8 +16,8 @@
 \item{...}{Additional arguments (ignored).}
 }
 \value{
-A tibble containing the original data and a \code{cluster} column.
-Rows omitted during fitting are retained with \code{NA} fitted values.
+A tibble containing the original data and a `cluster` column.
+  Rows omitted during fitting are retained with `NA` fitted values.
 }
 \description{
 Extract Fitted Clustering Data

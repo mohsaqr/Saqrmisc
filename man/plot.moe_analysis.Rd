@@ -4,52 +4,52 @@
 \alias{plot.moe_analysis}
 \title{Plot method for moe_analysis objects}
 \usage{
-\method{plot}{moe_analysis}(x, type = "profile", model = NULL, scale = "original", ...)
+\method{plot}{moe_analysis}(x, type = "clusters", model = NULL, scale = c("original", "scaled"), ...)
 }
 \arguments{
-\item{x}{An moe_analysis object}
+\item{x}{An moe_analysis object returned by \code{\link[=clustering]{clustering()}}.}
 
-\item{type}{Type of plot: "profile" (default), "heatmap", "barchart",
-"sizes", "bic", "aic", "icl", "comparison" (all three information
-criteria as separate plots), or "all" (all plot types for every fitted
-model, plus all model-comparison plots)}
+\item{type}{Character vector of plot types and/or groups; see Description.
+Defaults to \code{"clusters"}.}
 
-\item{model}{Model to plot. If NULL (default), uses best model by BIC.}
+\item{model}{Which fitted model(s) to describe: \code{NULL} (default), one or
+more model names, or \code{"all"} for every fitted model. \code{NULL} means the best
+model by BIC, except with \code{type = "all"}, where it means every model.
+Selection plots ignore \code{model}.}
 
-\item{scale}{Data scale for plots: "original" (default) or "scaled"}
+\item{scale}{Data scale for \code{"profile"}, \code{"heatmap"}, and \code{"distribution"}:
+\code{"original"} (default) or \code{"scaled"}. Diagnostics always use the data
+as fitted.}
 
-\item{...}{Additional arguments (currently ignored)}
+\item{...}{Ignored.}
 }
 \value{
-The plot object(s) invisibly. \code{type = "comparison"} returns the
-three criterion plots. \code{type = "all"} returns a nested list containing
-every fitted model's plots and all comparison plots.
+The value of \code{\link[=plot_clustering]{plot_clustering()}}, invisibly: a single ggplot when
+\code{type} resolves to one plot, otherwise a \code{clustering_plots} object.
+Raises the same classed errors as \code{\link[=plot_clustering]{plot_clustering()}}.
 }
 \description{
-Display visualizations from the clustering analysis. Supports multiple
-plot types including profile plots, heatmaps, bar charts, cluster sizes,
-and model comparison charts.
+Draws plots of a \code{\link[=clustering]{clustering()}} result. This method is the drawing front
+end for \code{\link[=plot_clustering]{plot_clustering()}}: it accepts the same \code{type}, \code{model}, and
+\code{scale} arguments, prints the plots, and returns them invisibly. See
+\code{\link[=clustering_plot_types]{clustering_plot_types()}} for the catalogue of plot types and groups.
 }
 \examples{
-\dontrun{
-results <- clustering(data, vars, n_clusters = 3)
+\donttest{
+fit <- clustering(
+  iris,
+  vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
+  n_clusters = 2:3,
+  models = c("EII", "EEE"),
+  verbose = FALSE
+)
 
-# Profile plot (default)
-plot(results)
-
-# Heatmap
-plot(results, type = "heatmap")
-
-# All plot types
-plot(results, type = "all")
-
-# Information criteria, separately
-plot(results, type = "bic")
-plot(results, type = "aic")
-plot(results, type = "icl")
-
-# Specific model with scaled data
-plot(results, type = "profile", model = "VVV", scale = "scaled")
+plot(fit)                          # the cluster plots
+plot(fit, type = "diagnostics")
+plot(fit, type = "selection")
+plot(fit, type = "heatmap", scale = "scaled")
+plot(fit, type = "profile", model = "all")  # one plot type, every model
+plot(fit, type = "all")                    # every plot, every model
 }
 
 }

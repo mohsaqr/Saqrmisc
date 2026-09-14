@@ -249,8 +249,9 @@ create_cluster_sizes_chart <- function(model_data, model_name, colors = NULL) {
 #' )
 #'
 #' # View results using plot()
-#' plot(results, type = "profile")
-#' plot(results, type = "heatmap")
+#' plot(results)                        # cluster plots
+#' plot(results, type = "diagnostics")
+#' plot(results, type = "selection")
 #' plot(results, type = "all")
 #'
 #' # Get cluster assignments
@@ -855,9 +856,11 @@ print.moe_analysis <- function(x, ...) {
   }
 
   cat("\nUse plot() to visualize results:\n")
-  cat("  plot(x)                    # Profile plot\n")
-  cat("  plot(x, type = 'heatmap')  # Heatmap\n")
-  cat("  plot(x, type = 'all')      # All plot types\n")
+  cat("  plot(x)                          # Cluster plots\n")
+  cat("  plot(x, type = 'diagnostics')    # Certainty, AvePP, projection\n")
+  cat("  plot(x, type = 'selection')      # BIC, AIC, ICL\n")
+  cat("  plot(x, type = 'all')            # Everything\n")
+  cat("  clustering_plot_types()          # Every plot type\n")
   cat("Use compare_models() or model_comparison_table() for model comparison\n")
 
   invisible(x)
@@ -997,215 +1000,48 @@ plot_best_model <- function(
 
 #' Plot method for moe_analysis objects
 #'
+#' @md
 #' @description
-#' Display visualizations from the clustering analysis. Supports multiple
-#' plot types including profile plots, heatmaps, bar charts, cluster sizes,
-#' and model comparison charts.
+#' Draws plots of a [clustering()] result. This method is the drawing front
+#' end for [plot_clustering()]: it accepts the same `type`, `model`, and
+#' `scale` arguments, prints the plots, and returns them invisibly. See
+#' [clustering_plot_types()] for the catalogue of plot types and groups.
 #'
-#' @param x An moe_analysis object
-#' @param type Type of plot: "profile" (default), "heatmap", "barchart",
-#'   "sizes", "bic", "aic", "icl", "comparison" (all three information
-#'   criteria as separate plots), or "all" (all plot types for every fitted
-#'   model, plus all model-comparison plots)
-#' @param model Model to plot. If NULL (default), uses best model by BIC.
-#' @param scale Data scale for plots: "original" (default) or "scaled"
-#' @param ... Additional arguments (currently ignored)
+#' @param x An moe_analysis object returned by [clustering()].
+#' @inheritParams plot_clustering
+#' @param ... Ignored.
 #'
-#' @return The plot object(s) invisibly. `type = "comparison"` returns the
-#'   three criterion plots. `type = "all"` returns a nested list containing
-#'   every fitted model's plots and all comparison plots.
+#' @return The value of [plot_clustering()], invisibly: a single ggplot when
+#'   `type` resolves to one plot, otherwise a `clustering_plots` object.
+#'   Raises the same classed errors as [plot_clustering()].
 #'
 #' @examples
-#' \dontrun{
-#' results <- clustering(data, vars, n_clusters = 3)
+#' \donttest{
+#' fit <- clustering(
+#'   iris,
+#'   vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
+#'   n_clusters = 2:3,
+#'   models = c("EII", "EEE"),
+#'   verbose = FALSE
+#' )
 #'
-#' # Profile plot (default)
-#' plot(results)
-#'
-#' # Heatmap
-#' plot(results, type = "heatmap")
-#'
-#' # All plot types
-#' plot(results, type = "all")
-#'
-#' # Information criteria, separately
-#' plot(results, type = "bic")
-#' plot(results, type = "aic")
-#' plot(results, type = "icl")
-#'
-#' # Specific model with scaled data
-#' plot(results, type = "profile", model = "VVV", scale = "scaled")
+#' plot(fit)                          # the cluster plots
+#' plot(fit, type = "diagnostics")
+#' plot(fit, type = "selection")
+#' plot(fit, type = "heatmap", scale = "scaled")
+#' plot(fit, type = "profile", model = "all")  # one plot type, every model
+#' plot(fit, type = "all")                    # every plot, every model
 #' }
 #'
 #' @export
-plot.moe_analysis <- function(x, type = "profile", model = NULL, scale = "original", ...) {
-
-  # Validate type
-
-  valid_types <- c(
-    "profile", "heatmap", "barchart", "sizes",
-    "bic", "aic", "icl", "comparison", "all"
-  )
-  if (!type %in% valid_types) {
-    stop("type must be one of: ", paste(valid_types, collapse = ", "))
-  }
-
-  # Validate scale
-  if (!scale %in% c("original", "scaled")) {
-    stop("scale must be 'original' or 'scaled'")
-  }
-
-  # "all" means every plot for every fitted model.
-  if (type == "all") {
-    if (!is.null(model)) {
-      return(plot_model(
-        x,
-        model = model,
-        type = "all",
-        scale = scale
-      ))
-    }
-
-    model_plots <- lapply(names(x$models), function(model_name) {
-      plot_model(
-        x,
-        model = model_name,
-        type = "all",
-        scale = scale
-      )
-    })
-    names(model_plots) <- names(x$models)
-
-    comparison_plots <- plot(x, type = "comparison", scale = scale)
-
-    return(invisible(list(
-      models = model_plots,
-      comparison = comparison_plots
-    )))
-  }
-
-  # Get model name
-  if (is.null(model)) {
-    model <- x$summary$best_model_bic
-    if (is.null(model)) {
-      model <- names(x$models)[1]
-    }
-  }
-
-  # Validate model exists
-  if (!model %in% names(x$models)) {
-    stop("Model '", model, "' not found. Available models: ",
-         paste(names(x$models), collapse = ", "))
-  }
-
-  model_result <- x$models[[model]]
-  cluster_vars <- x$parameters$cluster_vars
-
-  # Store plots for return
-  plots <- list()
-
-  # Profile plot
-  if (type %in% c("profile", "all")) {
-    if (scale == "original") {
-      plots$profile <- model_result$original_scale$plot
-    } else {
-      plots$profile <- model_result$scaled_data$plot
-    }
-    if (type == "profile" || type == "all") {
-      print(plots$profile)
-    }
-  }
-
-  # Heatmap
-  if (type %in% c("heatmap", "all")) {
-    plots$heatmap <- create_cluster_heatmap(model_result, cluster_vars, scale, model)
-    print(plots$heatmap)
-  }
-
-  # Bar chart
-  if (type %in% c("barchart", "all")) {
-    plots$barchart <- create_cluster_barchart(model_result, cluster_vars, scale, model)
-    print(plots$barchart)
-  }
-
-  # Cluster sizes
-  if (type %in% c("sizes", "all")) {
-    plots$sizes <- create_cluster_sizes_chart(model_result, model)
-    print(plots$sizes)
-  }
-
-  # Model comparisons
-  if (type %in% c("bic", "aic", "icl", "comparison", "all")) {
-    comparison <- x$comparison
-    if (is.null(comparison)) {
-      comparison <- compare_models(x, sort_by = "bic")
-    }
-
-    if (!is.null(comparison) && nrow(comparison) > 1) {
-      criteria <- if (type %in% c("comparison", "all")) {
-        c("bic", "aic", "icl")
-      } else {
-        type
-      }
-
-      comparison$model_type <- sub("_G[0-9]+$", "", comparison$model)
-      comparison$model_type <- factor(
-        comparison$model_type,
-        levels = MOECLUST_MODELS
-      )
-
-      for (criterion in criteria) {
-        plot_data <- comparison
-        plot_data$value <- plot_data[[criterion]]
-        criterion_label <- toupper(criterion)
-
-        criterion_plot <- ggplot2::ggplot(
-          plot_data,
-          ggplot2::aes(
-            x = .data$n_clusters,
-            y = .data$value,
-            color = .data$model_type,
-            group = .data$model_type
-          )
-        ) +
-          ggplot2::geom_line(linewidth = 0.7) +
-          ggplot2::geom_point(size = 2.4) +
-          ggplot2::scale_x_continuous(
-            breaks = sort(unique(plot_data$n_clusters))
-          ) +
-          ggplot2::labs(
-            title = paste("Model Comparison by", criterion_label),
-            subtitle = "Higher values indicate better fit in MoEClust",
-            x = "Number of Clusters",
-            y = criterion_label,
-            color = "Covariance Model"
-          ) +
-          ggplot2::theme_minimal() +
-          ggplot2::theme(
-            axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-            plot.title = ggplot2::element_text(size = 12, hjust = 0.5),
-            plot.subtitle = ggplot2::element_text(
-              size = 10, hjust = 0.5, color = "gray40"
-            )
-          ) +
-          ggplot2::scale_color_viridis_d()
-
-        plots[[criterion]] <- criterion_plot
-        print(criterion_plot)
-      }
-    } else if (type %in% c("bic", "aic", "icl", "comparison")) {
-      message("Model comparison requires more than one successful model")
-    }
-  }
-
-  # Return
-  if (type %in% c("all", "comparison")) {
-    invisible(plots)
-  } else if (length(plots) == 1) {
-    invisible(plots[[1]])
-  } else {
-    invisible(NULL)
-  }
+plot.moe_analysis <- function(x,
+                              type = "clusters",
+                              model = NULL,
+                              scale = c("original", "scaled"),
+                              ...) {
+  plots <- plot_clustering(x, type = type, model = model, scale = scale)
+  print(plots)
+  invisible(plots)
 }
 
 # =============================================================================

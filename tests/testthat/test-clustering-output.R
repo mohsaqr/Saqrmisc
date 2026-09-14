@@ -14,13 +14,12 @@ test_that("clustering stores criteria, input data, and dispatches plot()", {
                     names(fit$comparison)))
   expect_length(fit$comparison$loglik, 1)
 
-  plots <- plot(fit, type = "all")
-  expect_named(plots, c("models", "comparison"))
-  expect_named(plots$models, "EII")
-  expect_named(
-    plots$models$EII,
-    c("profile", "heatmap", "barchart", "sizes")
-  )
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  plots <- expect_invisible(plot(fit, type = "all"))
+  expect_s3_class(plots, "clustering_plots")
+  expect_identical(names(plots), clustering_plot_types()$type)
 
   best_plots <- plot_best_model(fit)
   expect_named(
@@ -93,15 +92,17 @@ test_that("comparison produces separate BIC, AIC, and ICL plots", {
     verbose = FALSE
   )
 
-  comparison_plots <- plot(fit, type = "comparison")
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  comparison_plots <- plot(fit, type = "selection")
   expect_named(comparison_plots, c("bic", "aic", "icl"))
   expect_true(all(vapply(comparison_plots, inherits, logical(1), "ggplot")))
 
   bic_plot <- plot(fit, type = "bic")
   expect_s3_class(bic_plot, "ggplot")
   expect_identical(bic_plot$labels$y, "BIC")
-  expect_identical(bic_plot$labels$x, "Number of Clusters")
-  expect_identical(bic_plot$labels$colour, "Covariance Model")
+  expect_identical(bic_plot$labels$x, "Number of clusters")
   expect_identical(
     get_best_model(fit, "bic"),
     fit$comparison$model[which.max(fit$comparison$bic)]

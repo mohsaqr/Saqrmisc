@@ -22,7 +22,7 @@ plot_model(
 }
 \value{
 A ggplot object, or a named list of four ggplot objects when
-\code{type = "all"}.
+  `type = "all"`.
 }
 \description{
 Plot One Fitted Clustering Model

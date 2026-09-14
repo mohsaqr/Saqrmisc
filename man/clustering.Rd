@@ -75,8 +75,9 @@ results <- clustering(
 )
 
 # View results using plot()
-plot(results, type = "profile")
-plot(results, type = "heatmap")
+plot(results)                        # cluster plots
+plot(results, type = "diagnostics")
+plot(results, type = "selection")
 plot(results, type = "all")
 
 # Get cluster assignments

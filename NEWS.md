@@ -1,3 +1,32 @@
+# Saqrmisc 0.9.4
+
+## Systematic clustering plots
+
+* New `plot_clustering(results, type, model, scale)`: one verb for every
+  figure of a `clustering()` result. `type` takes any mix of plot names, group
+  names, or `"all"`:
+  - `"clusters"`: `profile`, `heatmap`, `distribution`, `sizes`.
+  - `"diagnostics"`: `certainty` (with relative entropy), `avepp` (average
+    posterior probability), `projection` (principal components).
+  - `"selection"`: `bic`, `aic`, `icl`, with the best model circled.
+* One plot returns a ggplot; several return a `clustering_plots` object that
+  draws every plot when printed and lists its contents via `as.data.frame()`.
+* New `clustering_plot_types()` returns the catalogue as a data.frame.
+* `plot()` on a `clustering()` result now draws through `plot_clustering()`
+  and takes the same `type`, `model`, and `scale`. **Behaviour changes:** the
+  default `type` is `"clusters"` (was `"profile"`); `"comparison"` is now
+  `"selection"` (see below);
+  `"barchart"` is no longer a `plot()` type (still available
+  in `plot_model()`).
+* `model` accepts one or more model names or `"all"`. Cluster and diagnostic
+  plots are drawn once per model (named `"<model>/<type>"`); selection plots
+  once. `type = "all"` draws **every plot for every fitted model** unless
+  `model` narrows it.
+* Plots use the Okabe-Ito palette and pair colour with shape or position. The
+  heatmap colours standardised distance from the overall mean, so variables in
+  different units are comparable, and labels the actual means.
+
+
 # Saqrmisc 0.9.3
 
 ## Stratified (faceted) mosaic analysis
