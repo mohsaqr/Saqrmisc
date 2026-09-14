@@ -1,20 +1,78 @@
-# Optional `cluster_*` aliases
+# Optional \`cluster\_\*\` aliases
 
 These aliases provide a consistent naming family without replacing or
 deprecating the original function names.
 
-## Details
+## Usage
 
-|  |  |
-|----|----|
-| `cluster_fit()` | [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md) |
-| `cluster_models()` | [`list_models()`](https://pak.dynasite.org/Saqrmisc/reference/list_models.md) |
-| `cluster_best()` | [`get_best_model()`](https://pak.dynasite.org/Saqrmisc/reference/get_best_model.md) |
-| `cluster_compare()` | [`compare_models()`](https://pak.dynasite.org/Saqrmisc/reference/compare_models.md) |
-| `cluster_compare_table()` | [`model_comparison_table()`](https://pak.dynasite.org/Saqrmisc/reference/model_comparison_table.md) |
-| `cluster_assignments()` | [`get_cluster_assignments()`](https://pak.dynasite.org/Saqrmisc/reference/get_cluster_assignments.md) |
-| `cluster_view()` | [`view_results()`](https://pak.dynasite.org/Saqrmisc/reference/view_results.md) |
-| `cluster_plot_model()` | [`plot_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_model.md) |
-| `cluster_plot_best()` | [`plot_best_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_best_model.md) |
-| `cluster_stability()` | [`assess_cluster_stability()`](https://pak.dynasite.org/Saqrmisc/reference/assess_cluster_stability.md) |
-| `cluster_report()` | [`generate_cluster_report()`](https://pak.dynasite.org/Saqrmisc/reference/generate_cluster_report.md) |
+``` r
+cluster_fit(
+  data,
+  vars,
+  n_clusters,
+  scaling = "standardize",
+  models = "all",
+  verbose = TRUE,
+  na_action = "omit"
+)
+
+cluster_models(results)
+
+cluster_best(results, criterion = "bic", what = c("name", "result", "fit"))
+
+cluster_compare(results, sort_by = "bic")
+
+cluster_compare_table(
+  results,
+  sort_by = "bic",
+  top_n = NULL,
+  highlight_best = TRUE
+)
+
+cluster_assignments(
+  results,
+  model_name = NULL,
+  include_probabilities = FALSE,
+  cluster_col_name = "cluster"
+)
+
+cluster_view(
+  results,
+  what = "plots",
+  scale = "original",
+  model_name = "all",
+  cluster_range = NULL,
+  plot_type = "profile",
+  verbose = FALSE,
+  colors = NULL
+)
+
+cluster_plot_model(
+  results,
+  model,
+  type = c("all", "profile", "heatmap", "barchart", "sizes"),
+  scale = c("original", "scaled")
+)
+
+cluster_plot_best(
+  results,
+  type = c("all", "profile", "heatmap", "barchart", "sizes"),
+  criterion = c("bic", "aic", "icl"),
+  scale = c("original", "scaled")
+)
+
+cluster_stability(
+  results,
+  model_name = NULL,
+  n_boot = 100,
+  verbose = TRUE,
+  seed = NULL
+)
+
+cluster_report(
+  results,
+  model_name = NULL,
+  output_format = "console",
+  include_recommendations = TRUE
+)
+```

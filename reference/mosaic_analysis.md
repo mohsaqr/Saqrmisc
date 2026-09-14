@@ -13,6 +13,7 @@ mosaic_analysis(
   data,
   var1,
   var2,
+  by = NULL,
   min_count = 10,
   fontsize = 8,
   title = "",
@@ -20,7 +21,7 @@ mosaic_analysis(
   var2_label = NULL,
   show_varnames = FALSE,
   plot_style = c("flat", "classic"),
-  tile_label = c("count", "percent", "residual", "category", "none"),
+  tile_label = c("count", "percent", "count_percent", "residual", "category", "none"),
   col_label_side = c("top", "bottom", "both", "none"),
   row_label_side = c("left", "right", "both", "none"),
   col_label_angle = 0,
@@ -33,6 +34,12 @@ mosaic_analysis(
   show_percentages = TRUE,
   percentage_base = "total",
   use_fisher = FALSE,
+  by_label = NULL,
+  min_stratum_n = 30,
+  p_adjust = "BH",
+  facet_ncol = NULL,
+  facet_show_n = TRUE,
+  seed = NULL,
   verbose = TRUE,
   save_plot = NULL,
   interpret = FALSE,
@@ -53,6 +60,16 @@ mosaic_analysis(
 - var2:
 
   Character. Name of the second categorical variable.
+
+- by:
+
+  Character. Optional name of a third categorical variable to stratify
+  (facet) on. When supplied, the `var1`-`var2` table is fitted
+  separately within each level of `by` and the plot becomes a panel of
+  mosaics, one per stratum. Category filtering (`min_count`) is applied
+  to the pooled table *before* splitting, so every panel shows the same
+  rows and columns; the residual colour scale is likewise shared across
+  panels. Defaults to NULL (a single, un-stratified mosaic).
 
 - min_count:
 
@@ -94,7 +111,8 @@ mosaic_analysis(
 - tile_label:
 
   (flat style) What to print inside each tile: "count" (the default
-  actual counts), "percent" (using `percentage_base`), "residual"
+  actual counts), "percent" (using `percentage_base`), "count_percent"
+  (the count with its percentage on a second line), "residual"
   (standardized residual), "category" (the second-variable level name),
   or "none".
 
@@ -150,6 +168,39 @@ mosaic_analysis(
   Logical. If TRUE, uses Fisher's exact test instead of chi-square
   (recommended for small expected cell counts). Defaults to FALSE.
 
+- by_label:
+
+  Label for the stratifying variable. If NULL, uses `by`.
+
+- min_stratum_n:
+
+  Minimum number of observations for a stratum to be fitted. Strata
+  below this, or no longer spanning at least two levels of each
+  variable, are dropped with a warning naming them. Defaults to 30.
+
+- p_adjust:
+
+  Multiplicity correction applied to the per-stratum p-values, passed to
+  [`p.adjust`](https://rdrr.io/r/stats/p.adjust.html). Defaults to "BH".
+  Fitting one test per stratum is a multiple-testing problem, so the
+  corrected value is reported alongside the raw one.
+
+- facet_ncol:
+
+  Number of facet columns in a stratified plot. NULL (the default) lets
+  ggplot2 choose.
+
+- facet_show_n:
+
+  Logical. Append "(n = ...)" to each panel strip so equal panel widths
+  never imply equal sample sizes. Defaults to TRUE.
+
+- seed:
+
+  Optional integer. Seeds the Monte-Carlo Fisher p-value so a fit is
+  reproducible; the caller's RNG stream is restored on exit. Defaults to
+  NULL (no seeding).
+
 - verbose:
 
   Logical. If TRUE, prints results to console. Defaults to TRUE.
@@ -201,6 +252,16 @@ A list of class "mosaic_analysis" containing:
 - `filtered_n`: Sample size after filtering
 
 - `removed_categories`: List of categories removed due to min_count
+
+When `by` is supplied the object additionally gains class
+"mosaic_stratified" and the fields `strata_summary` (one row per
+stratum: n, test, statistic, df, raw and adjusted p, Cramer's V, effect
+size, and the number of cells beyond \|2\|), `strata_residuals` (one row
+per stratum x cell), `strata_table`, and `overall_summary` (the pooled
+test beside the Cochran-Mantel-Haenszel test of association conditional
+on the stratifier). Reach these with
+[`as.data.frame`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.mosaic_analysis.md),
+e.g. `as.data.frame(fit, what = "strata")`.
 
 ## Examples
 
@@ -343,5 +404,29 @@ results <- mosaic_analysis(
   verbose = FALSE
 )
 
+
+# Stratify (facet) on a third variable: one mosaic and one test per region,
+# with p-values corrected across strata.
+example_data$region <- sample(c("North", "South"), 200, replace = TRUE)
+by_region <- mosaic_analysis(
+  example_data, "gender", "education",
+  by = "region", min_count = 5, min_stratum_n = 20, verbose = FALSE
+)
+#> Warning: Expected counts < 5 in stratum/strata: North. Consider use_fisher = TRUE.
+
+as.data.frame(by_region, what = "strata")
+#>   stratum   n            test statistic df   p_value p_adjusted cramers_v
+#> 1   North  96 Chi-square test     1.313  3 0.7260400  0.8951515     0.117
+#> 2   South 104 Chi-square test     0.606  3 0.8951515  0.8951515     0.076
+#>   effect_size n_cells_beyond_2
+#> 1       small                0
+#> 2  negligible                0
+as.data.frame(by_region, what = "overall")
+#>         scope                    test statistic df   p_value cramers_v
+#> 1      pooled         Chi-square test     1.108  3 0.7752534     0.074
+#> 2 conditional Cochran-Mantel-Haenszel     1.092  3 0.7788863        NA
+#>   common_or or_ci_low or_ci_high
+#> 1        NA        NA         NA
+#> 2        NA        NA         NA
 # }
 ```

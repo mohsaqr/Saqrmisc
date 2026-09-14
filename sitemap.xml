@@ -11,6 +11,8 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/news/index.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/Saqrmisc-package.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/add_total.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.clustering_plots.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.mosaic_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/assess_cluster_stability.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/auto_describe.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/categorical_table.html</loc></url>
@@ -18,6 +20,7 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/center_vec.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/clustering.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/clustering_plot_types.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/compare_groups.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/compare_models.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/compare_networks.html</loc></url>
@@ -47,14 +50,17 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot.moe_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot.mosaic_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot_best_model.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/plot_model.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.cluster_stability.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.clustering_plots.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.grouped_network_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.html_table.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.latex_table.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.markdown_table.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.moe_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.mosaic_analysis.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.mosaic_stratified.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.network_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_result.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/replace_missing.html</loc></url>
@@ -73,6 +79,7 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/standardize_vec.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.moe_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.mosaic_analysis.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.mosaic_stratified.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.network_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/to_dataframe.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/to_gt.html</loc></url>

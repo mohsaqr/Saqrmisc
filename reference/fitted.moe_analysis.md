@@ -29,5 +29,5 @@ fitted(object, model = NULL, probabilities = FALSE, ...)
 
 ## Value
 
-A tibble containing the original data and a `cluster` column. Rows
-omitted during fitting are retained with `NA` fitted values.
+A tibble containing the original data and a \`cluster\` column. Rows
+omitted during fitting are retained with \`NA\` fitted values.

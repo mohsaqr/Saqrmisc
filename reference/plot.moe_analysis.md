@@ -1,68 +1,121 @@
 # Plot method for moe_analysis objects
 
-Display visualizations from the clustering analysis. Supports multiple
-plot types including profile plots, heatmaps, bar charts, cluster sizes,
-and model comparison charts.
+Draws plots of a
+[`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
+result. This method is the drawing front end for
+[`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md):
+it accepts the same `type`, `model`, and `scale` arguments, prints the
+plots, and returns them invisibly. See
+[`clustering_plot_types()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_plot_types.md)
+for the catalogue of plot types and groups.
 
 ## Usage
 
 ``` r
 # S3 method for class 'moe_analysis'
-plot(x, type = "profile", model = NULL, scale = "original", ...)
+plot(x, type = "clusters", model = NULL, scale = c("original", "scaled"), ...)
 ```
 
 ## Arguments
 
 - x:
 
-  An moe_analysis object
+  An moe_analysis object returned by
+  [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md).
 
 - type:
 
-  Type of plot: "profile" (default), "heatmap", "barchart", "sizes",
-  "bic", "aic", "icl", "comparison" (all three information criteria as
-  separate plots), or "all" (all plot types for every fitted model, plus
-  all model-comparison plots)
+  Character vector of plot types and/or groups; see Description.
+  Defaults to `"clusters"`.
 
 - model:
 
-  Model to plot. If NULL (default), uses best model by BIC.
+  Which fitted model(s) to describe: `NULL` (default), one or more model
+  names, or `"all"` for every fitted model. `NULL` means the best model
+  by BIC, except with `type = "all"`, where it means every model.
+  Selection plots ignore `model`.
 
 - scale:
 
-  Data scale for plots: "original" (default) or "scaled"
+  Data scale for `"profile"`, `"heatmap"`, and `"distribution"`:
+  `"original"` (default) or `"scaled"`. Diagnostics always use the data
+  as fitted.
 
 - ...:
 
-  Additional arguments (currently ignored)
+  Ignored.
 
 ## Value
 
-The plot object(s) invisibly. `type = "comparison"` returns the three
-criterion plots. `type = "all"` returns a nested list containing every
-fitted model's plots and all comparison plots.
+The value of
+[`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md),
+invisibly: a single ggplot when `type` resolves to one plot, otherwise a
+`clustering_plots` object. Raises the same classed errors as
+[`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md).
 
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-results <- clustering(data, vars, n_clusters = 3)
+# \donttest{
+fit <- clustering(
+  iris,
+  vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
+  n_clusters = 2:3,
+  models = c("EII", "EEE"),
+  verbose = FALSE
+)
 
-# Profile plot (default)
-plot(results)
+plot(fit)                          # the cluster plots
 
-# Heatmap
-plot(results, type = "heatmap")
 
-# All plot types
-plot(results, type = "all")
 
-# Information criteria, separately
-plot(results, type = "bic")
-plot(results, type = "aic")
-plot(results, type = "icl")
 
-# Specific model with scaled data
-plot(results, type = "profile", model = "VVV", scale = "scaled")
-} # }
+plot(fit, type = "diagnostics")
+
+
+
+plot(fit, type = "selection")
+
+
+
+plot(fit, type = "heatmap", scale = "scaled")
+
+plot(fit, type = "profile", model = "all")  # one plot type, every model
+
+
+
+
+plot(fit, type = "all")                    # every plot, every model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# }
 ```

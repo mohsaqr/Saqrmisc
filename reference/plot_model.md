@@ -33,5 +33,5 @@ plot_model(
 
 ## Value
 
-A ggplot object, or a named list of four ggplot objects when
-`type = "all"`.
+A ggplot object, or a named list of four ggplot objects when \`type =
+"all"\`.
