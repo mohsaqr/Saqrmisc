@@ -160,6 +160,13 @@ interpret_cramers_v <- function(v, df) {
 #' @param data A data frame containing the variables.
 #' @param var1 Character. Name of the first categorical variable.
 #' @param var2 Character. Name of the second categorical variable.
+#' @param by Character. Optional name of a third categorical variable to
+#'   stratify (facet) on. When supplied, the \code{var1}-\code{var2} table is
+#'   fitted separately within each level of \code{by} and the plot becomes a
+#'   panel of mosaics, one per stratum. Category filtering (\code{min_count})
+#'   is applied to the pooled table \emph{before} splitting, so every panel
+#'   shows the same rows and columns; the residual colour scale is likewise
+#'   shared across panels. Defaults to NULL (a single, un-stratified mosaic).
 #' @param min_count The minimum number of observations required for a category to be
 #'   included in the analysis. Defaults to 10.
 #' @param fontsize The font size for the mosaic plot labels. Defaults to 8.
@@ -177,9 +184,10 @@ interpret_cramers_v <- function(v, df) {
 #'   shaded by standardized residuals; the default) or "classic" (the \pkg{vcd}
 #'   shaded mosaic).
 #' @param tile_label (flat style) What to print inside each tile: "count" (the
-#'   default actual counts), "percent" (using \code{percentage_base}), "residual"
-#'   (standardized residual), "category" (the second-variable level name), or
-#'   "none".
+#'   default actual counts), "percent" (using \code{percentage_base}),
+#'   "count_percent" (the count with its percentage on a second line),
+#'   "residual" (standardized residual), "category" (the second-variable level
+#'   name), or "none".
 #' @param col_label_side (flat style) Placement of the first-variable labels:
 #'   "top" (default), "bottom", "both", or "none".
 #' @param row_label_side (flat style) Placement of the second-variable labels:
@@ -200,6 +208,21 @@ interpret_cramers_v <- function(v, df) {
 #'   Defaults to "total".
 #' @param use_fisher Logical. If TRUE, uses Fisher's exact test instead of chi-square
 #'   (recommended for small expected cell counts). Defaults to FALSE.
+#' @param by_label Label for the stratifying variable. If NULL, uses \code{by}.
+#' @param min_stratum_n Minimum number of observations for a stratum to be
+#'   fitted. Strata below this, or no longer spanning at least two levels of
+#'   each variable, are dropped with a warning naming them. Defaults to 30.
+#' @param p_adjust Multiplicity correction applied to the per-stratum p-values,
+#'   passed to \code{\link[stats]{p.adjust}}. Defaults to "BH". Fitting one
+#'   test per stratum is a multiple-testing problem, so the corrected value is
+#'   reported alongside the raw one.
+#' @param facet_ncol Number of facet columns in a stratified plot. NULL (the
+#'   default) lets \pkg{ggplot2} choose.
+#' @param facet_show_n Logical. Append "(n = ...)" to each panel strip so equal
+#'   panel widths never imply equal sample sizes. Defaults to TRUE.
+#' @param seed Optional integer. Seeds the Monte-Carlo Fisher p-value so a fit
+#'   is reproducible; the caller's RNG stream is restored on exit. Defaults to
+#'   NULL (no seeding).
 #' @param verbose Logical. If TRUE, prints results to console. Defaults to TRUE.
 #' @param save_plot Optional file path to save the mosaic plot. Supports .png, .pdf, .svg.
 #'   Defaults to NULL (no saving).
@@ -224,6 +247,16 @@ interpret_cramers_v <- function(v, df) {
 #'   \item{\code{filtered_n}}: Sample size after filtering
 #'   \item{\code{removed_categories}}: List of categories removed due to min_count
 #' }
+#'
+#' When \code{by} is supplied the object additionally gains class
+#' "mosaic_stratified" and the fields \code{strata_summary} (one row per
+#' stratum: n, test, statistic, df, raw and adjusted p, Cramer's V, effect
+#' size, and the number of cells beyond |2|), \code{strata_residuals} (one row
+#' per stratum x cell), \code{strata_table}, and \code{overall_summary} (the
+#' pooled test beside the Cochran-Mantel-Haenszel test of association
+#' conditional on the stratifier). Reach these with
+#' \code{\link[=as.data.frame.mosaic_analysis]{as.data.frame}}, e.g.
+#' \code{as.data.frame(fit, what = "strata")}.
 #'
 #' @examples
 #' # Create example data
@@ -258,16 +291,26 @@ interpret_cramers_v <- function(v, df) {
 #'   use_fisher = TRUE,
 #'   verbose = FALSE
 #' )
+#'
+#' # Stratify (facet) on a third variable: one mosaic and one test per region,
+#' # with p-values corrected across strata.
+#' example_data$region <- sample(c("North", "South"), 200, replace = TRUE)
+#' by_region <- mosaic_analysis(
+#'   example_data, "gender", "education",
+#'   by = "region", min_count = 5, min_stratum_n = 20, verbose = FALSE
+#' )
+#' as.data.frame(by_region, what = "strata")
+#' as.data.frame(by_region, what = "overall")
 #' }
 #'
 #' @export
-mosaic_analysis <- function(data, var1, var2, min_count = 10,
+mosaic_analysis <- function(data, var1, var2, by = NULL, min_count = 10,
                             fontsize = 8, title = "",
                             var1_label = NULL, var2_label = NULL,
                             show_varnames = FALSE,
                             plot_style = c("flat", "classic"),
-                            tile_label = c("count", "percent", "residual",
-                                           "category", "none"),
+                            tile_label = c("count", "percent", "count_percent",
+                                           "residual", "category", "none"),
                             col_label_side = c("top", "bottom", "both", "none"),
                             row_label_side = c("left", "right", "both", "none"),
                             col_label_angle = 0,
@@ -280,6 +323,12 @@ mosaic_analysis <- function(data, var1, var2, min_count = 10,
                             show_percentages = TRUE,
                             percentage_base = "total",
                             use_fisher = FALSE,
+                            by_label = NULL,
+                            min_stratum_n = 30,
+                            p_adjust = "BH",
+                            facet_ncol = NULL,
+                            facet_show_n = TRUE,
+                            seed = NULL,
                             verbose = TRUE,
                             save_plot = NULL,
                             interpret = FALSE,
@@ -302,6 +351,28 @@ if (!is.data.frame(data)) {
 
   if (!is.logical(show_varnames) || length(show_varnames) != 1 || is.na(show_varnames)) {
     stop("'show_varnames' must be a single logical value (TRUE or FALSE)")
+  }
+
+  if (!is.null(by) && (!is.character(by) || length(by) != 1)) {
+    stop("'by' must be a single character string (the stratifying variable name)")
+  }
+
+  if (!is.numeric(min_stratum_n) || length(min_stratum_n) != 1 || min_stratum_n < 0) {
+    stop("'min_stratum_n' must be a single non-negative number")
+  }
+
+  # A Monte-Carlo Fisher p-value is stochastic; seeding locally makes a fit
+  # reproducible without leaving the caller's RNG stream disturbed.
+  if (!is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      .old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+      on.exit(assign(".Random.seed", .old_seed, envir = globalenv()),
+              add = TRUE, after = FALSE)
+    } else {
+      on.exit(suppressWarnings(rm(".Random.seed", envir = globalenv())),
+              add = TRUE, after = FALSE)
+    }
+    set.seed(seed)
   }
 
   plot_style     <- match.arg(plot_style)
@@ -351,6 +422,17 @@ if (!is.data.frame(data)) {
     stop(paste0("Variable '", var2_name, "' not found in data"))
   }
 
+  if (!is.null(by)) {
+    if (!by %in% names(data)) {
+      stop(paste0("Stratifying variable '", by, "' not found in data"))
+    }
+    if (by %in% c(var1_name, var2_name)) {
+      stop("'by' must differ from 'var1' and 'var2'")
+    }
+  }
+  by_name <- by
+  if (is.null(by_label)) by_label <- by_name
+
   # Set default labels if NULL
   if (is.null(var1_label)) {
     var1_label <- var1_name
@@ -360,8 +442,11 @@ if (!is.data.frame(data)) {
     var2_label <- var2_name
   }
 
-  # Remove missing values
-  clean_data <- data[!is.na(data[[var1_name]]) & !is.na(data[[var2_name]]), ]
+  # Remove missing values. The stratifier joins the complete-case rule so the
+  # pooled table and every panel are built from exactly the same rows.
+  keep_rows <- !is.na(data[[var1_name]]) & !is.na(data[[var2_name]])
+  if (!is.null(by_name)) keep_rows <- keep_rows & !is.na(data[[by_name]])
+  clean_data <- data[keep_rows, ]
 
   if (nrow(clean_data) == 0) {
     stop("No complete cases found after removing missing values")
@@ -401,6 +486,17 @@ if (!is.data.frame(data)) {
   if (nrow(filtered_table) < 2 || ncol(filtered_table) < 2) {
     stop("Not enough categories remaining after filtering. Try reducing min_count.")
   }
+
+  # ---- stratified fit -------------------------------------------------------
+  # Deliberately placed AFTER the pooled category filter so `min_count` acts on
+  # the pooled margins: every panel then shows the same rows and columns, and a
+  # missing combination reads as a real zero rather than a filtering artefact.
+  strata <- if (!is.null(by_name)) {
+    .mosaic_strata(filtered_data, var1_name, var2_name, by_name,
+                   use_fisher = use_fisher, min_stratum_n = min_stratum_n,
+                   p_adjust = p_adjust, show_percentages = show_percentages,
+                   percentage_base = percentage_base)
+  } else NULL
 
   # Perform statistical test
   if (use_fisher) {
@@ -450,10 +546,16 @@ if (!is.data.frame(data)) {
 
   # Bundle everything the plot needs so it can be re-rendered later (e.g. by
   # plot.mosaic_analysis) without recomputing the test.
+  # Under stratification the renderer receives one table per panel; otherwise
+  # the single pooled table, which is the K = 1 case of the same code path.
   plot_parts <- list(
-    table = filtered_table, residuals = stdres_mat, data = filtered_data,
+    table     = if (is.null(strata)) filtered_table else strata$tables,
+    residuals = if (is.null(strata)) stdres_mat     else strata$residuals,
+    strata_n  = if (is.null(strata)) NULL           else strata$strata_n,
+    data = filtered_data,
     var1_name = var1_name, var2_name = var2_name,
-    var1_label = var1_label, var2_label = var2_label
+    var1_label = var1_label, var2_label = var2_label,
+    by_name = by_name, by_label = by_label
   )
   plot_style_args <- list(
     plot_style = plot_style, title = title, tile_label = tile_label,
@@ -463,7 +565,8 @@ if (!is.data.frame(data)) {
     show_varnames = show_varnames, fontsize = fontsize,
     show_legend = show_legend, legend_position = legend_position,
     legend_size = legend_size, legend_title = legend_title,
-    label_size = label_size
+    label_size = label_size,
+    facet_ncol = facet_ncol, facet_show_n = facet_show_n
   )
 
   # Build the mosaic plot. flat returns a ggplot (drawn via print); classic
@@ -531,10 +634,34 @@ if (!is.data.frame(data)) {
     )
   )
 
+  # Pooled vs. conditional association, side by side. A pooled effect that the
+  # per-stratum panels do not reproduce is the signature of Simpson's paradox.
+  overall_summary <- if (is.null(strata)) NULL else {
+    pooled <- data.frame(
+      scope = "pooled", test = test_type,
+      statistic = if (is.na(test_statistic)) NA_real_ else round(as.numeric(test_statistic), 3),
+      df = if (is.na(test_df)) NA_real_ else as.numeric(test_df),
+      p_value = p_value, cramers_v = round(cramers_v, 3),
+      common_or = NA_real_, or_ci_low = NA_real_, or_ci_high = NA_real_,
+      row.names = NULL, stringsAsFactors = FALSE)
+    if (is.null(strata$cmh)) pooled else {
+      cmh <- strata$cmh
+      rbind(pooled, data.frame(
+        scope = "conditional", test = cmh$test,
+        statistic = round(cmh$statistic, 3), df = cmh$df,
+        p_value = cmh$p_value, cramers_v = NA_real_,
+        common_or = round(cmh$common_or, 3),
+        or_ci_low = round(cmh$or_ci_low, 3), or_ci_high = round(cmh$or_ci_high, 3),
+        row.names = NULL, stringsAsFactors = FALSE))
+    }
+  }
+
   # Print results if verbose
   if (verbose) {
     cat("\n=== MOSAIC ANALYSIS RESULTS ===\n")
     cat("Variables:", var1_name, "\u00d7", var2_name, "\n")
+    if (!is.null(by_name)) cat("Stratified by:", by_name,
+                               "(", strata$n_strata, "strata )\n")
     cat("Minimum count threshold:", min_count, "\n")
     cat("Test used:", test_type, "\n")
     if (show_percentages) {
@@ -560,6 +687,19 @@ if (!is.data.frame(data)) {
     cat("==================\n")
     print(tibble::as_tibble(stats_summary), n = Inf)
     cat("\n")
+
+    if (!is.null(strata)) {
+      cat("PER-STRATUM TESTS\n")
+      cat("=================\n")
+      cat("(p_adjusted corrects for the", strata$n_strata, "tests, method:",
+          p_adjust, ")\n")
+      print(tibble::as_tibble(strata$strata_summary), n = Inf)
+      cat("\n")
+      cat("POOLED VS CONDITIONAL\n")
+      cat("=====================\n")
+      print(tibble::as_tibble(overall_summary), n = Inf)
+      cat("\n")
+    }
   }
 
   # Return results as a list with class
@@ -582,10 +722,29 @@ if (!is.data.frame(data)) {
     # plot.mosaic_analysis) without re-running the statistical test.
     plot_parts = plot_parts,
     plot_args = plot_style_args,
+    var1_name = var1_name,
+    var2_name = var2_name,
+    by_name = by_name,
+    by_label = by_label,
     call = match.call()
   )
 
-  class(results) <- c("mosaic_analysis", "list")
+  # A stratified fit carries the per-stratum tables in addition to everything a
+  # plain fit returns, so it inherits from "mosaic_analysis" rather than
+  # replacing it: existing accessors and the plot method keep working.
+  if (!is.null(strata)) {
+    results$strata_summary   <- strata$strata_summary
+    results$strata_residuals <- strata$strata_residuals
+    results$strata_table     <- strata$strata_table
+    results$overall_summary  <- overall_summary
+    results$strata_tables    <- strata$tables
+    results$strata_n         <- strata$strata_n
+    results$n_strata         <- strata$n_strata
+    results$dropped_strata   <- strata$dropped_strata
+  }
+
+  class(results) <- if (is.null(strata)) c("mosaic_analysis", "list")
+                    else c("mosaic_stratified", "mosaic_analysis", "list")
 
   # ===========================================================================
   # AI Interpretation (if requested)

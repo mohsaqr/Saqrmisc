@@ -3,11 +3,16 @@
 # A modern, flat alternative to the vcd mosaic. Tile AREA encodes counts
 # (column width = first-variable marginal, tile height = within-column
 # conditional), tile FILL encodes the standardized Pearson residual.
+#
+# The renderer draws either a single mosaic or a stratified panel of mosaics
+# (one per level of a third variable). Stratified panels share one residual
+# colour scale so a given shade means the same deviation in every panel.
 
 #' @importFrom ggplot2 ggplot aes geom_rect geom_text scale_fill_gradientn
 #' @importFrom ggplot2 scale_colour_identity scale_x_continuous scale_y_continuous
 #' @importFrom ggplot2 expansion coord_cartesian labs theme_void theme element_rect
 #' @importFrom ggplot2 element_text element_blank margin unit guide_colourbar
+#' @importFrom ggplot2 facet_wrap vars
 NULL
 
 # ColorBrewer RdBu (11) — red = negative residual, blue = positive. No new dep.
@@ -21,7 +26,9 @@ NULL
 #' plot can be re-rendered with different styling without recomputing the test.
 #'
 #' @param parts List with the contingency \code{table}, the standardized
-#'   residual matrix, the filtered data, the variable names and labels.
+#'   residual matrix, the filtered data, the variable names and labels. For a
+#'   stratified fit, \code{table} and \code{residuals} are instead *named lists*
+#'   (one element per stratum) and \code{strata_n} carries the stratum sizes.
 #' @param style List of styling arguments (see \code{mosaic_analysis}).
 #' @return For "flat", a ggplot object (not drawn). For "classic", the
 #'   \pkg{vcd} structable (drawn to the current device as a side effect).
@@ -35,12 +42,21 @@ build_mosaic_plot <- function(parts, style) {
       col_label_angle = style$col_label_angle, row_label_angle = style$row_label_angle,
       show_legend = style$show_legend, legend_position = style$legend_position,
       legend_size = style$legend_size, legend_title = style$legend_title,
-      label_size = style$label_size)
+      label_size = style$label_size,
+      strata_n = parts$strata_n,
+      facet_ncol = style$facet_ncol, facet_show_n = style$facet_show_n)
   } else {
+    # The classic vcd path draws a single mosaic. Under stratification the
+    # stratifier becomes a third splitting variable of a nested mosaic.
     set_vn <- c(parts$var1_label, parts$var2_label)
     names(set_vn) <- c(parts$var1_name, parts$var2_name)
+    rhs <- paste(parts$var1_name, "+", parts$var2_name)
+    if (!is.null(parts$by_name)) {
+      rhs <- paste(rhs, "+", parts$by_name)
+      set_vn <- c(set_vn, stats::setNames(parts$by_label, parts$by_name))
+    }
     vcd::mosaic(
-      stats::as.formula(paste("~", parts$var1_name, "+", parts$var2_name)),
+      stats::as.formula(paste("~", rhs)),
       data = parts$data, main = style$title, shade = TRUE,
       legend = style$show_legend, labeling = vcd::labeling_values,
       labeling_args = list(
@@ -59,49 +75,24 @@ draw_mosaic_plot <- function(plot_obj, style) {
   invisible(plot_obj)
 }
 
-#' Flat ggplot2 mosaic shaded by standardized residuals (internal)
+#' Tile and category-label geometry for one contingency table (internal)
 #'
-#' @param tab A two-way contingency \code{table} (rows = first variable,
-#'   columns = second variable).
-#' @param res A matrix of standardized Pearson residuals, same shape as
-#'   \code{tab}.
-#' @param title Plot title.
-#' @param tile_label What to print inside each tile: "count" (default), "percent",
-#'   "residual", "category" (the second-variable level), or "none".
-#' @param pct_base Base for the "percent" tile label: "total", "row", or "column".
-#' @param col_label_side Placement of the first-variable (column) labels: "top"
-#'   (default), "bottom", "both", or "none".
-#' @param row_label_side Placement of the second-variable (row) labels: "left"
-#'   (default), "right", "both", or "none".
-#' @param col_label_angle,row_label_angle Text rotation in degrees for the column
-#'   and row labels (0 = horizontal, 90 = vertical).
-#' @param show_legend Logical; draw the residual colour-bar legend.
-#' @param legend_position One of "right", "left", "top", "bottom", "none".
-#' @param legend_size Numeric multiplier (>0) scaling the legend key and text.
-#' @param legend_title Legend title text.
-#' @param label_size Tile-label text size (in ggplot2 mm units).
-#' @param palette Character vector of fill colours (low \U2192 high). Defaults
-#'   to ColorBrewer RdBu.
-#' @param min_label_h,min_label_w Minimum tile height / width (as a proportion
-#'   of the plotting area) for a tile to receive a text label.
-#' @return A \code{ggplot} object.
+#' Splits the unit square into columns proportional to the first-variable
+#' marginal and, within each column, into tiles proportional to the conditional
+#' distribution of the second variable. Kept separate from \code{flat_mosaic()}
+#' so a stratified plot can reuse it once per stratum.
+#'
+#' @param tab A two-way contingency \code{table}.
+#' @param res Standardized residual matrix of the same shape as \code{tab}.
+#' @param pct_base Base for the percentage column: "total", "row" or "column".
+#' @param col_label_side,row_label_side Category-label placement.
+#' @param min_label_h,min_label_w Minimum tile height / width (proportion of the
+#'   panel) for a tile or category to receive a text label.
+#' @return A list with \code{tiles} (one row per non-empty cell), \code{cols}
+#'   and \code{rows} (category-label frames, possibly \code{NULL}).
 #' @noRd
-flat_mosaic <- function(tab, res, title = "",
-                        tile_label = c("count", "percent", "residual",
-                                       "category", "none"),
-                        pct_base = "total",
-                        col_label_side = c("top", "bottom", "both", "none"),
-                        row_label_side = c("left", "right", "both", "none"),
-                        col_label_angle = 0, row_label_angle = 0,
-                        show_legend = TRUE, legend_position = "right",
-                        legend_size = 0.7, legend_title = "Std.\nresidual",
-                        label_size = 3.5, palette = NULL,
-                        min_label_h = 0.04, min_label_w = 0.03) {
-  tile_label     <- match.arg(tile_label)
-  col_label_side <- match.arg(col_label_side)
-  row_label_side <- match.arg(row_label_side)
-  if (is.null(palette)) palette <- .mosaic_rdbu
-
+.mosaic_geom <- function(tab, res, pct_base, col_label_side, row_label_side,
+                         min_label_h, min_label_w, chars_per_panel = 60) {
   rn <- rownames(tab); cn <- colnames(tab)
   R <- nrow(tab); C <- ncol(tab)
   grand <- sum(tab)
@@ -115,7 +106,7 @@ flat_mosaic <- function(tab, res, title = "",
 
   # one stacked column of tiles (top-down) for plot-column i
   build_col <- function(i) {
-    h <- as.numeric(tab[i, ]) / col_tot[i]
+    h <- if (col_tot[i] > 0) as.numeric(tab[i, ]) / col_tot[i] else rep(0, C)
     data.frame(
       xmin = xleft[i], xmax = xright[i],
       ymin = 1 - cumsum(h), ymax = 1 - c(0, cumsum(h)[-C]),
@@ -137,29 +128,26 @@ flat_mosaic <- function(tab, res, title = "",
     column = df$count / as.numeric(var2_tot[df$to]) * 100,
     df$count / grand * 100)
 
-  # tile text content
-  raw_txt <- switch(tile_label,
-    count    = formatC(df$count, format = "d", big.mark = ","),
-    percent  = paste0(formatC(df$pct, format = "f", digits = 1), "%"),
-    residual = formatC(df$resid, format = "f", digits = 1),
-    category = df$to,
-    none     = rep("", nrow(df)))
-
-  max_abs <- max(abs(df$resid), 1e-6)
-  df$txt_col <- ifelse(abs(df$resid) > 0.55 * max_abs, "white", "grey15")
-  df$lab <- ifelse(df$h >= min_label_h & df$w >= min_label_w, raw_txt, "")
-
   # ---- category-label placement frames ----
   # Drop labels for columns/rows too thin to host text — otherwise a sliver
   # category (e.g. one with very few observations) overprints its neighbour.
   col_centers <- (xleft + xright) / 2
-  col_keep <- (xright - xleft) >= min_label_w
+  col_w <- xright - xleft
+
+  # Each column may use its share of the panel's character budget. Labels are
+  # wrapped to that budget first and only dropped if they still do not fit,
+  # so a long category name loses a line break rather than its label.
+  budget <- col_w * chars_per_panel
+  col_lab <- .wrap_cat(rn, budget)
+  col_keep <- col_w >= min_label_w & .label_width(col_lab) <= pmax(budget, 4)
+
   col_sides <- switch(col_label_side, top = "top", bottom = "bottom",
                       both = c("top", "bottom"), none = character(0))
   col_df <- if (length(col_sides) && any(col_keep))
     do.call(rbind, lapply(col_sides, function(s) data.frame(
-      x = col_centers[col_keep], y = if (s == "top") 1 else 0, lab = rn[col_keep],
-      vj = if (s == "top") -0.4 else 1.4))) else NULL
+      x = col_centers[col_keep], y = if (s == "top") 1 else 0,
+      lab = col_lab[col_keep],
+      vj = if (s == "top") -0.4 else 1.4, stringsAsFactors = FALSE))) else NULL
 
   pj <- as.numeric(var2_tot) / grand
   row_centers <- 1 - (cumsum(pj) - pj / 2)
@@ -169,7 +157,162 @@ flat_mosaic <- function(tab, res, title = "",
   row_df <- if (length(row_sides) && any(row_keep))
     do.call(rbind, lapply(row_sides, function(s) data.frame(
       y = row_centers[row_keep], x = if (s == "left") 0 else 1, lab = cn[row_keep],
-      hj = if (s == "left") 1.15 else -0.15))) else NULL
+      hj = if (s == "left") 1.15 else -0.15, stringsAsFactors = FALSE))) else NULL
+
+  list(tiles = df, cols = col_df, rows = row_df)
+}
+
+# Wrap a category label onto several lines so a long name fits a narrow column.
+# Faceting divides the figure among panels, so a label that fits a lone mosaic
+# can overprint its neighbour once the same plot is split into panels.
+.wrap_cat <- function(x, budget) {
+  vapply(seq_along(x), function(i) {
+    # An infinite budget means "do not fit at all" (the un-faceted case), and
+    # as.integer(Inf) is NA, so that has to short-circuit before the coercion.
+    if (!is.finite(budget[i]) || nchar(x[i]) <= budget[i]) return(x[i])
+    paste(strwrap(x[i], width = max(4L, as.integer(budget[i]))), collapse = "\n")
+  }, character(1))
+}
+
+# Number of lines a label occupies (1 unless it carries an embedded newline).
+.label_lines <- function(x) {
+  if (!length(x)) return(1L)
+  max(lengths(strsplit(x, "\n", fixed = TRUE)), 1L)
+}
+
+# Widest line of a (possibly wrapped) label, in characters.
+.label_width <- function(x) {
+  vapply(strsplit(x, "\n", fixed = TRUE),
+         function(p) max(nchar(p)), integer(1))
+}
+
+# Panel strip label: the stratum name, optionally with its sample size.
+.stratum_strip <- function(nm, n, show_n) {
+  if (!isTRUE(show_n) || is.null(n)) return(nm)
+  paste0(nm, " (n = ", formatC(n[nm], format = "d", big.mark = ","), ")")
+}
+
+#' Flat ggplot2 mosaic shaded by standardized residuals (internal)
+#'
+#' @param tab A two-way contingency \code{table} (rows = first variable,
+#'   columns = second variable), or a *named list* of such tables to draw one
+#'   faceted panel per stratum.
+#' @param res A matrix of standardized Pearson residuals, same shape as
+#'   \code{tab}; or a named list matching a list \code{tab}.
+#' @param title Plot title.
+#' @param tile_label What to print inside each tile: "count" (default),
+#'   "percent", "count_percent" (the count with its percentage beneath),
+#'   "residual", "category" (the second-variable level), or "none".
+#' @param pct_base Base for the "percent" tile label: "total", "row", or "column".
+#'   Under stratification the base is computed *within* each panel.
+#' @param col_label_side Placement of the first-variable (column) labels: "top"
+#'   (default), "bottom", "both", or "none".
+#' @param row_label_side Placement of the second-variable (row) labels: "left"
+#'   (default), "right", "both", or "none".
+#' @param col_label_angle,row_label_angle Text rotation in degrees for the column
+#'   and row labels (0 = horizontal, 90 = vertical).
+#' @param show_legend Logical; draw the residual colour-bar legend.
+#' @param legend_position One of "right", "left", "top", "bottom", "none".
+#' @param legend_size Numeric multiplier (>0) scaling the legend key and text.
+#' @param legend_title Legend title text.
+#' @param label_size Tile-label text size (in ggplot2 mm units).
+#' @param palette Character vector of fill colours (low \U2192 high). Defaults
+#'   to ColorBrewer RdBu.
+#' @param min_label_h,min_label_w Minimum tile height / width (as a proportion
+#'   of the plotting area) for a tile to receive a text label.
+#' @param strata_n Named integer vector of stratum sizes, used for panel strips.
+#' @param facet_ncol Number of facet columns; \code{NULL} lets ggplot2 choose.
+#' @param facet_show_n Logical; append "(n = ...)" to each panel strip.
+#' @return A \code{ggplot} object.
+#' @noRd
+flat_mosaic <- function(tab, res, title = "",
+                        tile_label = c("count", "percent", "count_percent",
+                                       "residual", "category", "none"),
+                        pct_base = "total",
+                        col_label_side = c("top", "bottom", "both", "none"),
+                        row_label_side = c("left", "right", "both", "none"),
+                        col_label_angle = 0, row_label_angle = 0,
+                        show_legend = TRUE, legend_position = "right",
+                        legend_size = 0.7, legend_title = "Std.\nresidual",
+                        label_size = 3.5, palette = NULL,
+                        min_label_h = 0.04, min_label_w = 0.03,
+                        strata_n = NULL, facet_ncol = NULL,
+                        facet_show_n = TRUE) {
+  tile_label     <- match.arg(tile_label)
+  col_label_side <- match.arg(col_label_side)
+  row_label_side <- match.arg(row_label_side)
+  if (is.null(palette)) palette <- .mosaic_rdbu
+
+  # Normalise the single-table and stratified-list cases to one code path.
+  faceted <- is.list(tab) && !is.table(tab) && !is.matrix(tab)
+  tabs <- if (faceted) tab else list(tab)
+  ress <- if (faceted) res else list(res)
+  strata <- if (faceted) names(tabs) else ""
+
+  # Panels split the figure horizontally, so each one gets a proportionally
+  # smaller character budget for its column labels. The panel-grid width comes
+  # from ggplot2's own layout function rather than a re-derived guess, which
+  # was wrong at n = 3 (facet_wrap lays those out in one row, not two).
+  n_pan <- length(tabs)
+  ncol_pan <- max(1L, ggplot2::wrap_dims(n_pan, ncol = facet_ncol)[2])
+  # An un-stratified mosaic keeps the whole figure to itself and rendered fine
+  # before panels existed, so it opts out entirely: an infinite budget leaves
+  # single-mosaic output byte-identical to what it was, and only faceting --
+  # which is what created the crowding -- pays for the extra fitting.
+  # The 115 is calibrated so a full-width panel still fits a 15-character label
+  # in a column holding ~13% of the width, matching the un-faceted look.
+  chars_per_panel <- if (!faceted) Inf else
+    115 / ncol_pan * (3.5 / max(label_size, 1))
+
+  geoms <- Map(function(tb, rs) .mosaic_geom(tb, rs, pct_base, col_label_side,
+                                             row_label_side, min_label_h, min_label_w,
+                                             chars_per_panel = chars_per_panel),
+               tabs, ress)
+
+  # Panel strips keep the stratum size visible, so equal-width panels never
+  # imply equal sample sizes.
+  strip <- vapply(strata, .stratum_strip, character(1), n = strata_n,
+                  show_n = facet_show_n && faceted, USE.NAMES = FALSE)
+  strip_lv <- strip[!duplicated(strip)]
+
+  # rbind one frame across strata, tagging each row with its panel
+  bind_part <- function(part) {
+    keep <- !vapply(geoms, function(g) is.null(g[[part]]), logical(1))
+    if (!any(keep)) return(NULL)
+    out <- do.call(rbind, Map(function(g, s) {
+      g[[part]]$stratum <- factor(s, levels = strip_lv)
+      g[[part]]
+    }, geoms[keep], strip[keep]))
+    out
+  }
+  df     <- bind_part("tiles")
+  col_df <- bind_part("cols")
+  row_df <- bind_part("rows")
+
+  # tile text content
+  fmt_count <- function(x) formatC(x, format = "d", big.mark = ",")
+  fmt_pct   <- function(x) paste0(formatC(x, format = "f", digits = 1), "%")
+
+  raw_txt <- switch(tile_label,
+    count    = fmt_count(df$count),
+    percent  = fmt_pct(df$pct),
+    # Stacked rather than "1,234 (5.6%)" on one line: mosaic tiles are short of
+    # width far more often than height, so two short lines fit where one long
+    # line would spill into the neighbouring tile.
+    count_percent = paste0(fmt_count(df$count), "\n(", fmt_pct(df$pct), ")"),
+    residual = formatC(df$resid, format = "f", digits = 1),
+    category = df$to,
+    none     = rep("", nrow(df)))
+
+  # One shared residual scale across every panel: a given shade must mean the
+  # same standardized deviation wherever it appears.
+  max_abs <- max(abs(df$resid), 1e-6)
+  df$txt_col <- ifelse(abs(df$resid) > 0.55 * max_abs, "white", "grey15")
+  # A two-line label needs roughly twice the height of a one-line label before
+  # it will sit inside its tile without overprinting the tile edge.
+  n_lines <- max(1L, .label_lines(raw_txt))
+  df$lab <- ifelse(df$h >= min_label_h * n_lines & df$w >= min_label_w,
+                   raw_txt, "")
 
   fill_guide <- if (show_legend && legend_position != "none") {
     ggplot2::guide_colourbar(
@@ -202,6 +345,10 @@ flat_mosaic <- function(tab, res, title = "",
       hjust = row_df$hj, vjust = 0.5, angle = row_label_angle,
       size = label_size + 0.1, colour = "grey45", inherit.aes = FALSE)
 
+  # Both axes are proportions of the panel, so panel scales are always fixed.
+  if (faceted)
+    p <- p + ggplot2::facet_wrap(ggplot2::vars(.data$stratum), ncol = facet_ncol)
+
   # Only reserve margin on a side that actually carries labels, so the tiles
   # use the full width/height when (as by default) labels sit on one side.
   left_e  <- if (row_label_side %in% c("left", "both"))   0.12 else 0.015
@@ -224,6 +371,10 @@ flat_mosaic <- function(tab, res, title = "",
       plot.title = ggplot2::element_text(face = "bold", size = 15, hjust = 0,
                                          margin = ggplot2::margin(b = 12, l = 4)),
       plot.margin = ggplot2::margin(14, 18, 14, 14),
+      strip.text = ggplot2::element_text(face = "bold", size = 12, colour = "grey20",
+                                         margin = ggplot2::margin(b = 6, t = 2)),
+      panel.spacing = ggplot2::unit(if (row_label_side %in% c("left", "right", "both"))
+                                      1.9 else 1.1, "lines"),
       legend.position = leg_pos,
       legend.title = ggplot2::element_text(size = legend_size * 11),
       legend.text  = ggplot2::element_text(size = legend_size * 10))

@@ -8,6 +8,7 @@ mosaic_analysis(
   data,
   var1,
   var2,
+  by = NULL,
   min_count = 10,
   fontsize = 8,
   title = "",
@@ -15,7 +16,7 @@ mosaic_analysis(
   var2_label = NULL,
   show_varnames = FALSE,
   plot_style = c("flat", "classic"),
-  tile_label = c("count", "percent", "residual", "category", "none"),
+  tile_label = c("count", "percent", "count_percent", "residual", "category", "none"),
   col_label_side = c("top", "bottom", "both", "none"),
   row_label_side = c("left", "right", "both", "none"),
   col_label_angle = 0,
@@ -28,6 +29,12 @@ mosaic_analysis(
   show_percentages = TRUE,
   percentage_base = "total",
   use_fisher = FALSE,
+  by_label = NULL,
+  min_stratum_n = 30,
+  p_adjust = "BH",
+  facet_ncol = NULL,
+  facet_show_n = TRUE,
+  seed = NULL,
   verbose = TRUE,
   save_plot = NULL,
   interpret = FALSE,
@@ -40,6 +47,14 @@ mosaic_analysis(
 \item{var1}{Character. Name of the first categorical variable.}
 
 \item{var2}{Character. Name of the second categorical variable.}
+
+\item{by}{Character. Optional name of a third categorical variable to
+stratify (facet) on. When supplied, the \code{var1}-\code{var2} table is
+fitted separately within each level of \code{by} and the plot becomes a
+panel of mosaics, one per stratum. Category filtering (\code{min_count})
+is applied to the pooled table \emph{before} splitting, so every panel
+shows the same rows and columns; the residual colour scale is likewise
+shared across panels. Defaults to NULL (a single, un-stratified mosaic).}
 
 \item{min_count}{The minimum number of observations required for a category to be
 included in the analysis. Defaults to 10.}
@@ -65,9 +80,10 @@ shaded by standardized residuals; the default) or "classic" (the \pkg{vcd}
 shaded mosaic).}
 
 \item{tile_label}{(flat style) What to print inside each tile: "count" (the
-default actual counts), "percent" (using \code{percentage_base}), "residual"
-(standardized residual), "category" (the second-variable level name), or
-"none".}
+default actual counts), "percent" (using \code{percentage_base}),
+"count_percent" (the count with its percentage on a second line),
+"residual" (standardized residual), "category" (the second-variable level
+name), or "none".}
 
 \item{col_label_side}{(flat style) Placement of the first-variable labels:
 "top" (default), "bottom", "both", or "none".}
@@ -100,6 +116,27 @@ Defaults to "total".}
 \item{use_fisher}{Logical. If TRUE, uses Fisher's exact test instead of chi-square
 (recommended for small expected cell counts). Defaults to FALSE.}
 
+\item{by_label}{Label for the stratifying variable. If NULL, uses \code{by}.}
+
+\item{min_stratum_n}{Minimum number of observations for a stratum to be
+fitted. Strata below this, or no longer spanning at least two levels of
+each variable, are dropped with a warning naming them. Defaults to 30.}
+
+\item{p_adjust}{Multiplicity correction applied to the per-stratum p-values,
+passed to \code{\link[stats]{p.adjust}}. Defaults to "BH". Fitting one
+test per stratum is a multiple-testing problem, so the corrected value is
+reported alongside the raw one.}
+
+\item{facet_ncol}{Number of facet columns in a stratified plot. NULL (the
+default) lets \pkg{ggplot2} choose.}
+
+\item{facet_show_n}{Logical. Append "(n = ...)" to each panel strip so equal
+panel widths never imply equal sample sizes. Defaults to TRUE.}
+
+\item{seed}{Optional integer. Seeds the Monte-Carlo Fisher p-value so a fit
+is reproducible; the caller's RNG stream is restored on exit. Defaults to
+NULL (no seeding).}
+
 \item{verbose}{Logical. If TRUE, prints results to console. Defaults to TRUE.}
 
 \item{save_plot}{Optional file path to save the mosaic plot. Supports .png, .pdf, .svg.
@@ -128,6 +165,16 @@ A list of class "mosaic_analysis" containing:
   \item{\code{filtered_n}}: Sample size after filtering
   \item{\code{removed_categories}}: List of categories removed due to min_count
 }
+
+When \code{by} is supplied the object additionally gains class
+"mosaic_stratified" and the fields \code{strata_summary} (one row per
+stratum: n, test, statistic, df, raw and adjusted p, Cramer's V, effect
+size, and the number of cells beyond |2|), \code{strata_residuals} (one row
+per stratum x cell), \code{strata_table}, and \code{overall_summary} (the
+pooled test beside the Cochran-Mantel-Haenszel test of association
+conditional on the stratifier). Reach these with
+\code{\link[=as.data.frame.mosaic_analysis]{as.data.frame}}, e.g.
+\code{as.data.frame(fit, what = "strata")}.
 }
 \description{
 This function conducts a complete mosaic plot analysis for two categorical variables.
@@ -168,6 +215,16 @@ results <- mosaic_analysis(
   use_fisher = TRUE,
   verbose = FALSE
 )
+
+# Stratify (facet) on a third variable: one mosaic and one test per region,
+# with p-values corrected across strata.
+example_data$region <- sample(c("North", "South"), 200, replace = TRUE)
+by_region <- mosaic_analysis(
+  example_data, "gender", "education",
+  by = "region", min_count = 5, min_stratum_n = 20, verbose = FALSE
+)
+as.data.frame(by_region, what = "strata")
+as.data.frame(by_region, what = "overall")
 }
 
 }

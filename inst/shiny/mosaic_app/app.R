@@ -7,6 +7,12 @@ library(DT)
 # in the server block — otherwise nginx returns 413 before Shiny sees the request.
 options(shiny.maxRequestSize = 100 * 1024^2)
 
+# `%||%` is base R only from 4.4.0 and shiny does not export it. The deploy
+# server's R version is not guaranteed, so define it when absent.
+if (!exists("%||%", envir = baseenv())) {
+  `%||%` <- function(x, y) if (is.null(x)) y else x
+}
+
 # ---- built-in demo data ----
 # A deterministic education example (Specialization x Final evaluation) so the
 # app is usable with one click and mirrors the package documentation example.
@@ -18,14 +24,25 @@ options(shiny.maxRequestSize = 100 * 1024^2)
                  `Social Sciences` = 0.85, Kindergarten = 0.50)
   n_per <- c(Engineering = 4709, Medicine = 2925, Nursing = 6606,
              `Social Sciences` = 2190, Kindergarten = 15)
+  # Online study is unevenly distributed across specializations AND carries its
+  # own pass penalty, so the pooled Specialization effect is partly confounded
+  # by study mode. That makes the Stratify control show something real.
+  online_prob <- c(Engineering = 0.20, Medicine = 0.10, Nursing = 0.35,
+                   `Social Sciences` = 0.65, Kindergarten = 0.70)
+  online_penalty <- 0.13
   set.seed(42)
   spec <- rep(spec_levels, times = n_per[spec_levels])
-  evals <- vapply(spec, function(s) {
-    if (stats::runif(1) < pass_prob[[s]]) "Pass" else "Fail"
-  }, character(1), USE.NAMES = FALSE)
+  mode <- ifelse(stats::runif(length(spec)) < online_prob[spec], "Online", "Campus")
+  p <- pass_prob[spec] - online_penalty * (mode == "Online")
+  evals <- ifelse(stats::runif(length(spec)) < p, "Pass", "Fail")
+  # A cohort year with no association, so the app also demonstrates the
+  # "stratifier that changes nothing" case.
+  year <- sample(c("2022", "2023", "2024"), length(spec), replace = TRUE)
   data.frame(
     Specialization_EN   = factor(spec, levels = spec_levels),
     Final_Evaluation_EN = factor(evals, levels = c("Fail", "Pass")),
+    Study_Mode          = factor(mode, levels = c("Campus", "Online")),
+    Cohort_Year         = factor(year),
     stringsAsFactors = FALSE
   )
 }
@@ -40,24 +57,36 @@ demo <- .make_demo()
 .compute_mosaic <- function(data, var1, var2, opts) {
   grDevices::pdf(NULL)
   on.exit(if (grDevices::dev.cur() > 1L) grDevices::dev.off(), add = TRUE)
+  # Warnings are collected rather than suppressed: "expected counts < 5" and
+  # "strata dropped" are exactly what a user needs to see before reading the
+  # panels, so they are surfaced in the UI instead of being swallowed.
+  warns <- character(0)
   res <- tryCatch(
-    suppressWarnings(
+    withCallingHandlers(
       mosaic_analysis(
         data, var1, var2,
+        by               = opts$by,
         min_count        = opts$min_count,
         var1_label       = opts$var1_label,
         var2_label       = opts$var2_label,
         show_percentages = opts$show_percentages,
         percentage_base  = opts$percentage_base,
         use_fisher       = opts$use_fisher,
+        min_stratum_n    = opts$min_stratum_n,
+        p_adjust         = opts$p_adjust,
+        seed             = opts$seed,
         verbose          = FALSE
-      )
-    ),
+      ),
+      warning = function(w) {
+        warns <<- c(warns, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }),
     error = function(e) structure(conditionMessage(e), class = "mosaic_error")
   )
   if (inherits(res, "mosaic_error"))
-    return(list(status = "error", message = as.character(res), value = NULL))
-  list(status = "ok", value = res, message = NULL)
+    return(list(status = "error", message = as.character(res), value = NULL,
+                warnings = warns))
+  list(status = "ok", value = res, message = NULL, warnings = warns)
 }
 
 
@@ -127,6 +156,16 @@ ui <- fluidPage(
       padding: 10px 14px; border-radius: 4px; margin-bottom: 14px;
       font-size: 13px; color: #2c3e50;
     }
+    .warn-callout {
+      background: #fff8e6; border-left: 3px solid #e0a800;
+      padding: 10px 14px; border-radius: 4px; margin-bottom: 14px;
+      font-size: 13px; color: #6b5200;
+    }
+    .warn-callout ul { margin: 6px 0 0; padding-left: 18px; }
+    .strat-box {
+      background: #f4f8ff; border: 1px solid #d0dff5;
+      border-radius: 6px; padding: 10px 12px; margin-top: 8px;
+    }
 
     /* ── Footer ── */
     html, body { height: 100%; }
@@ -180,7 +219,32 @@ ui <- fluidPage(
             ),
             div(class = "section-header", "Variables"),
             uiOutput("ui_var1"),
-            uiOutput("ui_var2")
+            uiOutput("ui_var2"),
+
+            div(class = "section-header", "Stratify / facet"),
+            uiOutput("ui_by"),
+            helpText(paste(
+              "Optional. Splits the table by a third variable and fits each",
+              "group separately \u2014 one mosaic panel and one test per group.",
+              "Use it to check whether the association holds in every subgroup.")),
+            conditionalPanel(
+              condition = "input.by_sel != '__none__'",
+              div(class = "strat-box",
+                fluidRow(
+                  column(6, numericInput("min_stratum_n", "Min group size",
+                                         value = 30, min = 0, step = 5)),
+                  column(6, selectInput("p_adjust", "p correction",
+                                        choices = c("BH" = "BH",
+                                                    "Bonferroni" = "bonferroni",
+                                                    "Holm" = "holm",
+                                                    "None" = "none"),
+                                        selected = "BH"))
+                ),
+                helpText(paste(
+                  "One test per group is a multiple-testing problem, so a",
+                  "corrected p-value is reported next to the raw one."))
+              )
+            )
           )
         ),
         column(4,
@@ -196,6 +260,13 @@ ui <- fluidPage(
               condition = "input.show_pct == true",
               selectInput("pct_base", "Percentage base",
                           choices = c("total", "row", "column"), selected = "total")
+            ),
+            conditionalPanel(
+              condition = "input.test == 'fisher'",
+              numericInput("seed", "Random seed", value = 42, min = 1, step = 1),
+              helpText(paste(
+                "Fisher's p-value here is estimated by Monte Carlo, so it is",
+                "stochastic. A fixed seed makes a run reproducible."))
             )
           )
         ),
@@ -215,6 +286,7 @@ ui <- fluidPage(
     # ---- Summary ----
     tabPanel("Summary",
       br(),
+      uiOutput("run_warnings"),
       h5("Statistical summary"),
       DTOutput("stats_table"),
       br(),
@@ -223,11 +295,18 @@ ui <- fluidPage(
       uiOutput("export_strip")
     ),
 
+    # ---- Strata (only meaningful for a stratified run) ----
+    tabPanel("Strata", value = "strata",
+      br(),
+      uiOutput("strata_page")
+    ),
+
     # ---- Residuals ----
     tabPanel("Residuals",
       br(),
       div(class = "stat-callout",
           "Standardized Pearson residuals. Values > |2| indicate a cell that deviates significantly from the expected count under independence."),
+      uiOutput("residuals_note"),
       DTOutput("residuals_table")
     ),
 
@@ -251,11 +330,12 @@ ui <- fluidPage(
           conditionalPanel(
             condition = "input.plot_style == 'flat'",
             selectInput("tile_label", "Tile content",
-                        choices = c("Count"     = "count",
-                                    "Percent"   = "percent",
-                                    "Residual"  = "residual",
-                                    "Category"  = "category",
-                                    "None"      = "none"),
+                        choices = c("Count"           = "count",
+                                    "Percent"         = "percent",
+                                    "Count (percent)" = "count_percent",
+                                    "Residual"        = "residual",
+                                    "Category"        = "category",
+                                    "None"            = "none"),
                         selected = "count"),
             numericInput("label_size", "Tile label size", value = 3.5, min = 1, max = 8, step = 0.5),
 
@@ -294,12 +374,42 @@ ui <- fluidPage(
             textInput("legend_title", "Legend title", value = "Std.\nresidual")
           ),
 
+          # ---- Panels (stratified runs only) ----
+          conditionalPanel(
+            condition = "output.is_stratified === true",
+            div(class = "section-header", "Panels"),
+            numericInput("facet_ncol", "Panel columns (0 = auto)",
+                         value = 0, min = 0, max = 8, step = 1),
+            checkboxInput("facet_show_n", "Show group size in panel title",
+                          value = TRUE)
+          ),
+
           # ---- Plot size ----
+          # Two ways to size a panel grid: fix the whole canvas and let the
+          # panels shrink as more are added, or fix each panel and let the
+          # canvas grow. The second keeps every panel equally readable, which
+          # is usually what you want once there are more than two or three.
           div(class = "section-header", "Plot size"),
-          sliderInput("plot_w", "Width (px)",  min = 400, max = 1600,
-                      value = 900, step = 20, ticks = FALSE),
-          sliderInput("plot_h", "Height (px)", min = 300, max = 1200,
-                      value = 620, step = 20, ticks = FALSE)
+          radioButtons("size_mode", "Size by",
+                       choices = c("Whole canvas" = "canvas",
+                                   "Each panel"   = "panel"),
+                       selected = "canvas", inline = TRUE),
+
+          conditionalPanel(
+            condition = "input.size_mode == 'canvas'",
+            sliderInput("plot_w", "Canvas width (px)",  min = 400, max = 2400,
+                        value = 900, step = 20, ticks = FALSE),
+            sliderInput("plot_h", "Canvas height (px)", min = 300, max = 2000,
+                        value = 620, step = 20, ticks = FALSE)
+          ),
+          conditionalPanel(
+            condition = "input.size_mode == 'panel'",
+            sliderInput("panel_w", "Panel width (px)",  min = 200, max = 1000,
+                        value = 380, step = 10, ticks = FALSE),
+            sliderInput("panel_h", "Panel height (px)", min = 160, max = 900,
+                        value = 340, step = 10, ticks = FALSE),
+            uiOutput("canvas_readout")
+          )
         ),
         mainPanel(
           width = 9,
@@ -319,7 +429,8 @@ ui <- fluidPage(
       h5("Tables"),
       downloadButton("dl_resid", "Residuals CSV"),
       " ",
-      downloadButton("dl_summary", "Summary CSV")
+      downloadButton("dl_summary", "Summary CSV"),
+      uiOutput("dl_strata_ui")
     ),
 
     # ---- Help (reference) ----
@@ -367,6 +478,35 @@ ui <- fluidPage(
                 tags$p("Reported with a df-adjusted interpretation (negligible / small / medium / large), following Cohen's guidelines."),
                 tags$div(class = "stat-callout",
                   "Cramer's V ranges 0–1. It measures association strength independent of sample size, so it complements the p-value (which only tells you whether an association exists, not how strong it is)."
+                )
+              ),
+              div(class = "help-section",
+                tags$h4("\U0001f9ec Stratify / facet by"),
+                tags$p("Pick a third variable on the Start page to split the table by it. ",
+                       "Each group is fitted ", tags$strong("separately"),
+                       " \u2014 its own contingency table, its own test, its own effect size \u2014 ",
+                       "and the plot becomes one mosaic panel per group."),
+                tags$p("This is the standard check for ", tags$strong("effect modification"),
+                       " and ", tags$strong("Simpson's paradox"), ": an association in the ",
+                       "pooled table can weaken, vanish, or reverse inside every subgroup."),
+                tags$table(class = "measure-table",
+                  tags$thead(tags$tr(tags$th("Row on the Strata tab"), tags$th("Meaning"))),
+                  tags$tbody(
+                    tags$tr(tags$td(tags$strong("pooled")),
+                            tags$td("The test ignoring the stratifier \u2014 what you get without stratifying.")),
+                    tags$tr(tags$td(tags$strong("conditional")),
+                            tags$td("Cochran\u2013Mantel\u2013Haenszel: the association holding the stratifier fixed."))
+                  )
+                ),
+                tags$div(class = "stat-callout",
+                  paste("A pooled result much stronger than every per-group result means",
+                        "the stratifier is confounding the association. Per-group results",
+                        "that differ in size or direction mean the stratifier modifies it.")),
+                tags$ul(
+                  tags$li(tags$strong("Same categories everywhere"), " \u2014 the minimum-count filter is applied to the pooled table before splitting, so all panels share rows and columns."),
+                  tags$li(tags$strong("One shared colour scale"), " \u2014 a given shade means the same residual in every panel."),
+                  tags$li(tags$strong("Corrected p-values"), " \u2014 one test per group is multiple testing; the adjusted column adjusts for it."),
+                  tags$li(tags$strong("Panel titles carry n"), " \u2014 panels are drawn equal width, so the group size is printed rather than implied.")
                 )
               ),
               div(class = "help-section",
@@ -427,6 +567,20 @@ server <- function(input, output, session) {
                 selected = cols[min(2, length(cols))])
   })
 
+  # The stratifier must differ from both analysis variables, so the two already
+  # chosen are removed from the list rather than rejected after the fact.
+  output$ui_by <- renderUI({
+    cols <- setdiff(colnames(data_loaded()), c(input$var1_sel, input$var2_sel))
+    selectInput("by_sel", "Stratify by (optional)",
+                choices = c("(none)" = "__none__", stats::setNames(cols, cols)),
+                selected = isolate(input$by_sel) %||% "__none__")
+  })
+
+  by_var <- reactive({
+    b <- input$by_sel
+    if (is.null(b) || identical(b, "__none__")) NULL else b
+  })
+
   # ---- reactive: run analysis on demand (statistics only) ----
   analysis <- eventReactive(input$run, {
     d <- data_loaded()
@@ -437,12 +591,16 @@ server <- function(input, output, session) {
            "Row and column variables must differ.")
     )
     opts <- list(
+      by               = by_var(),
       min_count        = as.integer(input$min_count),
       var1_label       = if (nzchar(input$var1_label)) input$var1_label else NULL,
       var2_label       = if (nzchar(input$var2_label)) input$var2_label else NULL,
       show_percentages = isTRUE(input$show_pct),
       percentage_base  = input$pct_base,
-      use_fisher       = identical(input$test, "fisher")
+      use_fisher       = identical(input$test, "fisher"),
+      min_stratum_n    = as.numeric(input$min_stratum_n %||% 30),
+      p_adjust         = input$p_adjust %||% "BH",
+      seed             = if (identical(input$test, "fisher")) input$seed else NULL
     )
     out <- withProgress(message = "Running mosaic analysis…", value = 0.5,
                         .compute_mosaic(d, input$var1_sel, input$var2_sel, opts))
@@ -468,7 +626,11 @@ server <- function(input, output, session) {
     legend_position = input$legend_position,
     legend_size     = input$legend_size,
     legend_title    = input$legend_title,
-    label_size      = input$label_size
+    label_size      = input$label_size,
+    # 0 means "let ggplot2 decide", which the package expresses as NULL
+    facet_ncol      = if (is.null(input$facet_ncol) || input$facet_ncol < 1) NULL
+                      else as.integer(input$facet_ncol),
+    facet_show_n    = isTRUE(input$facet_show_n)
   ))
 
   # Draw the current result with the current styling, into the active device.
@@ -476,16 +638,187 @@ server <- function(input, output, session) {
     do.call(plot, c(list(res_value()), plot_overrides()))
   }
 
-  # On a fresh result, jump straight to the plot.
+  # On a fresh result, jump straight to the plot. A stratified run needs more
+  # canvas than a single mosaic, so the size sliders are nudged to fit the
+  # panel grid; the user can still override them afterwards.
   observeEvent(analysis(), {
-    if (analysis()$status == "ok")
-      updateTabsetPanel(session, "tabs", selected = "plot")
+    a <- analysis()
+    if (a$status != "ok") return()
+    if (inherits(a$value, "mosaic_stratified")) {
+      # Size the canvas sliders to the grid ggplot2 will actually draw, so the
+      # two sizing modes start out agreeing with each other.
+      d <- ggplot2::wrap_dims(a$value$n_strata)
+      updateSliderInput(session, "plot_w",
+                        value = max(600, min(2400, 380 * d[2] + 150)))
+      updateSliderInput(session, "plot_h",
+                        value = max(320, min(2000, 340 * d[1] + 45)))
+    }
+    updateTabsetPanel(session, "tabs", selected = "plot")
   })
 
   res_value <- reactive({
     a <- analysis()
     validate(need(a$status == "ok", a$message))
     a$value
+  })
+
+  # TRUE when the current result carries per-stratum fits. Exposed to the UI so
+  # the panel controls can hide themselves on an un-stratified run.
+  is_stratified <- reactive({
+    a <- analysis()
+    isTRUE(a$status == "ok") && inherits(a$value, "mosaic_stratified")
+  })
+  output$is_stratified <- reactive(is_stratified())
+  outputOptions(output, "is_stratified", suspendWhenHidden = FALSE)
+
+  # Warnings raised during the fit (low expected counts, dropped strata,
+  # unobserved categories) are shown rather than silently dropped.
+  output$run_warnings <- renderUI({
+    a <- analysis()
+    req(length(a$warnings) > 0)
+    div(class = "warn-callout",
+      tags$strong("Notes from this run"),
+      tags$ul(lapply(unique(a$warnings), tags$li)))
+  })
+
+  # Panel grid of the current result. ggplot2's own layout function is used so
+  # the arithmetic here always matches what facet_wrap actually draws.
+  grid_dims <- reactive({
+    a <- analysis()
+    if (!isTRUE(a$status == "ok") || !inherits(a$value, "mosaic_stratified"))
+      return(c(nrow = 1L, ncol = 1L))
+    nc <- if (is.null(input$facet_ncol) || input$facet_ncol < 1) NULL
+          else as.integer(input$facet_ncol)
+    d <- ggplot2::wrap_dims(a$value$n_strata, ncol = nc)
+    c(nrow = as.integer(d[1]), ncol = as.integer(d[2]))
+  })
+
+  # Room the panel grid itself does not occupy: the colour bar, the category
+  # labels and an optional title. Without this, per-panel sizing would squeeze
+  # the panels to make space for the legend.
+  plot_padding <- reactive({
+    leg  <- isTRUE(input$show_legend)
+    side <- input$legend_position %||% "right"
+    c(w = if (leg && side %in% c("left", "right")) 150 else 40,
+      h = (if (leg && side %in% c("top", "bottom")) 120 else 45) +
+          (if (nzchar(input$title %||% "")) 35 else 0))
+  })
+
+  # The single source of truth for plot size: the on-screen render and both
+  # download handlers all read this, so an export matches what is displayed.
+  plot_dims <- reactive({
+    if (identical(input$size_mode, "panel")) {
+      g <- grid_dims(); pad <- plot_padding()
+      c(w = min(4000, g[["ncol"]] * (input$panel_w %||% 380) + pad[["w"]]),
+        h = min(4000, g[["nrow"]] * (input$panel_h %||% 340) + pad[["h"]]))
+    } else {
+      c(w = input$plot_w %||% 900, h = input$plot_h %||% 620)
+    }
+  })
+
+  output$canvas_readout <- renderUI({
+    g <- grid_dims(); d <- plot_dims()
+    n <- g[["nrow"]] * g[["ncol"]]
+    div(class = "stat-callout", style = "margin-top:8px; font-size:12px;",
+        sprintf("%s in a %d x %d grid \u2192 canvas %d x %d px.",
+                if (n == 1) "1 panel" else paste(n, "panel slots"),
+                g[["nrow"]], g[["ncol"]], round(d[["w"]]), round(d[["h"]])))
+  })
+
+  # ---- Strata tab ----
+  output$strata_page <- renderUI({
+    a <- analysis()
+    if (!isTRUE(a$status == "ok"))
+      return(div(class = "stat-callout",
+                 "Run an analysis on the Start tab first."))
+    if (!is_stratified())
+      return(div(class = "stat-callout",
+                 HTML(paste("This run was not stratified. Pick a variable under",
+                            "<strong>Stratify / facet</strong> on the Start tab",
+                            "and run again to fit each group separately."))))
+    tagList(
+      uiOutput("strata_verdict"),
+      h5("Per-group tests"),
+      div(class = "stat-callout",
+          paste("One row per group, each fitted on its own contingency table.",
+                "p_adjusted corrects for testing every group;",
+                "compare cramers_v across rows to see whether the association",
+                "has the same strength everywhere.")),
+      DTOutput("strata_table"),
+      br(),
+      h5("Pooled vs conditional"),
+      div(class = "stat-callout",
+          paste("\"pooled\" ignores the stratifier. \"conditional\" is the",
+                "Cochran-Mantel-Haenszel test, which holds the stratifier",
+                "fixed. A large gap between them means the stratifier is",
+                "confounding the association.")),
+      DTOutput("overall_table")
+    )
+  })
+
+  # A plain-language read of pooled vs per-group effect sizes.
+  output$strata_verdict <- renderUI({
+    req(is_stratified())
+    fit <- res_value()
+    strata  <- as.data.frame(fit, what = "strata")
+    overall <- as.data.frame(fit, what = "overall")
+    pooled_v <- overall$cramers_v[overall$scope == "pooled"]
+    max_v <- max(strata$cramers_v, na.rm = TRUE)
+    min_v <- min(strata$cramers_v, na.rm = TRUE)
+    n_sig <- sum(strata$p_adjusted < 0.05, na.rm = TRUE)
+
+    # State the numbers and the ratio rather than collapsing them to a verdict
+    # at some cut-off: the reader can weigh a 1.4x gap for themselves, and a
+    # hard threshold would flip the message either side of an arbitrary line.
+    ratio <- pooled_v / max(max_v, 1e-6)
+    spread <- max_v / max(min_v, 1e-6)
+
+    facts <- sprintf(paste("Pooled Cramer's V is %.3f; within groups it ranges",
+                           "%.3f to %.3f."),
+                     pooled_v, min_v, max_v)
+
+    confound <- if (ratio >= 1.1) {
+      sprintf(paste("The pooled association is %.1fx the strongest single group,",
+                    "so part of it is carried by %s rather than by the",
+                    "association itself."), ratio, fit$by_name)
+    } else {
+      sprintf(paste("The pooled association is no stronger than within groups,",
+                    "so %s is not inflating it."), fit$by_name)
+    }
+
+    modify <- if (spread >= 2) {
+      sprintf(paste("Strength also differs %.1fx between the weakest and",
+                    "strongest group, so %s appears to modify the association."),
+              spread, fit$by_name)
+    } else {
+      sprintf("Strength is comparable across groups (%.1fx spread).", spread)
+    }
+
+    div(class = "stat-callout",
+        tags$strong("Reading these panels: "),
+        paste(facts, confound, modify,
+              sprintf("%d of %d groups are significant after correction.",
+                      n_sig, nrow(strata))))
+  })
+
+  output$strata_table <- renderDT({
+    req(is_stratified())
+    d <- as.data.frame(res_value(), what = "strata")
+    datatable(d, rownames = FALSE,
+              options = list(dom = "t", scrollX = TRUE, pageLength = 50,
+                             ordering = FALSE)) |>
+      formatSignif(c("p_value", "p_adjusted"), 3) |>
+      formatStyle("p_adjusted",
+                  fontWeight = styleInterval(0.05, c("bold", "normal")),
+                  color = styleInterval(0.05, c("#1a56db", "#666")))
+  })
+
+  output$overall_table <- renderDT({
+    req(is_stratified())
+    d <- as.data.frame(res_value(), what = "overall")
+    datatable(d, rownames = FALSE,
+              options = list(dom = "t", scrollX = TRUE, ordering = FALSE)) |>
+      formatSignif("p_value", 3)
   })
 
   # ---- Summary tab ----
@@ -513,7 +846,26 @@ server <- function(input, output, session) {
   })
 
   # ---- Residuals tab ----
+  output$residuals_note <- renderUI({
+    req(is_stratified())
+    div(class = "stat-callout",
+        paste0("Residuals are computed within each level of ",
+               res_value()$by_name,
+               ". A blank residual marks a category not observed in that group."))
+  })
+
+  # A stratified fit has a residual per group x cell, which is a long table; an
+  # un-stratified fit keeps the familiar wide row-by-column layout.
   output$residuals_table <- renderDT({
+    if (is_stratified()) {
+      r <- as.data.frame(res_value(), what = "residuals")
+      return(datatable(r, rownames = FALSE,
+                       options = list(pageLength = 25, scrollX = TRUE,
+                                      order = list(list(0, "asc")))) |>
+        formatStyle("std_residual",
+                    color = styleInterval(c(-2, 2), c("#c0392b", "#333", "#1a56db")),
+                    fontWeight = styleInterval(c(-2, 2), c("bold", "normal", "bold"))))
+    }
     r <- res_value()$residuals
     datatable(r, rownames = FALSE,
               options = list(dom = "t", scrollX = TRUE, ordering = FALSE)) |>
@@ -533,8 +885,8 @@ server <- function(input, output, session) {
   output$mosaic_plot <- renderPlot(
     { req(res_value()); draw_current_plot() },
     res = 100,
-    width  = function() input$plot_w,
-    height = function() input$plot_h
+    width  = function() plot_dims()[["w"]],
+    height = function() plot_dims()[["h"]]
   )
 
   # ---- download handlers (use the current result + current styling) ----
@@ -542,7 +894,8 @@ server <- function(input, output, session) {
     filename = function() paste0("mosaic_", Sys.Date(), ".png"),
     content  = function(f) {
       req(res_value())
-      grDevices::png(f, width = input$plot_w * 1.4, height = input$plot_h * 1.4, res = 130)
+      d <- plot_dims()
+      grDevices::png(f, width = d[["w"]] * 1.4, height = d[["h"]] * 1.4, res = 130)
       on.exit(grDevices::dev.off(), add = TRUE)
       draw_current_plot()
     }
@@ -554,7 +907,8 @@ server <- function(input, output, session) {
     filename = function() paste0("mosaic_", Sys.Date(), ".pdf"),
     content  = function(f) {
       req(res_value())
-      grDevices::pdf(f, width = input$plot_w / 90, height = input$plot_h / 90)
+      d <- plot_dims()
+      grDevices::pdf(f, width = d[["w"]] / 90, height = d[["h"]] / 90)
       on.exit(grDevices::dev.off(), add = TRUE)
       draw_current_plot()
     }
@@ -566,6 +920,17 @@ server <- function(input, output, session) {
   )
   output$dl_resid   <- dl_resid_fun
   output$dl_resid_s <- dl_resid_fun
+
+  output$dl_strata_ui <- renderUI({
+    req(is_stratified())
+    tagList(" ", downloadButton("dl_strata", "Per-group tests CSV"))
+  })
+
+  output$dl_strata <- downloadHandler(
+    filename = function() paste0("mosaic_strata_", Sys.Date(), ".csv"),
+    content  = function(f) write.csv(as.data.frame(res_value(), what = "strata"),
+                                     f, row.names = FALSE)
+  )
 
   dl_summary_fun <- downloadHandler(
     filename = function() paste0("mosaic_summary_", Sys.Date(), ".csv"),

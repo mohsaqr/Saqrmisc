@@ -1,3 +1,60 @@
+# Saqrmisc 0.9.3
+
+## Stratified (faceted) mosaic analysis
+
+* `mosaic_analysis()` gains `by =`, which fits the `var1` x `var2` table
+  separately within each level of a third variable and draws one mosaic panel
+  per stratum. This is the standard check for effect modification and for
+  Simpson's paradox, where a pooled association weakens, vanishes or reverses
+  inside every subgroup.
+  - Category filtering (`min_count`) is applied to the **pooled** table before
+    splitting, so every panel shows the same rows and columns.
+  - The residual colour scale is **shared** across panels, so a given shade
+    means the same standardized deviation everywhere.
+  - Panel strips carry the stratum size, since panels are drawn equal width.
+* New `by_label`, `min_stratum_n`, `p_adjust`, `facet_ncol`, `facet_show_n`
+  and `seed` arguments. Per-stratum p-values are corrected for multiplicity
+  (Benjamini-Hochberg by default) and reported beside the raw values.
+* A stratified fit gains class `mosaic_stratified` and the fields
+  `strata_summary`, `strata_residuals`, `strata_table` and `overall_summary`,
+  the last pairing the pooled test with a Cochran-Mantel-Haenszel test of the
+  association conditional on the stratifier.
+* New `as.data.frame()` method for `mosaic_analysis` objects, so results are
+  reached with `as.data.frame(fit, what = "strata")` rather than by indexing
+  into the object. `what` accepts "summary", "table", "residuals", "strata"
+  and "overall".
+* New `print()` and `summary()` methods for stratified fits.
+* `seed` makes the Monte-Carlo Fisher p-value reproducible and restores the
+  caller's RNG stream on exit.
+
+## Tile labels
+
+* `tile_label = "count_percent"` prints the count with its percentage on a
+  second line, e.g. `3,391` over `(29.8%)`. The percentage follows
+  `percentage_base` ("total", "row" or "column") and, under stratification, is
+  computed within each panel. A two-line label is required to clear roughly
+  twice the tile height of a one-line label before it is drawn, so it is
+  suppressed in tiles too short to hold it rather than spilling over the edge.
+
+## Bug fixes
+
+* A stratum in which a category is unobserved no longer produces `NaN`
+  statistics. The test now runs on the non-empty core of the table (giving the
+  correct degrees of freedom) while residuals are padded back onto the shared
+  category grid so panels stay aligned. Affected strata are named in a warning.
+* Category labels are fitted to the panel width when faceting: long names wrap
+  and labels that would overprint a neighbour are suppressed. Un-stratified
+  plots are unaffected.
+
+## Shiny app
+
+* New "Stratify / facet" control, "Strata" tab (per-group tests, plus pooled
+  vs conditional), and per-group residuals.
+* Plot size can now be set either as the whole canvas or per panel, with the
+  resulting canvas size reported; both downloads follow the same size.
+* Warnings raised during a fit (low expected counts, dropped strata) are shown
+  in the interface instead of being suppressed.
+
 # Saqrmisc 0.9.2
 
 * Added `cluster()` as a short alias for `clustering()`.
