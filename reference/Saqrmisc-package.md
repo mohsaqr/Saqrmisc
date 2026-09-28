@@ -95,14 +95,14 @@ The package is organized into the following function categories:
 ### Clustering
 
 - [`clustering`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md):
-  Model-based clustering using Gaussian Mixture Models via MoEClust.
-  Tests 14 different covariance structures.
+  Latent profile clustering via the latents package. Supports all 14
+  covariance structures.
 
 - [`get_cluster_assignments`](https://pak.dynasite.org/Saqrmisc/reference/get_cluster_assignments.md):
   Extract cluster assignments with optional membership probabilities.
 
-- [`assess_cluster_stability`](https://pak.dynasite.org/Saqrmisc/reference/assess_cluster_stability.md):
-  Bootstrap stability assessment.
+- [`cluster_diagnostics`](https://pak.dynasite.org/Saqrmisc/reference/cluster_diagnostics.md):
+  Classification diagnostics.
 
 - [`model_comparison_table`](https://pak.dynasite.org/Saqrmisc/reference/model_comparison_table.md):
   Compare models by BIC, AIC, or ICL.

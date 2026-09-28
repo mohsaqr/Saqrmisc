@@ -6,14 +6,16 @@ List Available Models
 
 ``` r
 list_models(results)
+
+cluster_models(results)
 ```
 
 ## Arguments
 
 - results:
 
-  Object from run_full_moe_analysis
+  A \`saqr_clustering\` object.
 
 ## Value
 
-Character vector of model names (invisibly)
+Character vector of model names (invisibly).

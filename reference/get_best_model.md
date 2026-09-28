@@ -1,28 +1,29 @@
-# Get Best Model
+# Get Best Model Name
 
-Get Best Model
+Get Best Model Name
 
 ## Usage
 
 ``` r
-get_best_model(results, criterion = "bic", what = c("name", "result", "fit"))
+get_best_model(results, criterion = "bic", what = c("name", "fit"))
+
+cluster_best(results, criterion = "bic", what = c("name", "fit"))
 ```
 
 ## Arguments
 
 - results:
 
-  Object from run_full_moe_analysis
+  A \`saqr_clustering\` object.
 
 - criterion:
 
-  Selection criterion: "bic", "aic", or "icl"
+  Selection criterion.
 
 - what:
 
-  What to return: the model "name", the complete stored "result", or the
-  raw fitted MoEClust "fit".
+  What to return: \`"name"\` or \`"fit"\`.
 
 ## Value
 
-The requested representation of the best model.
+A character string (model name) or a \`multilpa\` fit.

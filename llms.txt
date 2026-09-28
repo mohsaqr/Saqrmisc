@@ -616,12 +616,10 @@ for details.
 
 - [`add_total()`](https://pak.dynasite.org/Saqrmisc/reference/add_total.md)
   : Add Row Totals to Data Frame
-- [`as.data.frame(`*`<clustering_plots>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.clustering_plots.md)
-  : List the Contents of a Set of Clustering Plots
 - [`as.data.frame(`*`<mosaic_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.mosaic_analysis.md)
   : Tidy accessor for a mosaic_analysis result
-- [`assess_cluster_stability()`](https://pak.dynasite.org/Saqrmisc/reference/assess_cluster_stability.md)
-  : Assess Cluster Stability via Bootstrap
+- [`as.data.frame(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_clustering.md)
+  : Extract Profile Means
 - [`auto_describe()`](https://pak.dynasite.org/Saqrmisc/reference/auto_describe.md)
   : Automatically Generate Descriptive Statistics for All Variables
 - [`categorical_table()`](https://pak.dynasite.org/Saqrmisc/reference/categorical_table.md)
@@ -631,27 +629,20 @@ for details.
   Center Variables (Mean-Centering)
 - [`center_vec()`](https://pak.dynasite.org/Saqrmisc/reference/center_vec.md)
   : Center a Vector (for use in mutate/across)
+- [`cluster_diagnostics()`](https://pak.dynasite.org/Saqrmisc/reference/cluster_diagnostics.md)
+  [`cluster_stability()`](https://pak.dynasite.org/Saqrmisc/reference/cluster_diagnostics.md)
+  : Classification Diagnostics
 - [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
   [`cluster()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
-  : Model-Based Clustering Analysis
-- [`cluster_fit()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_models()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_best()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_compare()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_compare_table()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_assignments()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_view()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_plot_model()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_plot_best()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_stability()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  [`cluster_report()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_aliases.md)
-  : Optional \`cluster\_\*\` aliases
+  [`cluster_fit()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
+  : Latent Profile Clustering
 - [`clustering_plot_types()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_plot_types.md)
   : List the Plot Types of plot_clustering()
 - [`compare_groups()`](https://pak.dynasite.org/Saqrmisc/reference/compare_groups.md)
   : Generate Group Comparison Plots and Statistics
 - [`compare_models()`](https://pak.dynasite.org/Saqrmisc/reference/compare_models.md)
-  : Compare Models by Information Criteria
+  [`cluster_compare()`](https://pak.dynasite.org/Saqrmisc/reference/compare_models.md)
+  : Compare Models from an Enumeration
 - [`compare_networks()`](https://pak.dynasite.org/Saqrmisc/reference/compare_networks.md)
   : Compare Two Networks
 - [`convert_sequences()`](https://pak.dynasite.org/Saqrmisc/reference/convert_sequences.md)
@@ -670,23 +661,28 @@ for details.
   : Estimate Grouped Networks
 - [`estimate_single_network()`](https://pak.dynasite.org/Saqrmisc/reference/estimate_single_network.md)
   : Estimate a Single Network
-- [`fitted(`*`<moe_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/fitted.moe_analysis.md)
-  : Extract Fitted Clustering Data
+- [`fitted(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/fitted.saqr_clustering.md)
+  : Extract Fitted Observations with Profile Assignments
 - [`generate_cluster_report()`](https://pak.dynasite.org/Saqrmisc/reference/generate_cluster_report.md)
-  : Generate Interpretable Cluster Report
+  [`cluster_report()`](https://pak.dynasite.org/Saqrmisc/reference/generate_cluster_report.md)
+  : Generate Cluster Report
 - [`get_best_model()`](https://pak.dynasite.org/Saqrmisc/reference/get_best_model.md)
-  : Get Best Model
+  [`cluster_best()`](https://pak.dynasite.org/Saqrmisc/reference/get_best_model.md)
+  : Get Best Model Name
 - [`get_cluster_assignments()`](https://pak.dynasite.org/Saqrmisc/reference/get_cluster_assignments.md)
+  [`cluster_assignments()`](https://pak.dynasite.org/Saqrmisc/reference/get_cluster_assignments.md)
   : Get Cluster Assignments with Original Data
 - [`is_outlier()`](https://pak.dynasite.org/Saqrmisc/reference/is_outlier.md)
   : Check if Value is Outlier (vectorized for mutate/across)
 - [`launch_app()`](https://pak.dynasite.org/Saqrmisc/reference/launch_app.md)
   : Launch the Saqrmisc mosaic analysis Shiny app
 - [`list_models()`](https://pak.dynasite.org/Saqrmisc/reference/list_models.md)
+  [`cluster_models()`](https://pak.dynasite.org/Saqrmisc/reference/list_models.md)
   : List Available Models
 - [`missing_analysis()`](https://pak.dynasite.org/Saqrmisc/reference/missing_analysis.md)
   : Analyze Missing Data Patterns
 - [`model_comparison_table()`](https://pak.dynasite.org/Saqrmisc/reference/model_comparison_table.md)
+  [`cluster_compare_table()`](https://pak.dynasite.org/Saqrmisc/reference/model_comparison_table.md)
   : Create Formatted Model Comparison Table
 - [`mosaic_analysis()`](https://pak.dynasite.org/Saqrmisc/reference/mosaic_analysis.md)
   : Perform a comprehensive mosaic plot analysis
@@ -696,20 +692,12 @@ for details.
   : Check for Outliers
 - [`pass()`](https://pak.dynasite.org/Saqrmisc/reference/pass.md) : Pass
   R Output to AI for Interpretation
-- [`plot(`*`<moe_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/plot.moe_analysis.md)
-  : Plot method for moe_analysis objects
 - [`plot(`*`<mosaic_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/plot.mosaic_analysis.md)
   : Plot method for mosaic_analysis objects
-- [`plot_best_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_best_model.md)
-  : Plot the Best Fitted Clustering Model
+- [`plot(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/plot.saqr_clustering.md)
+  : Plot method for saqr_clustering objects
 - [`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md)
-  : Plot Clustering Results Systematically
-- [`plot_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_model.md)
-  : Plot One Fitted Clustering Model
-- [`print(`*`<cluster_stability>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.cluster_stability.md)
-  : Print method for cluster_stability
-- [`print(`*`<clustering_plots>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.clustering_plots.md)
-  : Print a Set of Clustering Plots
+  : Plot Clustering Results
 - [`print(`*`<grouped_network_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.grouped_network_analysis.md)
   : Print method for grouped_network_analysis objects
 - [`print(`*`<html_table>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.html_table.md)
@@ -718,8 +706,6 @@ for details.
   : Print method for latex tables
 - [`print(`*`<markdown_table>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.markdown_table.md)
   : Print method for markdown tables
-- [`print(`*`<moe_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.moe_analysis.md)
-  : Print method for moe_analysis objects
 - [`print(`*`<mosaic_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.mosaic_analysis.md)
   : Print method for mosaic_analysis objects
 - [`print(`*`<mosaic_stratified>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.mosaic_stratified.md)
@@ -756,14 +742,14 @@ for details.
   : Standardize Variables (Z-Score)
 - [`standardize_vec()`](https://pak.dynasite.org/Saqrmisc/reference/standardize_vec.md)
   : Standardize a Vector (for use in mutate/across)
-- [`summary(`*`<moe_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.moe_analysis.md)
-  : Summary method for moe_analysis objects
 - [`summary(`*`<mosaic_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.mosaic_analysis.md)
   : Summary method for mosaic_analysis objects
 - [`summary(`*`<mosaic_stratified>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.mosaic_stratified.md)
   : Summary method for stratified mosaic_analysis objects
 - [`summary(`*`<network_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.network_analysis.md)
   : Summary method for network_analysis objects
+- [`summary(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_clustering.md)
+  : Summarise a Clustering Result
 - [`to_dataframe()`](https://pak.dynasite.org/Saqrmisc/reference/to_dataframe.md)
   : Convert Any Table to Data Frame
 - [`to_gt()`](https://pak.dynasite.org/Saqrmisc/reference/to_gt.md) :
@@ -776,8 +762,6 @@ for details.
   : Convert Table to LaTeX Format
 - [`to_markdown()`](https://pak.dynasite.org/Saqrmisc/reference/to_markdown.md)
   : Convert Table to Markdown Format
-- [`view_results()`](https://pak.dynasite.org/Saqrmisc/reference/view_results.md)
-  : View Results from MoEClust Analysis (Deprecated)
 - [`winsorize_vec()`](https://pak.dynasite.org/Saqrmisc/reference/winsorize_vec.md)
   : Winsorize a Vector (vectorized for mutate/across)
 

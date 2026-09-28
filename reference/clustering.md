@@ -1,9 +1,11 @@
-# Model-Based Clustering Analysis
+# Latent Profile Clustering
 
-Performs comprehensive model-based clustering analysis using the
-MoEClust package. Systematically tests multiple covariance models and
-provides results on both original and scaled data scales for
-interpretation.
+Fits latent profile models via the latents package. A single
+`n_profiles` value fits one model with
+[`latents::lpa()`](https://pak.dynasite.org/latents/reference/lpa.html);
+multiple values or covariance `models` enumerate candidates with
+[`latents::enumerate_classes()`](https://pak.dynasite.org/latents/reference/enumerate_classes.html)
+and select the best by BIC.
 
 ## Usage
 
@@ -11,9 +13,12 @@ interpretation.
 clustering(
   data,
   vars,
-  n_clusters,
+  n_profiles = NULL,
+  n_clusters = NULL,
   scaling = "standardize",
-  models = "all",
+  models = "VVI",
+  n_starts = 10L,
+  seed = NULL,
   verbose = TRUE,
   na_action = "omit"
 )
@@ -21,9 +26,25 @@ clustering(
 cluster(
   data,
   vars,
-  n_clusters,
+  n_profiles = NULL,
+  n_clusters = NULL,
   scaling = "standardize",
-  models = "all",
+  models = "VVI",
+  n_starts = 10L,
+  seed = NULL,
+  verbose = TRUE,
+  na_action = "omit"
+)
+
+cluster_fit(
+  data,
+  vars,
+  n_profiles = NULL,
+  n_clusters = NULL,
+  scaling = "standardize",
+  models = "VVI",
+  n_starts = 10L,
+  seed = NULL,
   verbose = TRUE,
   na_action = "omit"
 )
@@ -33,80 +54,441 @@ cluster(
 
 - data:
 
-  A data frame containing the dataset.
+  A data frame.
 
 - vars:
 
-  A character vector of column names to use for clustering.
+  Character vector of column names to cluster on.
+
+- n_profiles:
+
+  Number of profiles (clusters). A single integer for one model, or a
+  range like `2:5` for enumeration. Alias: `n_clusters`.
 
 - n_clusters:
 
-  An integer or vector specifying the number of clusters (G) to fit.
+  Alias for `n_profiles`.
 
 - scaling:
 
-  Scaling method: "standardize" (z-score), "center" (mean only),
-  "minmax" (0-1 range), or "none". Defaults to "standardize".
+  Scaling applied before fitting: `"standardize"` (default), `"center"`,
+  `"minmax"`, or `"none"`.
 
 - models:
 
-  Character vector of model names to test, or "all" for all 14 models.
-  Valid models: EII, VII, EEI, VEI, EVI, VVI, EEE, EVE, VEE, VVE, EEV,
-  VEV, EVV, VVV.
+  Covariance structure(s) to fit. A character vector of three-letter
+  mclust codes (e.g. `"EEE"`, `"VVI"`) or `"all"` for all 14. Defaults
+  to `"VVI"`.
+
+- n_starts:
+
+  Number of random starts per model. Defaults to 10.
+
+- seed:
+
+  Random seed for reproducibility.
 
 - verbose:
 
-  Logical. If TRUE, prints progress messages. Defaults to TRUE.
+  Print progress. Defaults to `TRUE`.
 
 - na_action:
 
-  How to handle NAs: "omit" (remove rows) or "fail" (stop with error).
-  Defaults to "omit".
+  How to handle missing values: `"omit"` (default) drops incomplete
+  rows, `"fail"` raises an error.
 
 ## Value
 
-An object of class "moe_analysis" containing:
+An object of class `"saqr_clustering"` containing:
 
-- `models`: List of fitted models with results
+- fit:
 
-- `data`: Original and scaled data used
+  The best `multilpa` object (from latents).
 
-- `parameters`: Analysis parameters
+- enumeration:
 
-- `summary`: Summary statistics including best model
+  The `multilpa_enumeration` grid, or `NULL` when only one candidate was
+  fitted.
+
+- data:
+
+  List with `original_data`, `scaled_data`, `full_input_data`,
+  `complete_rows`, and `n_removed`.
+
+- parameters:
+
+  List with `cluster_vars`, `n_profiles`, `scaling_method`,
+  `models_tested`, and `sample_size`.
+
+Use [`plot()`](https://rdrr.io/r/graphics/plot.default.html) to
+visualise,
+[`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) for the
+profile means, [`fitted()`](https://rdrr.io/r/stats/fitted.values.html)
+for observations with assignments, and
+[`summary()`](https://rdrr.io/r/base/summary.html) for the enumeration
+table.
+
+## See also
+
+[`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md),
+[`latents::lpa()`](https://pak.dynasite.org/latents/reference/lpa.html),
+[`latents::enumerate_classes()`](https://pak.dynasite.org/latents/reference/enumerate_classes.html)
 
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-# Basic usage with iris data
-results <- clustering(
-  data = iris,
+# \donttest{
+fit <- clustering(iris,
   vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
-  n_clusters = 3
-)
+  n_profiles = 3, models = "EEE", seed = 1)
+#> Latent profile analysis
+#>   Profiles: 3 
+#>   Models: EEE 
+#>   Scaling: standardize  | n: 150  | vars: 4 
+#>   EEE with 3 profiles: logLik = -364.7, BIC = 849.6, converged = TRUE
+fit
+#> Latent Profile Clustering
+#>   n = 150, 4 variables, scaling = standardize
+#>   Best model: EEE with 3 profiles
+#>   BIC = 849.6, logLik = -364.7, converged = TRUE
+#> 
+#> Use plot() to visualise, as.data.frame() for profile means,
+#> fitted() for observations with assignments, summary() for the grid.
+plot(fit)
 
-# Test specific models
-results <- clustering(
-  data = iris,
-  vars = c("Sepal.Length", "Sepal.Width"),
-  n_clusters = 2:4,
-  models = c("EEE", "VVV", "VEV")
-)
 
-# View results using plot()
-plot(results)                        # cluster plots
-plot(results, type = "diagnostics")
-plot(results, type = "selection")
-plot(results, type = "all")
 
-# Get cluster assignments
-data_clustered <- get_cluster_assignments(results)
 
-# Assess stability
-stability <- assess_cluster_stability(results)
 
-# Generate report
-generate_cluster_report(results)
-} # }
+as.data.frame(fit)
+#>    profile    indicator       mean   variance standard_deviation
+#> 1        1 Sepal.Length -1.0111914 0.38491697          0.6204168
+#> 2        1  Sepal.Width  0.8504137 0.58926800          0.7676379
+#> 3        1 Petal.Length -1.3006301 0.05985583          0.2446545
+#> 4        1  Petal.Width -1.2507035 0.06835358          0.2614452
+#> 5        2 Sepal.Length  0.1195405 0.38491697          0.6204168
+#> 6        2  Sepal.Width -0.6804233 0.58926800          0.7676379
+#> 7        2 Petal.Length  0.2836271 0.05985583          0.2446545
+#> 8        2  Petal.Width  0.1572496 0.06835358          0.2614452
+#> 9        3 Sepal.Length  0.8831157 0.38491697          0.6204168
+#> 10       3  Sepal.Width -0.1756329 0.58926800          0.7676379
+#> 11       3 Petal.Length  1.0088959 0.05985583          0.2446545
+#> 12       3  Petal.Width  1.0831048 0.06835358          0.2614452
+#>    mean_standard_error variance_standard_error
+#> 1           0.08774018             0.045148207
+#> 2           0.10856040             0.068522977
+#> 3           0.03459937             0.007597947
+#> 4           0.03697393             0.008934176
+#> 5           0.09059812             0.045148207
+#> 6           0.11130769             0.068522977
+#> 7           0.03941931             0.007597947
+#> 8           0.04045863             0.008934176
+#> 9           0.09009920             0.045148207
+#> 10          0.11192483             0.068522977
+#> 11          0.03647848             0.007597947
+#> 12          0.04286012             0.008934176
+fitted(fit)
+#>     Sepal.Length Sepal.Width Petal.Length Petal.Width    Species profile
+#> 1            5.1         3.5          1.4         0.2     setosa       1
+#> 2            4.9         3.0          1.4         0.2     setosa       1
+#> 3            4.7         3.2          1.3         0.2     setosa       1
+#> 4            4.6         3.1          1.5         0.2     setosa       1
+#> 5            5.0         3.6          1.4         0.2     setosa       1
+#> 6            5.4         3.9          1.7         0.4     setosa       1
+#> 7            4.6         3.4          1.4         0.3     setosa       1
+#> 8            5.0         3.4          1.5         0.2     setosa       1
+#> 9            4.4         2.9          1.4         0.2     setosa       1
+#> 10           4.9         3.1          1.5         0.1     setosa       1
+#> 11           5.4         3.7          1.5         0.2     setosa       1
+#> 12           4.8         3.4          1.6         0.2     setosa       1
+#> 13           4.8         3.0          1.4         0.1     setosa       1
+#> 14           4.3         3.0          1.1         0.1     setosa       1
+#> 15           5.8         4.0          1.2         0.2     setosa       1
+#> 16           5.7         4.4          1.5         0.4     setosa       1
+#> 17           5.4         3.9          1.3         0.4     setosa       1
+#> 18           5.1         3.5          1.4         0.3     setosa       1
+#> 19           5.7         3.8          1.7         0.3     setosa       1
+#> 20           5.1         3.8          1.5         0.3     setosa       1
+#> 21           5.4         3.4          1.7         0.2     setosa       1
+#> 22           5.1         3.7          1.5         0.4     setosa       1
+#> 23           4.6         3.6          1.0         0.2     setosa       1
+#> 24           5.1         3.3          1.7         0.5     setosa       1
+#> 25           4.8         3.4          1.9         0.2     setosa       1
+#> 26           5.0         3.0          1.6         0.2     setosa       1
+#> 27           5.0         3.4          1.6         0.4     setosa       1
+#> 28           5.2         3.5          1.5         0.2     setosa       1
+#> 29           5.2         3.4          1.4         0.2     setosa       1
+#> 30           4.7         3.2          1.6         0.2     setosa       1
+#> 31           4.8         3.1          1.6         0.2     setosa       1
+#> 32           5.4         3.4          1.5         0.4     setosa       1
+#> 33           5.2         4.1          1.5         0.1     setosa       1
+#> 34           5.5         4.2          1.4         0.2     setosa       1
+#> 35           4.9         3.1          1.5         0.2     setosa       1
+#> 36           5.0         3.2          1.2         0.2     setosa       1
+#> 37           5.5         3.5          1.3         0.2     setosa       1
+#> 38           4.9         3.6          1.4         0.1     setosa       1
+#> 39           4.4         3.0          1.3         0.2     setosa       1
+#> 40           5.1         3.4          1.5         0.2     setosa       1
+#> 41           5.0         3.5          1.3         0.3     setosa       1
+#> 42           4.5         2.3          1.3         0.3     setosa       1
+#> 43           4.4         3.2          1.3         0.2     setosa       1
+#> 44           5.0         3.5          1.6         0.6     setosa       1
+#> 45           5.1         3.8          1.9         0.4     setosa       1
+#> 46           4.8         3.0          1.4         0.3     setosa       1
+#> 47           5.1         3.8          1.6         0.2     setosa       1
+#> 48           4.6         3.2          1.4         0.2     setosa       1
+#> 49           5.3         3.7          1.5         0.2     setosa       1
+#> 50           5.0         3.3          1.4         0.2     setosa       1
+#> 51           7.0         3.2          4.7         1.4 versicolor       2
+#> 52           6.4         3.2          4.5         1.5 versicolor       2
+#> 53           6.9         3.1          4.9         1.5 versicolor       2
+#> 54           5.5         2.3          4.0         1.3 versicolor       2
+#> 55           6.5         2.8          4.6         1.5 versicolor       2
+#> 56           5.7         2.8          4.5         1.3 versicolor       2
+#> 57           6.3         3.3          4.7         1.6 versicolor       2
+#> 58           4.9         2.4          3.3         1.0 versicolor       2
+#> 59           6.6         2.9          4.6         1.3 versicolor       2
+#> 60           5.2         2.7          3.9         1.4 versicolor       2
+#> 61           5.0         2.0          3.5         1.0 versicolor       2
+#> 62           5.9         3.0          4.2         1.5 versicolor       2
+#> 63           6.0         2.2          4.0         1.0 versicolor       2
+#> 64           6.1         2.9          4.7         1.4 versicolor       2
+#> 65           5.6         2.9          3.6         1.3 versicolor       2
+#> 66           6.7         3.1          4.4         1.4 versicolor       2
+#> 67           5.6         3.0          4.5         1.5 versicolor       2
+#> 68           5.8         2.7          4.1         1.0 versicolor       2
+#> 69           6.2         2.2          4.5         1.5 versicolor       2
+#> 70           5.6         2.5          3.9         1.1 versicolor       2
+#> 71           5.9         3.2          4.8         1.8 versicolor       3
+#> 72           6.1         2.8          4.0         1.3 versicolor       2
+#> 73           6.3         2.5          4.9         1.5 versicolor       2
+#> 74           6.1         2.8          4.7         1.2 versicolor       2
+#> 75           6.4         2.9          4.3         1.3 versicolor       2
+#> 76           6.6         3.0          4.4         1.4 versicolor       2
+#> 77           6.8         2.8          4.8         1.4 versicolor       2
+#> 78           6.7         3.0          5.0         1.7 versicolor       2
+#> 79           6.0         2.9          4.5         1.5 versicolor       2
+#> 80           5.7         2.6          3.5         1.0 versicolor       2
+#> 81           5.5         2.4          3.8         1.1 versicolor       2
+#> 82           5.5         2.4          3.7         1.0 versicolor       2
+#> 83           5.8         2.7          3.9         1.2 versicolor       2
+#> 84           6.0         2.7          5.1         1.6 versicolor       3
+#> 85           5.4         3.0          4.5         1.5 versicolor       2
+#> 86           6.0         3.4          4.5         1.6 versicolor       2
+#> 87           6.7         3.1          4.7         1.5 versicolor       2
+#> 88           6.3         2.3          4.4         1.3 versicolor       2
+#> 89           5.6         3.0          4.1         1.3 versicolor       2
+#> 90           5.5         2.5          4.0         1.3 versicolor       2
+#> 91           5.5         2.6          4.4         1.2 versicolor       2
+#> 92           6.1         3.0          4.6         1.4 versicolor       2
+#> 93           5.8         2.6          4.0         1.2 versicolor       2
+#> 94           5.0         2.3          3.3         1.0 versicolor       2
+#> 95           5.6         2.7          4.2         1.3 versicolor       2
+#> 96           5.7         3.0          4.2         1.2 versicolor       2
+#> 97           5.7         2.9          4.2         1.3 versicolor       2
+#> 98           6.2         2.9          4.3         1.3 versicolor       2
+#> 99           5.1         2.5          3.0         1.1 versicolor       2
+#> 100          5.7         2.8          4.1         1.3 versicolor       2
+#> 101          6.3         3.3          6.0         2.5  virginica       3
+#> 102          5.8         2.7          5.1         1.9  virginica       3
+#> 103          7.1         3.0          5.9         2.1  virginica       3
+#> 104          6.3         2.9          5.6         1.8  virginica       3
+#> 105          6.5         3.0          5.8         2.2  virginica       3
+#> 106          7.6         3.0          6.6         2.1  virginica       3
+#> 107          4.9         2.5          4.5         1.7  virginica       3
+#> 108          7.3         2.9          6.3         1.8  virginica       3
+#> 109          6.7         2.5          5.8         1.8  virginica       3
+#> 110          7.2         3.6          6.1         2.5  virginica       3
+#> 111          6.5         3.2          5.1         2.0  virginica       3
+#> 112          6.4         2.7          5.3         1.9  virginica       3
+#> 113          6.8         3.0          5.5         2.1  virginica       3
+#> 114          5.7         2.5          5.0         2.0  virginica       3
+#> 115          5.8         2.8          5.1         2.4  virginica       3
+#> 116          6.4         3.2          5.3         2.3  virginica       3
+#> 117          6.5         3.0          5.5         1.8  virginica       3
+#> 118          7.7         3.8          6.7         2.2  virginica       3
+#> 119          7.7         2.6          6.9         2.3  virginica       3
+#> 120          6.0         2.2          5.0         1.5  virginica       3
+#> 121          6.9         3.2          5.7         2.3  virginica       3
+#> 122          5.6         2.8          4.9         2.0  virginica       3
+#> 123          7.7         2.8          6.7         2.0  virginica       3
+#> 124          6.3         2.7          4.9         1.8  virginica       3
+#> 125          6.7         3.3          5.7         2.1  virginica       3
+#> 126          7.2         3.2          6.0         1.8  virginica       3
+#> 127          6.2         2.8          4.8         1.8  virginica       3
+#> 128          6.1         3.0          4.9         1.8  virginica       3
+#> 129          6.4         2.8          5.6         2.1  virginica       3
+#> 130          7.2         3.0          5.8         1.6  virginica       3
+#> 131          7.4         2.8          6.1         1.9  virginica       3
+#> 132          7.9         3.8          6.4         2.0  virginica       3
+#> 133          6.4         2.8          5.6         2.2  virginica       3
+#> 134          6.3         2.8          5.1         1.5  virginica       2
+#> 135          6.1         2.6          5.6         1.4  virginica       3
+#> 136          7.7         3.0          6.1         2.3  virginica       3
+#> 137          6.3         3.4          5.6         2.4  virginica       3
+#> 138          6.4         3.1          5.5         1.8  virginica       3
+#> 139          6.0         3.0          4.8         1.8  virginica       3
+#> 140          6.9         3.1          5.4         2.1  virginica       3
+#> 141          6.7         3.1          5.6         2.4  virginica       3
+#> 142          6.9         3.1          5.1         2.3  virginica       3
+#> 143          5.8         2.7          5.1         1.9  virginica       3
+#> 144          6.8         3.2          5.9         2.3  virginica       3
+#> 145          6.7         3.3          5.7         2.5  virginica       3
+#> 146          6.7         3.0          5.2         2.3  virginica       3
+#> 147          6.3         2.5          5.0         1.9  virginica       3
+#> 148          6.5         3.0          5.2         2.0  virginica       3
+#> 149          6.2         3.4          5.4         2.3  virginica       3
+#> 150          5.9         3.0          5.1         1.8  virginica       3
+#>      uncertainty posterior_profile_1 posterior_profile_2 posterior_profile_3
+#> 1   0.000000e+00        1.000000e+00        5.866515e-22        3.152746e-42
+#> 2   0.000000e+00        1.000000e+00        7.288869e-18        3.011759e-37
+#> 3   0.000000e+00        1.000000e+00        2.278029e-19        5.958799e-39
+#> 4   2.220446e-16        1.000000e+00        1.990012e-16        4.692121e-35
+#> 5   0.000000e+00        1.000000e+00        3.080873e-22        1.939921e-42
+#> 6   0.000000e+00        1.000000e+00        8.049980e-21        1.077271e-39
+#> 7   0.000000e+00        1.000000e+00        2.607292e-18        6.354088e-37
+#> 8   0.000000e+00        1.000000e+00        5.807490e-20        1.297322e-39
+#> 9   2.886580e-15        1.000000e+00        2.837970e-15        1.133786e-33
+#> 10  0.000000e+00        1.000000e+00        1.219195e-18        1.821012e-38
+#> 11  0.000000e+00        1.000000e+00        1.694811e-23        3.586956e-44
+#> 12  0.000000e+00        1.000000e+00        3.019190e-18        3.284744e-37
+#> 13  0.000000e+00        1.000000e+00        1.549905e-18        2.046293e-38
+#> 14  0.000000e+00        1.000000e+00        1.900094e-19        1.859591e-39
+#> 15  0.000000e+00        1.000000e+00        7.197628e-30        1.415301e-52
+#> 16  0.000000e+00        1.000000e+00        3.427927e-27        8.466206e-48
+#> 17  0.000000e+00        1.000000e+00        1.327523e-24        8.033734e-45
+#> 18  0.000000e+00        1.000000e+00        6.696410e-21        1.687883e-40
+#> 19  0.000000e+00        1.000000e+00        2.279426e-22        2.471577e-42
+#> 20  0.000000e+00        1.000000e+00        5.985363e-22        1.563423e-41
+#> 21  0.000000e+00        1.000000e+00        1.302979e-19        2.713609e-39
+#> 22  0.000000e+00        1.000000e+00        3.157662e-20        4.948070e-39
+#> 23  0.000000e+00        1.000000e+00        1.763391e-24        2.532683e-45
+#> 24  1.287859e-14        1.000000e+00        1.280727e-14        1.184722e-31
+#> 25  1.998401e-15        1.000000e+00        2.074699e-15        2.301744e-33
+#> 26  2.220446e-16        1.000000e+00        2.338458e-16        3.031956e-35
+#> 27  0.000000e+00        1.000000e+00        6.677292e-17        7.115514e-35
+#> 28  0.000000e+00        1.000000e+00        2.132856e-21        1.658593e-41
+#> 29  0.000000e+00        1.000000e+00        1.117086e-21        5.123819e-42
+#> 30  2.220446e-16        1.000000e+00        1.565395e-16        4.175555e-35
+#> 31  2.220446e-16        1.000000e+00        2.980782e-16        6.786081e-35
+#> 32  0.000000e+00        1.000000e+00        2.180141e-19        2.123980e-38
+#> 33  0.000000e+00        1.000000e+00        1.916992e-26        7.258572e-48
+#> 34  0.000000e+00        1.000000e+00        3.751976e-28        7.137463e-50
+#> 35  0.000000e+00        1.000000e+00        1.391666e-17        9.749138e-37
+#> 36  0.000000e+00        1.000000e+00        1.805304e-21        6.469993e-42
+#> 37  0.000000e+00        1.000000e+00        1.915422e-24        9.410941e-46
+#> 38  0.000000e+00        1.000000e+00        6.551171e-23        1.318049e-43
+#> 39  0.000000e+00        1.000000e+00        6.958353e-17        1.002244e-35
+#> 40  0.000000e+00        1.000000e+00        2.392663e-20        3.566536e-40
+#> 41  0.000000e+00        1.000000e+00        1.841877e-21        3.208422e-41
+#> 42  1.474199e-11        1.000000e+00        1.474192e-11        3.721919e-29
+#> 43  0.000000e+00        1.000000e+00        3.257467e-18        2.867885e-37
+#> 44  1.776357e-15        1.000000e+00        1.882395e-15        3.449906e-32
+#> 45  0.000000e+00        1.000000e+00        4.142906e-17        1.122373e-34
+#> 46  2.220446e-16        1.000000e+00        2.019430e-16        5.865090e-35
+#> 47  0.000000e+00        1.000000e+00        4.627185e-22        5.588240e-42
+#> 48  0.000000e+00        1.000000e+00        4.879264e-18        4.147740e-37
+#> 49  0.000000e+00        1.000000e+00        4.113657e-23        1.304749e-43
+#> 50  0.000000e+00        1.000000e+00        3.041680e-20        4.007760e-40
+#> 51  7.252147e-05        4.538660e-18        9.999275e-01        7.252147e-05
+#> 52  8.187877e-04        1.513131e-19        9.991812e-01        8.187877e-04
+#> 53  3.056850e-03        4.538070e-22        9.969432e-01        3.056850e-03
+#> 54  2.713241e-04        3.751439e-22        9.997287e-01        2.713241e-04
+#> 55  3.163669e-03        9.099592e-23        9.968363e-01        3.163669e-03
+#> 56  1.689813e-03        8.698016e-23        9.983102e-01        1.689813e-03
+#> 57  2.073704e-02        3.176872e-22        9.792630e-01        2.073704e-02
+#> 58  1.033138e-07        5.256423e-14        9.999999e-01        1.033137e-07
+#> 59  7.526005e-05        1.334164e-19        9.999247e-01        7.526005e-05
+#> 60  7.376079e-04        9.250257e-21        9.992624e-01        7.376079e-04
+#> 61  8.676835e-07        3.590605e-18        9.999991e-01        8.676835e-07
+#> 62  9.927971e-04        5.777028e-20        9.990072e-01        9.927971e-04
+#> 63  4.450957e-07        1.017237e-17        9.999996e-01        4.450957e-07
+#> 64  5.753302e-03        1.563333e-23        9.942467e-01        5.753302e-03
+#> 65  1.870256e-06        5.383366e-14        9.999981e-01        1.870256e-06
+#> 66  3.061744e-05        4.719288e-17        9.999694e-01        3.061744e-05
+#> 67  3.298367e-02        5.690945e-24        9.670163e-01        3.298367e-02
+#> 68  6.332017e-07        4.126543e-16        9.999994e-01        6.332017e-07
+#> 69  2.111415e-02        5.657417e-27        9.788858e-01        2.111415e-02
+#> 70  2.320487e-06        2.236969e-17        9.999977e-01        2.320487e-06
+#> 71  1.330277e-01        2.339859e-28        1.330277e-01        8.669723e-01
+#> 72  6.998024e-06        1.618155e-16        9.999930e-01        6.998024e-06
+#> 73  1.320185e-01        1.982396e-28        8.679815e-01        1.320185e-01
+#> 74  3.363461e-04        4.431203e-22        9.996637e-01        3.363461e-04
+#> 75  1.657629e-05        1.556272e-17        9.999834e-01        1.657629e-05
+#> 76  5.868720e-05        4.206725e-18        9.999413e-01        5.868720e-05
+#> 77  9.445177e-04        1.911586e-22        9.990555e-01        9.445177e-04
+#> 78  2.958620e-01        1.023811e-26        7.041380e-01        2.958620e-01
+#> 79  8.575139e-03        4.381520e-23        9.914249e-01        8.575139e-03
+#> 80  1.168942e-08        1.736983e-11        1.000000e+00        1.167205e-08
+#> 81  2.051173e-06        1.759657e-17        9.999979e-01        2.051173e-06
+#> 82  2.016731e-07        1.772470e-15        9.999998e-01        2.016730e-07
+#> 83  2.962081e-06        2.466255e-16        9.999970e-01        2.962081e-06
+#> 84  1.265591e-01        4.857815e-32        1.265591e-01        8.734409e-01
+#> 85  7.115367e-02        9.278562e-25        9.288463e-01        7.115367e-02
+#> 86  1.171099e-02        8.069623e-21        9.882890e-01        1.171099e-02
+#> 87  1.462275e-03        6.007971e-21        9.985377e-01        1.462275e-03
+#> 88  2.358336e-04        7.452736e-23        9.997642e-01        2.358336e-04
+#> 89  7.011274e-05        4.649396e-18        9.999299e-01        7.011274e-05
+#> 90  1.658628e-04        8.014384e-21        9.998341e-01        1.658628e-04
+#> 91  6.111192e-04        6.969458e-23        9.993889e-01        6.111192e-04
+#> 92  2.081908e-03        6.399612e-22        9.979181e-01        2.081908e-03
+#> 93  8.215820e-06        6.046922e-18        9.999918e-01        8.215820e-06
+#> 94  8.817726e-08        2.760476e-14        9.999999e-01        8.817724e-08
+#> 95  3.180759e-04        5.335326e-21        9.996819e-01        3.180759e-04
+#> 96  2.163197e-05        1.459816e-17        9.999784e-01        2.163197e-05
+#> 97  1.297577e-04        2.766790e-19        9.998702e-01        1.297577e-04
+#> 98  3.722773e-05        2.641573e-18        9.999628e-01        3.722773e-05
+#> 99  1.662777e-08        8.616285e-11        1.000000e+00        1.654161e-08
+#> 100 7.653945e-05        5.282922e-19        9.999235e-01        7.653945e-05
+#> 101 1.833584e-09        9.189636e-53        1.833584e-09        1.000000e+00
+#> 102 6.249214e-04        2.737623e-38        6.249214e-04        9.993751e-01
+#> 103 2.339352e-05        2.143108e-42        2.339352e-05        9.999766e-01
+#> 104 7.557839e-04        1.270948e-38        7.557839e-04        9.992442e-01
+#> 105 9.548009e-07        3.307092e-46        9.548009e-07        9.999990e-01
+#> 106 7.842065e-07        1.452433e-48        7.842065e-07        9.999992e-01
+#> 107 2.241730e-02        9.673769e-34        2.241730e-02        9.775827e-01
+#> 108 1.916189e-04        5.488076e-42        1.916189e-04        9.998084e-01
+#> 109 3.030212e-04        4.977387e-42        3.030212e-04        9.996970e-01
+#> 110 6.746244e-08        1.106046e-46        6.746244e-08        9.999999e-01
+#> 111 7.689091e-03        3.088701e-32        7.689091e-03        9.923109e-01
+#> 112 1.504113e-03        1.730190e-37        1.504113e-03        9.984959e-01
+#> 113 1.536779e-04        5.970241e-39        1.536779e-04        9.998463e-01
+#> 114 1.179067e-04        7.701577e-41        1.179067e-04        9.998821e-01
+#> 115 3.523964e-07        3.682000e-46        3.523964e-07        9.999996e-01
+#> 116 1.065679e-05        1.522855e-40        1.065679e-05        9.999893e-01
+#> 117 4.689528e-03        1.894848e-35        4.689528e-03        9.953105e-01
+#> 118 8.277713e-07        7.691991e-45        8.277713e-07        9.999992e-01
+#> 119 1.957403e-09        2.153831e-58        1.957403e-09        1.000000e+00
+#> 120 3.009334e-01        5.516986e-33        3.009334e-01        6.990666e-01
+#> 121 3.642885e-06        7.232014e-43        3.642885e-06        9.999964e-01
+#> 122 3.569291e-04        8.368434e-38        3.569291e-04        9.996431e-01
+#> 123 1.553699e-06        4.229477e-49        1.553699e-06        9.999984e-01
+#> 124 9.440999e-02        3.096984e-31        9.440999e-02        9.055900e-01
+#> 125 4.563676e-05        9.260868e-40        4.563676e-05        9.999544e-01
+#> 126 2.721528e-03        2.178672e-36        2.721528e-03        9.972785e-01
+#> 127 1.617431e-01        8.915406e-30        1.617431e-01        8.382569e-01
+#> 128 8.853519e-02        4.867016e-30        8.853519e-02        9.114648e-01
+#> 129 8.589127e-06        5.100201e-44        8.589127e-06        9.999914e-01
+#> 130 1.471598e-01        5.595539e-32        1.471598e-01        8.528402e-01
+#> 131 2.250925e-04        2.309676e-41        2.250925e-04        9.997749e-01
+#> 132 4.168617e-04        2.043254e-36        4.168617e-04        9.995831e-01
+#> 133 1.831304e-06        9.526576e-46        1.831304e-06        9.999982e-01
+#> 134 2.547331e-01        2.158018e-28        7.452669e-01        2.547331e-01
+#> 135 7.225299e-02        3.546335e-35        7.225299e-02        9.277470e-01
+#> 136 2.561881e-06        4.729865e-45        2.561881e-06        9.999974e-01
+#> 137 2.432426e-07        3.900002e-45        2.432426e-07        9.999998e-01
+#> 138 4.005218e-03        3.081611e-35        4.005218e-03        9.959948e-01
+#> 139 1.232337e-01        2.462961e-29        1.232337e-01        8.767663e-01
+#> 140 6.384856e-04        2.455500e-36        6.384856e-04        9.993615e-01
+#> 141 5.863244e-07        3.304845e-45        5.863244e-07        9.999994e-01
+#> 142 2.960790e-04        6.005337e-36        2.960790e-04        9.997039e-01
+#> 143 6.249214e-04        2.737623e-38        6.249214e-04        9.993751e-01
+#> 144 5.169224e-07        5.429451e-46        5.169224e-07        9.999995e-01
+#> 145 9.431227e-08        1.127348e-46        9.431227e-08        9.999999e-01
+#> 146 4.754131e-05        4.013152e-39        4.754131e-05        9.999525e-01
+#> 147 6.226347e-03        9.492439e-36        6.226347e-03        9.937737e-01
+#> 148 2.179369e-03        4.644265e-35        2.179369e-03        9.978206e-01
+#> 149 3.579834e-06        2.101936e-41        3.579834e-06        9.999964e-01
+#> 150 9.113483e-03        1.092046e-33        9.113483e-03        9.908865e-01
+# }
 ```

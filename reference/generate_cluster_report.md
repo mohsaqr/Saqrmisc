@@ -1,15 +1,18 @@
-# Generate Interpretable Cluster Report
+# Generate Cluster Report
 
-Creates a comprehensive, interpretable report of the clustering results
-including model selection summary, cluster profiles, and practical
-interpretations.
+Generate Cluster Report
 
 ## Usage
 
 ``` r
 generate_cluster_report(
   results,
-  model_name = NULL,
+  output_format = "console",
+  include_recommendations = TRUE
+)
+
+cluster_report(
+  results,
   output_format = "console",
   include_recommendations = TRUE
 )
@@ -19,44 +22,17 @@ generate_cluster_report(
 
 - results:
 
-  Object from clustering()
-
-- model_name:
-
-  Model to report on. If NULL, uses best model by BIC.
+  A \`saqr_clustering\` object.
 
 - output_format:
 
-  Output format: "console" (default), "gt" (returns gt tables), or
-  "markdown" (returns markdown text).
+  \`"console"\` (default), \`"gt"\`, or \`"markdown"\`.
 
 - include_recommendations:
 
-  Logical. Include interpretation guidelines. Defaults to TRUE.
+  Include interpretation guidelines.
 
 ## Value
 
-Depending on output_format:
-
-- "console": Prints report and returns NULL invisibly
-
-- "gt": Returns a list of gt table objects
-
-- "markdown": Returns markdown text as character string
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-results <- clustering(data, vars, n_clusters = 3)
-
-# Print to console
-generate_cluster_report(results)
-
-# Get gt tables
-tables <- generate_cluster_report(results, output_format = "gt")
-
-# Get markdown
-md_text <- generate_cluster_report(results, output_format = "markdown")
-} # }
-```
+Invisibly \`NULL\` for console; a gt table list for \`"gt"\`; a
+character string for \`"markdown"\`.

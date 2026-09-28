@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,7 +53,7 @@
 <li>One plot returns a ggplot; several return a <code>clustering_plots</code> object that draws every plot when printed and lists its contents via <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code>.</li>
 <li>New <code><a href="../reference/clustering_plot_types.html">clustering_plot_types()</a></code> returns the catalogue as a data.frame.</li>
 <li>
-<code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> on a <code><a href="../reference/clustering.html">clustering()</a></code> result now draws through <code><a href="../reference/plot_clustering.html">plot_clustering()</a></code> and takes the same <code>type</code>, <code>model</code>, and <code>scale</code>. <strong>Behaviour changes:</strong> the default <code>type</code> is <code>"clusters"</code> (was <code>"profile"</code>); <code>"comparison"</code> is now <code>"selection"</code> (see below); <code>"barchart"</code> is no longer a <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> type (still available in <code><a href="../reference/plot_model.html">plot_model()</a></code>).</li>
+<code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> on a <code><a href="../reference/clustering.html">clustering()</a></code> result now draws through <code><a href="../reference/plot_clustering.html">plot_clustering()</a></code> and takes the same <code>type</code>, <code>model</code>, and <code>scale</code>. <strong>Behaviour changes:</strong> the default <code>type</code> is <code>"clusters"</code> (was <code>"profile"</code>); <code>"comparison"</code> is now <code>"selection"</code> (see below); <code>"barchart"</code> is no longer a <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> type (still available in <code>plot_model()</code>).</li>
 <li>
 <code>model</code> accepts one or more model names or <code>"all"</code>. Cluster and diagnostic plots are drawn once per model (named <code>"&lt;model&gt;/&lt;type&gt;"</code>); selection plots once. <code>type = "all"</code> draws <strong>every plot for every fitted model</strong> unless <code>model</code> narrows it.</li>
 <li>Plots use the Okabe-Ito palette and pair colour with shape or position. The heatmap colours standardised distance from the overall mean, so variables in different units are comparable, and labels the actual means.</li>
@@ -107,7 +107,7 @@
 <code><a href="../reference/get_cluster_assignments.html">get_cluster_assignments()</a></code> now preserves rows omitted during complete-case fitting and marks their assignments and probabilities as <code>NA</code>.</li>
 <li>Added a tidy interface: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> returns a ranked model tibble, <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> returns original rows with fitted clusters, and <code>get_best_model(..., what = "fit")</code> extracts the raw MoEClust fit.</li>
 <li>
-<code>plot(..., type = "all")</code> now means every plot for every fitted model. Added <code><a href="../reference/plot_best_model.html">plot_best_model()</a></code> and <code><a href="../reference/plot_model.html">plot_model()</a></code> for focused plotting.</li>
+<code>plot(..., type = "all")</code> now means every plot for every fitted model. Added <code>plot_best_model()</code> and <code>plot_model()</code> for focused plotting.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.1" id="saqrmisc-091">Saqrmisc 0.9.1<a class="anchor" aria-label="anchor" href="#saqrmisc-091"></a></h2>
@@ -145,7 +145,7 @@
 <li>
 <strong>Helper Functions</strong>
 <ul><li>
-<code><a href="../reference/view_results.html">view_results()</a></code> for easy visualization of clustering results</li>
+<code>view_results()</code> for easy visualization of clustering results</li>
 </ul></li>
 </ul></div>
 <div class="section level4">

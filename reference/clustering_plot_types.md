@@ -2,8 +2,7 @@
 
 Returns the catalogue of plots that
 [`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md)
-can draw, with the group each belongs to. Any `type` or `group` value,
-or `"all"`, can be passed to the `type` argument of
+can draw. Any `type` value, group name, or `"all"` can be passed to
 [`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md).
 
 ## Usage
@@ -14,33 +13,30 @@ clustering_plot_types()
 
 ## Value
 
-A data.frame with one row per plot type and columns `type`, `group`
-(`"clusters"`, `"diagnostics"`, or `"selection"`), and `description`.
+A data.frame with columns `type`, `group`, and `description`.
 
 ## Examples
 
 ``` r
 clustering_plot_types()
-#>            type       group
-#> 1       profile    clusters
-#> 2       heatmap    clusters
-#> 3  distribution    clusters
-#> 4         sizes    clusters
-#> 5     certainty diagnostics
-#> 6         avepp diagnostics
-#> 7    projection diagnostics
-#> 8           bic   selection
-#> 9           aic   selection
-#> 10          icl   selection
-#>                                                               description
-#> 1                 Mean of each variable per cluster, one line per cluster
-#> 2  Cluster means, coloured by standardised distance from the overall mean
-#> 3                       Within-cluster spread of each variable (boxplots)
-#> 4                       Number and percentage of observations per cluster
-#> 5    Posterior probability of the assigned cluster, with relative entropy
-#> 6    Average posterior probability: assigned cluster by posterior cluster
-#> 7          Observations on the first two principal components, by cluster
-#> 8            BIC across models and numbers of clusters (higher is better)
-#> 9            AIC across models and numbers of clusters (higher is better)
-#> 10           ICL across models and numbers of clusters (higher is better)
+#>          type       group
+#> 1    profiles    clusters
+#> 2        bars    clusters
+#> 3     heatmap    clusters
+#> 4   raincloud    clusters
+#> 5       sizes    clusters
+#> 6     entropy diagnostics
+#> 7  posteriors diagnostics
+#> 8       avepp diagnostics
+#> 9 enumeration   selection
+#>                                                   description
+#> 1       Profile means across indicators, one line per profile
+#> 2            Profile means as grouped bars with 95% intervals
+#> 3  Profile means as a diverging heatmap (SDs from grand mean)
+#> 4         Density + box + jitter of each indicator by profile
+#> 5           Number and percentage of observations per profile
+#> 6    Posterior-probability histogram (classification entropy)
+#> 7               Per-observation posterior by assigned profile
+#> 8 Average posterior probability matrix (assigned x posterior)
+#> 9                      BIC / AIC across enumerated candidates
 ```

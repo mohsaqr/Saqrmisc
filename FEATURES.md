@@ -24,7 +24,7 @@ A comprehensive list of all features in the Saqrmisc package.
 |  | [`replace_outliers()`](https://pak.dynasite.org/Saqrmisc/reference/replace_outliers.md) | Treatment (winsorize, NA, median) |
 | **Normality** | [`normality_check()`](https://pak.dynasite.org/Saqrmisc/reference/normality_check.md) | Shapiro-Wilk, skewness, kurtosis, Q-Q plots |
 | **Clustering** | [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md) | Model-based clustering (14 covariance models) |
-|  | [`assess_cluster_stability()`](https://pak.dynasite.org/Saqrmisc/reference/assess_cluster_stability.md) | Bootstrap stability assessment |
+|  | `assess_cluster_stability()` | Bootstrap stability assessment |
 | **Networks** | [`estimate_single_network()`](https://pak.dynasite.org/Saqrmisc/reference/estimate_single_network.md) | Network estimation and visualization |
 |  | [`compare_networks()`](https://pak.dynasite.org/Saqrmisc/reference/compare_networks.md) | Compare networks between groups |
 | **Categorical** | [`mosaic_analysis()`](https://pak.dynasite.org/Saqrmisc/reference/mosaic_analysis.md) | Mosaic plots, chi-square, Cramer’s V |

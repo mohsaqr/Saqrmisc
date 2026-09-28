@@ -1,23 +1,25 @@
-# Compare Models by Information Criteria
+# Compare Models from an Enumeration
 
-Compare Models by Information Criteria
+Compare Models from an Enumeration
 
 ## Usage
 
 ``` r
 compare_models(results, sort_by = "bic")
+
+cluster_compare(results, sort_by = "bic")
 ```
 
 ## Arguments
 
 - results:
 
-  Object from run_full_moe_analysis
+  A \`saqr_clustering\` object.
 
 - sort_by:
 
-  Criterion to sort by: "bic", "aic", or "icl"
+  Criterion to sort by: \`"bic"\` (default), \`"aic"\`, or \`"icl"\`.
 
 ## Value
 
-Data frame with model comparison
+A data.frame, or \`NULL\` if no enumeration was run.

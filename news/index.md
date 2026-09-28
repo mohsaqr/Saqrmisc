@@ -27,8 +27,7 @@
   changes:** the default `type` is `"clusters"` (was `"profile"`);
   `"comparison"` is now `"selection"` (see below); `"barchart"` is no
   longer a [`plot()`](https://rdrr.io/r/graphics/plot.default.html) type
-  (still available in
-  [`plot_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_model.md)).
+  (still available in `plot_model()`).
 - `model` accepts one or more model names or `"all"`. Cluster and
   diagnostic plots are drawn once per model (named `"<model>/<type>"`);
   selection plots once. `type = "all"` draws **every plot for every
@@ -136,11 +135,7 @@
   returns original rows with fitted clusters, and
   `get_best_model(..., what = "fit")` extracts the raw MoEClust fit.
 - `plot(..., type = "all")` now means every plot for every fitted model.
-  Added
-  [`plot_best_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_best_model.md)
-  and
-  [`plot_model()`](https://pak.dynasite.org/Saqrmisc/reference/plot_model.md)
-  for focused plotting.
+  Added `plot_best_model()` and `plot_model()` for focused plotting.
 
 ## Saqrmisc 0.9.1
 
@@ -174,8 +169,7 @@ comprehensive tools for data analysis and visualization.
   - Quality filtering for minimum observation counts
   - Detailed summary tables with percentages
 - **Helper Functions**
-  - [`view_results()`](https://pak.dynasite.org/Saqrmisc/reference/view_results.md)
-    for easy visualization of clustering results
+  - `view_results()` for easy visualization of clustering results
 
 #### Documentation
 
