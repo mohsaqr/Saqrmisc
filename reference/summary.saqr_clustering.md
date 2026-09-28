@@ -1,6 +1,6 @@
-# Summarise a Clustering Result
+# Compare the Candidate Models of a Clustering Result
 
-Summarise a Clustering Result
+Compare the Candidate Models of a Clustering Result
 
 ## Usage
 
@@ -13,7 +13,7 @@ summary(object, ...)
 
 - object:
 
-  A \`saqr_clustering\` object.
+  A \`saqr_clustering\` object from \[clustering()\].
 
 - ...:
 
@@ -21,5 +21,8 @@ summary(object, ...)
 
 ## Value
 
-When an enumeration was fitted, a data.frame with one row per candidate
-model. Otherwise a one-row summary of the single fit.
+A data.frame with one row per candidate (profiles x covariance model):
+\`n_profiles\`, \`model\`, \`log_likelihood\`, \`n_parameters\`,
+\`aic\`, \`bic\`, \`icl\`, \`entropy\` (relative), \`converged\`,
+\`boundary\`, \`delta_bic\` (distance from the selected model) and
+\`selected\`.

@@ -1,6 +1,6 @@
-# Extract Fitted Observations with Profile Assignments
+# Input Data with Profile Assignments
 
-Extract Fitted Observations with Profile Assignments
+Input Data with Profile Assignments
 
 ## Usage
 
@@ -13,7 +13,7 @@ fitted(object, ...)
 
 - object:
 
-  A \`saqr_clustering\` object.
+  A \`saqr_clustering\` object from \[clustering()\].
 
 - ...:
 
@@ -21,6 +21,7 @@ fitted(object, ...)
 
 ## Value
 
-A data.frame with all columns of the input data plus \`profile\`,
-\`uncertainty\`, and posterior probability columns. Rows removed during
-fitting get \`NA\` fitted values.
+The data frame passed to \[clustering()\], one row per input row, with
+\`profile\` (modal assignment), \`uncertainty\` and one
+\`posterior_profile\_\<k\>\` column per profile added. Rows dropped for
+missing values carry \`NA\` in the added columns.

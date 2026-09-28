@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,25 @@
       <small>Source: <a href="https://github.com/mohsaqr/Saqrmisc/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.7" id="saqrmisc-097">Saqrmisc 0.9.7<a class="anchor" aria-label="anchor" href="#saqrmisc-097"></a></h2>
+<div class="section level3">
+<h3 id="clustering-module-rebuilt-on-latents-0-9-7">Clustering module rebuilt on latents 0.8.6<a class="anchor" aria-label="anchor" href="#clustering-module-rebuilt-on-latents-0-9-7"></a></h3>
+<ul><li>
+<code><a href="../reference/clustering.html">clustering()</a></code> fits every candidate through <code><a href="https://pak.dynasite.org/latents/reference/enumerate_lpa.html" class="external-link">latents::enumerate_lpa()</a></code> (one candidate is a grid of one) and returns the BIC-best fit. The result is now a <code>latents</code> fit with class <code>c("saqr_clustering", "multilpa")</code>, so <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code>, <code><a href="https://pak.dynasite.org/latents/reference/diagnostics.html" class="external-link">latents::diagnostics()</a></code>, <code><a href="https://pak.dynasite.org/latents/reference/get_results.html" class="external-link">latents::get_results()</a></code> and <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> work on it directly.</li>
+<li>
+<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> returns one row per candidate with <code>aic</code>, <code>bic</code>, <code>icl</code>, <code>entropy</code>, <code>boundary</code>, <code>delta_bic</code> and <code>selected</code> (was <code>best</code>). <code>icl</code> is no longer <code>NA</code> for a single model.</li>
+<li>
+<code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> matches columns by name, not position.</li>
+<li>Progress is reported with <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code>. The latents single-level notice no longer leaks into the output.</li>
+<li>New checks: non-numeric or constant <code>vars</code> raise <code>saqrmisc_bad_input</code>; <code>scaling</code> and <code>na_action</code> are matched arguments.</li>
+<li>
+<code><a href="../reference/plot_clustering.html">plot_clustering()</a></code> takes <code>type</code> and passes <code>...</code> (e.g. <code>scale = "standardized"</code>) to latents. Plot descriptions come from <code><a href="https://pak.dynasite.org/latents/reference/plot_views.html" class="external-link">latents::plot_views()</a></code>.</li>
+<li>
+<strong>Removed</strong> (use the verbs above): <code>cluster()</code>, <code>cluster_fit()</code>, <code>get_cluster_assignments()</code>/<code>cluster_assignments()</code> -&gt; <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code>; <code>compare_models()</code>/<code>cluster_compare()</code>, <code>model_comparison_table()</code>/ <code>cluster_compare_table()</code>, <code>list_models()</code>/<code>cluster_models()</code>, <code>get_best_model()</code>/<code>cluster_best()</code> -&gt; <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>; <code>cluster_diagnostics()</code>/<code>cluster_stability()</code> -&gt; <code><a href="https://pak.dynasite.org/latents/reference/diagnostics.html" class="external-link">latents::diagnostics()</a></code>; <code>generate_cluster_report()</code>/<code>cluster_report()</code> -&gt; <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>/<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>.</li>
+<li>Requires latents &gt;= 0.8.6.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.4" id="saqrmisc-094">Saqrmisc 0.9.4<a class="anchor" aria-label="anchor" href="#saqrmisc-094"></a></h2>
 <div class="section level3">
@@ -95,7 +114,7 @@
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.2" id="saqrmisc-092">Saqrmisc 0.9.2<a class="anchor" aria-label="anchor" href="#saqrmisc-092"></a></h2>
-<ul><li>Added <code><a href="../reference/clustering.html">cluster()</a></code> as a short alias for <code><a href="../reference/clustering.html">clustering()</a></code>.</li>
+<ul><li>Added <code>cluster()</code> as a short alias for <code><a href="../reference/clustering.html">clustering()</a></code>.</li>
 <li>Added optional <code>cluster_*</code> aliases for the existing clustering helpers. All original function names remain unchanged.</li>
 <li>Fixed <code><a href="../reference/clustering.html">clustering()</a></code> model comparisons by storing the scalar fitted log-likelihood instead of each model’s variable-length iteration history.</li>
 <li>
@@ -104,7 +123,7 @@
 <li>Corrected MoEClust information-criterion ranking so larger values select the best model.</li>
 <li>Preserved both the complete input data and the complete-case analysis data in clustering results.</li>
 <li>
-<code><a href="../reference/get_cluster_assignments.html">get_cluster_assignments()</a></code> now preserves rows omitted during complete-case fitting and marks their assignments and probabilities as <code>NA</code>.</li>
+<code>get_cluster_assignments()</code> now preserves rows omitted during complete-case fitting and marks their assignments and probabilities as <code>NA</code>.</li>
 <li>Added a tidy interface: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> returns a ranked model tibble, <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> returns original rows with fitted clusters, and <code>get_best_model(..., what = "fit")</code> extracts the raw MoEClust fit.</li>
 <li>
 <code>plot(..., type = "all")</code> now means every plot for every fitted model. Added <code>plot_best_model()</code> and <code>plot_model()</code> for focused plotting.</li>

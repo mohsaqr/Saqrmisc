@@ -1,9 +1,9 @@
 # List the Plot Types of plot_clustering()
 
-Returns the catalogue of plots that
+The figures
 [`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md)
-can draw. Any `type` value, group name, or `"all"` can be passed to
-[`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md).
+can draw. Any `type`, any `group`, or `"all"` can be passed as its
+`type`.
 
 ## Usage
 
@@ -13,7 +13,8 @@ clustering_plot_types()
 
 ## Value
 
-A data.frame with columns `type`, `group`, and `description`.
+A data.frame with one row per plot type and columns `type`, `group`
+(`"clusters"`, `"diagnostics"` or `"selection"`) and `description`.
 
 ## Examples
 
@@ -29,14 +30,14 @@ clustering_plot_types()
 #> 7  posteriors diagnostics
 #> 8       avepp diagnostics
 #> 9 enumeration   selection
-#>                                                   description
-#> 1       Profile means across indicators, one line per profile
-#> 2            Profile means as grouped bars with 95% intervals
-#> 3  Profile means as a diverging heatmap (SDs from grand mean)
-#> 4         Density + box + jitter of each indicator by profile
-#> 5           Number and percentage of observations per profile
-#> 6    Posterior-probability histogram (classification entropy)
-#> 7               Per-observation posterior by assigned profile
-#> 8 Average posterior probability matrix (assigned x posterior)
-#> 9                      BIC / AIC across enumerated candidates
+#>                                                                     description
+#> 1        Profile means across indicators, point size showing profile prevalence
+#> 2        Profile means as grouped bars, with 95% intervals when `data` is given
+#> 3         Profile means as standard deviations from each indicator's grand mean
+#> 4 Each indicator's distribution by assigned profile: density, box, observations
+#> 5                     Effective number of cases in each profile, with its share
+#> 6                  Per-case entropy contribution within each profile, as ridges
+#> 7                      Posterior probability of the assigned profile, as ridges
+#> 8          Average posterior probability: assigned profile by posterior profile
+#> 9            Information criteria across a candidate grid (plot an enumeration)
 ```

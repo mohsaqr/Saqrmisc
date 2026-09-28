@@ -1,32 +1,28 @@
-# Plot method for saqr_clustering objects
+# Plot Method for Clustering Results
 
-Plot method for saqr_clustering objects
+Plot Method for Clustering Results
 
 ## Usage
 
 ``` r
 # S3 method for class 'saqr_clustering'
-plot(x, type = "clusters", scale = c("raw", "standardized"), ...)
+plot(x, type = "clusters", ...)
 ```
 
 ## Arguments
 
 - x:
 
-  A \`saqr_clustering\` object.
+  A \`saqr_clustering\` object from \[clustering()\].
 
 - type:
 
-  Plot type(s); see \[plot_clustering()\].
-
-- scale:
-
-  \`"raw"\` or \`"standardized"\`.
+  Plot types and/or groups; see \[plot_clustering()\].
 
 - ...:
 
-  Further arguments passed to \`plot.multilpa()\`.
+  Passed to \[plot_clustering()\].
 
 ## Value
 
-Invisibly, the fitted \`multilpa\` object.
+\`x\`, invisibly.

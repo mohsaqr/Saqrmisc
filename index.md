@@ -32,7 +32,7 @@ plain, markdown, latex, kable).
   - [normality_check()](#normality_check)
 - [Clustering](#clustering)
   - [clustering()](#clustering-1)
-  - [assess_cluster_stability()](#assess_cluster_stability)
+  - [plot_clustering()](#clustering-1)
 - [Network Analysis](#network-analysis)
   - [estimate_single_network()](#estimate_single_network)
   - [compare_networks()](#compare_networks)
@@ -427,40 +427,39 @@ normality_check(data, Vars, digits = 3)
 
 ### `clustering()`
 
-Model-based clustering using Gaussian Mixture Models. Tests 14
-covariance structures (EII through VVV) and selects the best model by
-BIC.
+Latent profile clustering with the
+[latents](https://github.com/mohsaqr/latents) package. Fits every
+combination of profile counts and covariance structures (the 14 mclust
+codes, EII through VVV) and keeps the one with the lowest BIC.
 
 ``` r
 
-clustering(data, vars, n_clusters, scaling = "standardize",
-           n_init = 10, seed = NULL, verbose = TRUE)
+clustering(data, vars, n_profiles, models = "VVI",
+           scaling = "standardize", n_starts = 10, seed = NULL,
+           na_action = "omit", verbose = TRUE)
 ```
 
 | Parameter | Description | Default |
 |----|----|----|
-| `n_clusters` | Range of clusters to test (e.g., `2:5`) | required |
+| `n_profiles` | Profile count(s), e.g. `3` or `2:5` (alias `n_clusters`) | required |
+| `models` | Covariance codes, e.g. `c("EEE", "VVI")`, or `"all"` | `"VVI"` |
 | `scaling` | `"standardize"`, `"center"`, `"minmax"`, `"none"` | `"standardize"` |
 
 ``` r
 
-results <- clustering(mtcars, vars = c("mpg", "hp", "wt"), n_clusters = 2:4)
-plot(results)                          # Profile plot
-model_comparison_table(results)        # Compare all models
+fit <- clustering(mtcars, vars = c("mpg", "hp", "wt"), n_profiles = 2:4,
+                  models = c("EEE", "VVI"))
+fit                    # the selected model
+summary(fit)           # every candidate, with delta BIC
+as.data.frame(fit)     # profile means
+fitted(fit)            # input data with profile and posteriors
+plot(fit)              # profile plots; see clustering_plot_types()
+plot(fit, type = "diagnostics")
 ```
 
-**Returns:** Object of class `"moe_analysis"` with
-[`print()`](https://rdrr.io/r/base/print.html) and
-[`plot()`](https://rdrr.io/r/graphics/plot.default.html) methods.
-
-#### Helper Functions
-
-| Function | Description |
-|----|----|
-| `get_cluster_assignments(results)` | Extract cluster labels (optionally with probabilities) |
-| `assess_cluster_stability(results, n_boot)` | Bootstrap stability assessment (Jaccard similarity) |
-| `model_comparison_table(results)` | Publication-ready model comparison table |
-| `generate_cluster_report(results)` | Full text report of the analysis |
+The result is a `latents` fit, so `latents::diagnostics(fit)`,
+`latents::get_results(fit, what)` and
+[`predict()`](https://rdrr.io/r/stats/predict.html) work on it directly.
 
 ------------------------------------------------------------------------
 

@@ -95,20 +95,11 @@ The package is organized into the following function categories:
 ### Clustering
 
 - [`clustering`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md):
-  Latent profile clustering via the latents package. Supports all 14
-  covariance structures.
+  Latent profile clustering via the latents package, selecting among
+  profile counts and the 14 covariance structures by BIC.
 
-- [`get_cluster_assignments`](https://pak.dynasite.org/Saqrmisc/reference/get_cluster_assignments.md):
-  Extract cluster assignments with optional membership probabilities.
-
-- [`cluster_diagnostics`](https://pak.dynasite.org/Saqrmisc/reference/cluster_diagnostics.md):
-  Classification diagnostics.
-
-- [`model_comparison_table`](https://pak.dynasite.org/Saqrmisc/reference/model_comparison_table.md):
-  Compare models by BIC, AIC, or ICL.
-
-- [`generate_cluster_report`](https://pak.dynasite.org/Saqrmisc/reference/generate_cluster_report.md):
-  Generate comprehensive cluster reports.
+- [`plot_clustering`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md):
+  Profile, diagnostic and model selection plots of a clustering result.
 
 ### Categorical Analysis
 

@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -119,7 +119,7 @@
 <a href="#clustering">Clustering</a>
 <ul>
 <li><a href="#clustering-1">clustering()</a></li>
-<li><a href="#assess_cluster_stability">assess_cluster_stability()</a></li>
+<li><a href="#clustering-1">plot_clustering()</a></li>
 </ul>
 </li>
 <li>
@@ -698,10 +698,11 @@
 <h3 id="clustering-1">
 <code>clustering()</code><a class="anchor" aria-label="anchor" href="#clustering-1"></a>
 </h3>
-<p>Model-based clustering using Gaussian Mixture Models. Tests 14 covariance structures (EII through VVV) and selects the best model by BIC.</p>
+<p>Latent profile clustering with the <a href="https://github.com/mohsaqr/latents" class="external-link">latents</a> package. Fits every combination of profile counts and covariance structures (the 14 mclust codes, EII through VVV) and keeps the one with the lowest BIC.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/clustering.html">clustering</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">vars</span>, <span class="va">n_clusters</span>, scaling <span class="op">=</span> <span class="st">"standardize"</span>,</span>
-<span>           n_init <span class="op">=</span> <span class="fl">10</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/clustering.html">clustering</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">vars</span>, <span class="va">n_profiles</span>, models <span class="op">=</span> <span class="st">"VVI"</span>,</span>
+<span>           scaling <span class="op">=</span> <span class="st">"standardize"</span>, n_starts <span class="op">=</span> <span class="fl">10</span>, seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>           na_action <span class="op">=</span> <span class="st">"omit"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -715,9 +716,15 @@
 </tr></thead>
 <tbody>
 <tr>
-<td><code>n_clusters</code></td>
-<td>Range of clusters to test (e.g., <code>2:5</code>)</td>
+<td><code>n_profiles</code></td>
+<td>Profile count(s), e.g. <code>3</code> or <code>2:5</code> (alias <code>n_clusters</code>)</td>
 <td>required</td>
+</tr>
+<tr>
+<td><code>models</code></td>
+<td>Covariance codes, e.g. <code>c("EEE", "VVI")</code>, or <code>"all"</code>
+</td>
+<td><code>"VVI"</code></td>
 </tr>
 <tr>
 <td><code>scaling</code></td>
@@ -729,43 +736,16 @@
 </tbody>
 </table>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/clustering.html">clustering</a></span><span class="op">(</span><span class="va">mtcars</span>, vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span>, <span class="st">"wt"</span><span class="op">)</span>, n_clusters <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>                          <span class="co"># Profile plot</span></span>
-<span><span class="fu"><a href="reference/model_comparison_table.html">model_comparison_table</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>        <span class="co"># Compare all models</span></span></code></pre></div>
-<p><strong>Returns:</strong> Object of class <code>"moe_analysis"</code> with <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> methods.</p>
-<div class="section level4">
-<h4 id="helper-functions">Helper Functions<a class="anchor" aria-label="anchor" href="#helper-functions"></a>
-</h4>
-<table class="table">
-<colgroup>
-<col width="43%">
-<col width="56%">
-</colgroup>
-<thead><tr>
-<th>Function</th>
-<th>Description</th>
-</tr></thead>
-<tbody>
-<tr>
-<td><code>get_cluster_assignments(results)</code></td>
-<td>Extract cluster labels (optionally with probabilities)</td>
-</tr>
-<tr>
-<td><code>assess_cluster_stability(results, n_boot)</code></td>
-<td>Bootstrap stability assessment (Jaccard similarity)</td>
-</tr>
-<tr>
-<td><code>model_comparison_table(results)</code></td>
-<td>Publication-ready model comparison table</td>
-</tr>
-<tr>
-<td><code>generate_cluster_report(results)</code></td>
-<td>Full text report of the analysis</td>
-</tr>
-</tbody>
-</table>
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/clustering.html">clustering</a></span><span class="op">(</span><span class="va">mtcars</span>, vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span>, <span class="st">"wt"</span><span class="op">)</span>, n_profiles <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">4</span>,</span>
+<span>                  models <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"EEE"</span>, <span class="st">"VVI"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit</span>                    <span class="co"># the selected model</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>           <span class="co"># every candidate, with delta BIC</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>     <span class="co"># profile means</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>            <span class="co"># input data with profile and posteriors</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>              <span class="co"># profile plots; see clustering_plot_types()</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"diagnostics"</span><span class="op">)</span></span></code></pre></div>
+<p>The result is a <code>latents</code> fit, so <code>latents::diagnostics(fit)</code>, <code>latents::get_results(fit, what)</code> and <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> work on it directly.</p>
 <hr>
-</div>
 </div>
 </div>
 <div class="section level2">

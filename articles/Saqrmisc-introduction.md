@@ -530,45 +530,43 @@ df_imp <- replace_missing(df, Vars = "mpg", method = "median")
 df_imp <- replace_missing(df, Vars = "mpg", method = "mean", group_by = "cyl")
 ```
 
-## 8. Model-Based Clustering
+## 8. Latent Profile Clustering
 
-The
 [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
-function performs comprehensive model-based clustering using MoEClust.
+fits latent profile models with the latents package, one for every
+combination of profile count and covariance structure, and keeps the one
+with the lowest BIC.
 
 ``` r
 
-# Generate sample customer data
 set.seed(123)
-customer_data <- data.frame(
-  customer_id = 1:300,
-  age = rnorm(300, mean = 45, sd = 15),
-  income = rnorm(300, mean = 50000, sd = 20000),
-  spending = rnorm(300, mean = 2000, sd = 800),
-  satisfaction = rnorm(300, mean = 7, sd = 2)
-)
+vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+fit <- clustering(iris, vars, n_profiles = 2:4, models = c("EEE", "VVI"))
+fit
+```
 
-# Run clustering analysis
-clustering_results <- clustering(
-  data = customer_data,
-  vars = c("age", "income", "spending", "satisfaction"),
-  n_clusters = 3,
-  scaling = "standardize"
-)
+[`summary()`](https://rdrr.io/r/base/summary.html) compares every
+candidate;
+[`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) gives the
+profile means and
+[`fitted()`](https://rdrr.io/r/stats/fitted.values.html) the input data
+with each row’s profile.
 
-# View results
-print(clustering_results)
-summary(clustering_results)
+``` r
 
-# Plot cluster profiles
-plot(clustering_results, type = "profile")
-plot(clustering_results, type = "heatmap")
+summary(fit)
+as.data.frame(fit)
+head(fitted(fit))
+```
 
-# Get cluster assignments
-assignments <- get_cluster_assignments(clustering_results)
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) draws the
+profiles; `type` selects other views, listed by
+[`clustering_plot_types()`](https://pak.dynasite.org/Saqrmisc/reference/clustering_plot_types.md).
 
-# Model comparison table
-model_comparison_table(clustering_results)
+``` r
+
+plot(fit)
+plot(fit, type = c("heatmap", "avepp", "enumeration"))
 ```
 
 ## 9. Categorical Variable Analysis

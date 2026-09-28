@@ -1,5 +1,48 @@
 # Changelog
 
+## Saqrmisc 0.9.7
+
+### Clustering module rebuilt on latents 0.8.6
+
+- [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
+  fits every candidate through
+  [`latents::enumerate_lpa()`](https://pak.dynasite.org/latents/reference/enumerate_lpa.html)
+  (one candidate is a grid of one) and returns the BIC-best fit. The
+  result is now a `latents` fit with class
+  `c("saqr_clustering", "multilpa")`, so
+  [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html),
+  [`latents::diagnostics()`](https://pak.dynasite.org/latents/reference/diagnostics.html),
+  [`latents::get_results()`](https://pak.dynasite.org/latents/reference/get_results.html)
+  and [`predict()`](https://rdrr.io/r/stats/predict.html) work on it
+  directly.
+- [`summary()`](https://rdrr.io/r/base/summary.html) returns one row per
+  candidate with `aic`, `bic`, `icl`, `entropy`, `boundary`, `delta_bic`
+  and `selected` (was `best`). `icl` is no longer `NA` for a single
+  model.
+- [`fitted()`](https://rdrr.io/r/stats/fitted.values.html) matches
+  columns by name, not position.
+- Progress is reported with
+  [`message()`](https://rdrr.io/r/base/message.html). The latents
+  single-level notice no longer leaks into the output.
+- New checks: non-numeric or constant `vars` raise `saqrmisc_bad_input`;
+  `scaling` and `na_action` are matched arguments.
+- [`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md)
+  takes `type` and passes `...` (e.g. `scale = "standardized"`) to
+  latents. Plot descriptions come from
+  [`latents::plot_views()`](https://pak.dynasite.org/latents/reference/plot_views.html).
+- **Removed** (use the verbs above): `cluster()`, `cluster_fit()`,
+  `get_cluster_assignments()`/`cluster_assignments()` -\>
+  [`fitted()`](https://rdrr.io/r/stats/fitted.values.html);
+  `compare_models()`/`cluster_compare()`, `model_comparison_table()`/
+  `cluster_compare_table()`, `list_models()`/`cluster_models()`,
+  `get_best_model()`/`cluster_best()` -\>
+  [`summary()`](https://rdrr.io/r/base/summary.html);
+  `cluster_diagnostics()`/`cluster_stability()` -\>
+  [`latents::diagnostics()`](https://pak.dynasite.org/latents/reference/diagnostics.html);
+  `generate_cluster_report()`/`cluster_report()` -\>
+  [`print()`](https://rdrr.io/r/base/print.html)/[`summary()`](https://rdrr.io/r/base/summary.html).
+- Requires latents \>= 0.8.6.
+
 ## Saqrmisc 0.9.4
 
 ### Systematic clustering plots
@@ -106,9 +149,7 @@
 
 ## Saqrmisc 0.9.2
 
-- Added
-  [`cluster()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
-  as a short alias for
+- Added `cluster()` as a short alias for
   [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md).
 - Added optional `cluster_*` aliases for the existing clustering
   helpers. All original function names remain unchanged.
@@ -126,9 +167,9 @@
   select the best model.
 - Preserved both the complete input data and the complete-case analysis
   data in clustering results.
-- [`get_cluster_assignments()`](https://pak.dynasite.org/Saqrmisc/reference/get_cluster_assignments.md)
-  now preserves rows omitted during complete-case fitting and marks
-  their assignments and probabilities as `NA`.
+- `get_cluster_assignments()` now preserves rows omitted during
+  complete-case fitting and marks their assignments and probabilities as
+  `NA`.
 - Added a tidy interface:
   [`summary()`](https://rdrr.io/r/base/summary.html) returns a ranked
   model tibble, [`fitted()`](https://rdrr.io/r/stats/fitted.values.html)
