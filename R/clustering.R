@@ -1,15 +1,10 @@
-# Saqrmisc Package: Clustering Analysis Functions
+# Saqrmisc Package: Clustering Analysis via latent profile analysis
 #
-# This file contains functions for model-based clustering analysis using MoEClust.
-# Main function: clustering()
-# Utility functions: plot(), summary(), get_cluster_assignments(), assess_cluster_stability(),
-#                   model_comparison_table(), generate_cluster_report()
+# Thin wrapper around the `latents` package.
+# clustering() -> latents::lpa() / latents::enumerate_classes()
+# plot() / plot_clustering() -> latents::plot.multilpa()
 
-#' @importFrom dplyr select group_by summarise across mutate arrange bind_cols relocate filter all_of
-#' @importFrom ggplot2 ggplot aes geom_line geom_point geom_tile geom_col geom_text labs theme_minimal
-#'   theme element_text scale_fill_gradient scale_fill_gradient2 scale_fill_viridis_d scale_color_viridis_d
-#' @importFrom tidyr pivot_longer
-#' @importFrom stats complete.cases var
+#' @importFrom stats complete.cases fitted
 #' @importFrom utils packageVersion
 NULL
 
@@ -17,17 +12,17 @@ NULL
 # CONSTANTS
 # =============================================================================
 
-#' Available MoEClust model names
+#' Covariance structure codes (mclust naming)
 #' @noRd
-MOECLUST_MODELS <- c("EII", "VII", "EEI", "VEI", "EVI", "VVI",
-                     "EEE", "EVE", "VEE", "VVE", "EEV", "VEV", "EVV", "VVV")
+COVARIANCE_MODELS <- c("EII", "VII", "EEI", "VEI", "EVI", "VVI",
+                        "EEE", "VEE", "EVE", "VVE", "EEV", "VEV", "EVV", "VVV")
 
 #' Valid scaling methods
 #' @noRd
 VALID_SCALING_METHODS <- c("standardize", "center", "minmax", "none")
 
 # =============================================================================
-# HELPER FUNCTIONS
+# SCALING HELPERS
 # =============================================================================
 
 #' Safe min-max scaling that handles constant variables
@@ -36,9 +31,7 @@ VALID_SCALING_METHODS <- c("standardize", "center", "minmax", "none")
 #' @noRd
 safe_minmax_scale <- function(x) {
   rng <- max(x, na.rm = TRUE) - min(x, na.rm = TRUE)
-  if (rng == 0) {
-    return(rep(0.5, length(x)))  # Return midpoint for constant variables
-  }
+  if (rng == 0) return(rep(0.5, length(x)))
   (x - min(x, na.rm = TRUE)) / rng
 }
 
@@ -50,998 +43,478 @@ safe_minmax_scale <- function(x) {
 apply_scaling <- function(data, method) {
   switch(method,
          standardize = as.data.frame(scale(data, center = TRUE, scale = TRUE)),
-         center = as.data.frame(scale(data, center = TRUE, scale = FALSE)),  # FIXED: center only
+         center = as.data.frame(scale(data, center = TRUE, scale = FALSE)),
          minmax = as.data.frame(lapply(data, safe_minmax_scale)),
          none = data,
-         stop("Invalid scaling method")
+         stop("Invalid scaling method"))
+}
+
+# =============================================================================
+# INTERNAL: translate 3-letter code to latents args
+# =============================================================================
+
+#' @noRd
+.structure_to_latents_args <- function(model_code) {
+  stopifnot(
+    "`model_code` must be a supported covariance code" =
+      model_code %in% COVARIANCE_MODELS
   )
-}
-
-#' Create heatmap for cluster means
-#'
-#' @param model_data Model results containing means data
-#' @param cluster_vars Variable names for clustering
-#' @param scale_type "original" or "scaled"
-#' @param model_name Name of the model for title
-#' @return ggplot heatmap object
-#' @noRd
-create_cluster_heatmap <- function(model_data, cluster_vars, scale_type, model_name) {
-  # Get the appropriate means data
-  if (scale_type == "original") {
-    means_data <- model_data$original_scale$means
-  } else {
-    means_data <- model_data$scaled_data$means
+  spherical <- model_code %in% c("EII", "VII")
+  letter <- function(pos) {
+    if (substr(model_code, pos, pos) == "E") "equal" else "varying"
   }
-
-  # Prepare data for heatmap
-  heatmap_data <- means_data %>%
-    tidyr::pivot_longer(cols = dplyr::all_of(cluster_vars),
-                        names_to = "variable", values_to = "value") %>%
-    dplyr::mutate(
-      cluster = factor(cluster),
-      variable = gsub("_", " ", variable)
-    )
-
-  # Calculate data range
-  data_min <- min(heatmap_data$value, na.rm = TRUE)
-  data_max <- max(heatmap_data$value, na.rm = TRUE)
-
-  # Create base plot
-  p <- ggplot2::ggplot(heatmap_data,
-                       ggplot2::aes(x = variable, y = cluster, fill = value)) +
-    ggplot2::geom_tile(color = "white", linewidth = 0.5) +
-    ggplot2::geom_text(ggplot2::aes(label = round(value, 2)),
-                       color = "grey90", size = 3.5, fontface = "bold")
-
-  # Apply correct color scale based on data range
-  if (data_min >= 0) {
-    p <- p + ggplot2::scale_fill_gradient(
-      low = "white", high = "darkblue",
-      limits = c(0, data_max), name = "Mean\nValue"
-    )
-  } else if (data_max <= 0) {
-    p <- p + ggplot2::scale_fill_gradient(
-      low = "darkred", high = "white",
-      limits = c(data_min, 0), name = "Mean\nValue"
-    )
-  } else {
-    max_abs <- max(abs(data_min), abs(data_max))
-    p <- p + ggplot2::scale_fill_gradient2(
-      low = "darkred", mid = "white", high = "darkblue",
-      midpoint = 0, limits = c(-max_abs, max_abs), name = "Mean\nValue"
-    )
-  }
-
-  # Add theme and labels
-  p + ggplot2::labs(
-    title = paste("Cluster Means Heatmap -", model_name, "(", scale_type, "scale)"),
-    x = "Variables", y = "Cluster"
-  ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-      axis.text.y = ggplot2::element_text(size = 10),
-      plot.title = ggplot2::element_text(size = 12, hjust = 0.5),
-      panel.grid = ggplot2::element_blank()
-    )
-}
-
-#' Create bar chart for cluster means
-#'
-#' @param model_data Model results
-#' @param cluster_vars Variable names
-#' @param scale_type "original" or "scaled"
-#' @param model_name Model name for title
-#' @return ggplot bar chart object
-#' @noRd
-create_cluster_barchart <- function(model_data, cluster_vars, scale_type, model_name) {
-  # Get the appropriate means data
-  if (scale_type == "original") {
-    means_data <- model_data$original_scale$means
-  } else {
-    means_data <- model_data$scaled_data$means
-  }
-
-  # Prepare data for bar chart
-  bar_data <- means_data %>%
-    tidyr::pivot_longer(cols = -cluster, names_to = "variable", values_to = "value") %>%
-    dplyr::mutate(
-      cluster = factor(cluster),
-      variable = gsub("_", " ", variable)
-    )
-
-  # Create bar chart
-  ggplot2::ggplot(bar_data,
-                  ggplot2::aes(fill = variable, y = value, x = cluster)) +
-    ggplot2::geom_col(position = "dodge", alpha = 0.8) +
-    ggplot2::scale_fill_brewer("", type = "qual", palette = 8) +
-    ggplot2::labs(
-      title = paste("Cluster Means Bar Chart -", model_name, "(", scale_type, "scale)"),
-      x = "Cluster", y = "Mean Value"
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      legend.position = "bottom",
-      axis.text.x = ggplot2::element_text(size = 10),
-      plot.title = ggplot2::element_text(size = 12, hjust = 0.5)
-    )
-}
-
-#' Create cluster size bar chart
-#'
-#' @param model_data Model results
-#' @param model_name Model name for title
-#' @param colors Optional custom colors
-#' @return ggplot object
-#' @noRd
-create_cluster_sizes_chart <- function(model_data, model_name, colors = NULL) {
-  cluster_sizes <- model_data$original_scale$sizes
-
-  p <- ggplot2::ggplot(cluster_sizes,
-                       ggplot2::aes(x = factor(cluster), y = size, fill = factor(cluster))) +
-    ggplot2::geom_col(alpha = 0.8, color = "white", linewidth = 0.5) +
-    ggplot2::geom_text(ggplot2::aes(label = paste0(size, "\n(", percentage, "%)")),
-                       vjust = 0.5, color = "black", size = 3.5, fontface = "bold") +
-    ggplot2::labs(title = paste("Cluster Sizes -", model_name),
-                  x = "Cluster", y = "Number of Members") +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      legend.position = "none",
-      plot.title = ggplot2::element_text(size = 12, hjust = 0.5),
-      axis.text.x = ggplot2::element_text(size = 10),
-      axis.text.y = ggplot2::element_text(size = 10)
-    )
-
-  if (!is.null(colors)) {
-    p <- p + ggplot2::scale_fill_manual(values = colors)
-  } else {
-    p <- p + ggplot2::scale_fill_viridis_d(name = "Cluster")
-  }
-
-  p
+  args <- list(volume = letter(1L),
+               shape = if (spherical) "spherical" else letter(2L))
+  if (spherical) return(args)
+  third <- substr(model_code, 3L, 3L)
+  args$orientation <- if (third == "I") "axis" else letter(3L)
+  args
 }
 
 # =============================================================================
-# MAIN ANALYSIS FUNCTION
+# MAIN VERB
 # =============================================================================
 
-#' Model-Based Clustering Analysis
+#' Latent Profile Clustering
 #'
+#' @md
 #' @description
-#' Performs comprehensive model-based clustering analysis using the MoEClust package.
-#' Systematically tests multiple covariance models and provides results on both
-#' original and scaled data scales for interpretation.
+#' Fits latent profile models via the \pkg{latents} package. A single
+#' `n_profiles` value fits one model with [latents::lpa()]; multiple values
+#' or covariance `models` enumerate candidates with
+#' [latents::enumerate_classes()] and select the best by BIC.
 #'
-#' @param data A data frame containing the dataset.
-#' @param vars A character vector of column names to use for clustering.
-#' @param n_clusters An integer or vector specifying the number of clusters (G) to fit.
-#' @param scaling Scaling method: "standardize" (z-score), "center" (mean only),
-#'   "minmax" (0-1 range), or "none". Defaults to "standardize".
-#' @param models Character vector of model names to test, or "all" for all 14 models.
-#'   Valid models: EII, VII, EEI, VEI, EVI, VVI, EEE, EVE, VEE, VVE, EEV, VEV, EVV, VVV.
-#' @param verbose Logical. If TRUE, prints progress messages. Defaults to TRUE.
-#' @param na_action How to handle NAs: "omit" (remove rows) or "fail" (stop with error).
-#'   Defaults to "omit".
+#' @param data A data frame.
+#' @param vars Character vector of column names to cluster on.
+#' @param n_profiles Number of profiles (clusters). A single integer for one
+#'   model, or a range like `2:5` for enumeration. Alias: `n_clusters`.
+#' @param n_clusters Alias for `n_profiles`.
+#' @param scaling Scaling applied before fitting: `"standardize"` (default),
+#'   `"center"`, `"minmax"`, or `"none"`.
+#' @param models Covariance structure(s) to fit. A character vector of
+#'   three-letter mclust codes (e.g. `"EEE"`, `"VVI"`) or `"all"` for all 14.
+#'   Defaults to `"VVI"`.
+#' @param n_starts Number of random starts per model. Defaults to 10.
+#' @param seed Random seed for reproducibility.
+#' @param verbose Print progress. Defaults to `TRUE`.
+#' @param na_action How to handle missing values: `"omit"` (default) drops
+#'   incomplete rows, `"fail"` raises an error.
 #'
-#' @return An object of class "moe_analysis" containing:
-#' \itemize{
-#'   \item{\code{models}}: List of fitted models with results
-#'   \item{\code{data}}: Original and scaled data used
-#'   \item{\code{parameters}}: Analysis parameters
-#'   \item{\code{summary}}: Summary statistics including best model
+#' @return An object of class `"saqr_clustering"` containing:
+#' \describe{
+#'   \item{fit}{The best `multilpa` object (from \pkg{latents}).}
+#'   \item{enumeration}{The `multilpa_enumeration` grid, or `NULL` when only
+#'     one candidate was fitted.}
+#'   \item{data}{List with `original_data`, `scaled_data`, `full_input_data`,
+#'     `complete_rows`, and `n_removed`.}
+#'   \item{parameters}{List with `cluster_vars`, `n_profiles`, `scaling_method`,
+#'     `models_tested`, and `sample_size`.}
 #' }
 #'
+#' Use `plot()` to visualise, `as.data.frame()` for the profile means,
+#' `fitted()` for observations with assignments, and `summary()` for the
+#' enumeration table.
+#'
+#' @seealso [plot_clustering()], [latents::lpa()],
+#'   [latents::enumerate_classes()]
+#'
 #' @examples
-#' \dontrun{
-#' # Basic usage with iris data
-#' results <- clustering(
-#'   data = iris,
+#' \donttest{
+#' fit <- clustering(iris,
 #'   vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
-#'   n_clusters = 3
-#' )
-#'
-#' # Test specific models
-#' results <- clustering(
-#'   data = iris,
-#'   vars = c("Sepal.Length", "Sepal.Width"),
-#'   n_clusters = 2:4,
-#'   models = c("EEE", "VVV", "VEV")
-#' )
-#'
-#' # View results using plot()
-#' plot(results)                        # cluster plots
-#' plot(results, type = "diagnostics")
-#' plot(results, type = "selection")
-#' plot(results, type = "all")
-#'
-#' # Get cluster assignments
-#' data_clustered <- get_cluster_assignments(results)
-#'
-#' # Assess stability
-#' stability <- assess_cluster_stability(results)
-#'
-#' # Generate report
-#' generate_cluster_report(results)
+#'   n_profiles = 3, models = "EEE", seed = 1)
+#' fit
+#' plot(fit)
+#' as.data.frame(fit)
+#' fitted(fit)
 #' }
 #'
 #' @export
 clustering <- function(data,
                        vars,
-                       n_clusters,
+                       n_profiles = NULL,
+                       n_clusters = NULL,
                        scaling = "standardize",
-                       models = "all",
+                       models = "VVI",
+                       n_starts = 10L,
+                       seed = NULL,
                        verbose = TRUE,
                        na_action = "omit") {
 
-  # -------------------------------------------------------------------------
-  # Input Validation
-  # -------------------------------------------------------------------------
-  if (!is.data.frame(data)) {
-    stop("data must be a data frame")
+  # -- resolve n_profiles / n_clusters alias --------------------------------
+  n_profiles <- n_profiles %||% n_clusters
+  stopifnot(
+    "`data` must be a data frame" = is.data.frame(data),
+    "`vars` must be column names in `data`" =
+      is.character(vars) && all(vars %in% names(data)),
+    "`n_profiles` (or `n_clusters`) is required" = !is.null(n_profiles),
+    "`n_profiles` must be integer(s) >= 2" =
+      is.numeric(n_profiles) && all(n_profiles >= 2),
+    "`scaling` must be one of: standardize, center, minmax, none" =
+      scaling %in% VALID_SCALING_METHODS
+  )
+
+  if (!requireNamespace("latents", quietly = TRUE)) {
+    stop(errorCondition(
+      "The `latents` package is required. Install with: pak::pak(\"mohsaqr/latents\")",
+      class = "saqrmisc_missing_dep", call = NULL))
   }
 
-  if (!all(vars %in% names(data))) {
-    missing <- setdiff(vars, names(data))
-    stop("Variables not found in data: ", paste(missing, collapse = ", "))
+  # -- resolve models -------------------------------------------------------
+  if (length(models) == 1L && identical(models, "all")) {
+    models_to_test <- COVARIANCE_MODELS
+  } else {
+    invalid <- setdiff(models, COVARIANCE_MODELS)
+    if (length(invalid) > 0L) {
+      stop(errorCondition(
+        sprintf("Invalid model name(s): %s\nValid: %s",
+                paste(invalid, collapse = ", "),
+                paste(COVARIANCE_MODELS, collapse = ", ")),
+        class = "saqrmisc_bad_input", call = NULL))
+    }
+    models_to_test <- models
   }
 
-  if (!is.numeric(n_clusters) || any(n_clusters < 2)) {
-    stop("n_clusters must be numeric value(s) >= 2")
-  }
-
-  if (!scaling %in% VALID_SCALING_METHODS) {
-    stop("scaling must be one of: ", paste(VALID_SCALING_METHODS, collapse = ", "))
-  }
-
-  # -------------------------------------------------------------------------
-  # Data Preparation
-  # -------------------------------------------------------------------------
-  cluster_data <- data[, vars, drop = FALSE]
+  # -- data preparation -----------------------------------------------------
   full_input_data <- data
-  input_data <- data
-  cluster_vars <- vars  # Keep reference for internal use
-  scaling_method <- scaling
-  model_names <- models
-
-  # Handle missing values
+  cluster_data <- data[, vars, drop = FALSE]
   complete_rows <- stats::complete.cases(cluster_data)
   n_removed <- sum(!complete_rows)
 
-  if (n_removed > 0) {
-    if (na_action == "fail") {
-      stop("Data contains ", n_removed, " rows with missing values")
+  if (n_removed > 0L) {
+    if (identical(na_action, "fail")) {
+      stop(errorCondition(
+        sprintf("Data contains %d rows with missing values", n_removed),
+        class = "saqrmisc_bad_input", call = NULL))
+    }
+    if (verbose) message("Removed ", n_removed, " rows with missing values")
+    cluster_data <- cluster_data[complete_rows, , drop = FALSE]
+  }
+
+  if (nrow(cluster_data) < 10L) {
+    stop(errorCondition(
+      "Insufficient data: need at least 10 complete observations",
+      class = "saqrmisc_bad_input", call = NULL))
+  }
+
+  scaled_data <- apply_scaling(cluster_data, scaling)
+
+  # -- fit ------------------------------------------------------------------
+  enumerate <- length(n_profiles) > 1L || length(models_to_test) > 1L
+
+  if (verbose) {
+    cat("Latent profile analysis\n")
+    cat("  Profiles:", paste(n_profiles, collapse = ", "), "\n")
+    cat("  Models:", paste(models_to_test, collapse = ", "), "\n")
+    cat("  Scaling:", scaling, " | n:", nrow(scaled_data),
+        " | vars:", length(vars), "\n")
+  }
+
+  enumeration <- NULL
+  best_fit <- NULL
+
+  if (enumerate) {
+    enumeration <- latents::enumerate_classes(
+      data = scaled_data,
+      vars = vars,
+      id = NULL,
+      n_profiles = n_profiles,
+      model = models_to_test,
+      n_starts = n_starts,
+      seed = seed
+    )
+    # find best converged model by BIC (bic_individual for single-level)
+    tab <- enumeration$table
+    converged <- tab$converged & !is.na(tab$bic_individual)
+    if (!any(converged)) {
+      stop(errorCondition(
+        "No model converged. Try simpler models or fewer profiles.",
+        class = "saqrmisc_no_converged", call = NULL))
+    }
+    best_row <- which(converged)[which.min(tab$bic_individual[converged])]
+    best_fit <- latents::candidate_fit(
+      enumeration,
+      n_profiles = tab$n_profiles[best_row],
+      model = tab$model[best_row]
+    )
+    if (verbose) {
+      n_ok <- sum(converged)
+      cat(sprintf("  %d of %d converged; best: %s with %d profiles (BIC = %.1f)\n",
+                  n_ok, nrow(tab), tab$model[best_row],
+                  tab$n_profiles[best_row], tab$bic_individual[best_row]))
+    }
+  } else {
+    struct_args <- .structure_to_latents_args(models_to_test)
+    best_fit <- do.call(latents::lpa, c(
+      list(data = scaled_data, vars = vars,
+           n_profiles = n_profiles, n_starts = n_starts, seed = seed),
+      struct_args
+    ))
+    if (!best_fit$converged) {
+      warning("Model did not converge. Consider more starts or a simpler model.",
+              call. = FALSE)
     }
     if (verbose) {
-      message("Removed ", n_removed, " rows with missing values")
-    }
-    cluster_data <- cluster_data[complete_rows, ]
-    input_data <- input_data[complete_rows, ]
-  }
-
-  if (nrow(cluster_data) < 10) {
-    stop("Insufficient data: need at least 10 complete observations")
-  }
-
-  # Check for constant variables
-  var_sds <- sapply(cluster_data, stats::sd, na.rm = TRUE)
-  if (any(var_sds == 0)) {
-    const_vars <- names(var_sds)[var_sds == 0]
-    warning("Constant variable(s) detected: ", paste(const_vars, collapse = ", "),
-            ". These may cause issues with some models.")
-  }
-
-  # Apply scaling
-  scaled_data <- apply_scaling(cluster_data, scaling_method)
-
-  # -------------------------------------------------------------------------
-  # Determine Models to Test
-  # -------------------------------------------------------------------------
-  if (length(model_names) == 1 && model_names[1] == "all") {
-    models_to_test <- MOECLUST_MODELS
-  } else {
-    invalid_models <- setdiff(model_names, MOECLUST_MODELS)
-    if (length(invalid_models) > 0) {
-      stop("Invalid model names: ", paste(invalid_models, collapse = ", "),
-           "\nValid models: ", paste(MOECLUST_MODELS, collapse = ", "))
-    }
-    models_to_test <- model_names
-  }
-
-  # -------------------------------------------------------------------------
-  # Check Dependencies
-  # -------------------------------------------------------------------------
-  if (!requireNamespace("MoEClust", quietly = TRUE)) {
-    stop("MoEClust package required. Install with: install.packages('MoEClust')")
-  }
-
-  # -------------------------------------------------------------------------
-  # Run Analysis
-  # -------------------------------------------------------------------------
-  results <- list()
-  successful_models <- 0
-  failed_models <- character(0)
-  detailed_errors <- list()
-
-  if (verbose) {
-    cat("Starting MoE clustering analysis...\n")
-    cat("Clusters (G):", paste(n_clusters, collapse = ", "), "\n")
-    cat("Scaling:", scaling_method, "\n")
-    cat("Variables:", paste(cluster_vars, collapse = ", "), "\n")
-    cat("Sample size:", nrow(cluster_data), "\n")
-    cat("Models:", paste(models_to_test, collapse = ", "), "\n\n")
-  }
-
-  for (G in n_clusters) {
-    if (verbose) cat("Testing G =", G, "clusters:\n")
-
-    for (model_name in models_to_test) {
-      if (verbose) cat("  Fitting:", model_name, "... ")
-
-      # Model identifier
-      model_id <- if (length(n_clusters) > 1) {
-        paste0(model_name, "_G", G)
-      } else {
-        model_name
-      }
-
-      # Try to fit model
-      fit_result <- tryCatch({
-        model_fit <- MoEClust::MoE_clust(
-          data = scaled_data,
-          G = G,
-          modelNames = model_name,
-          verbose = FALSE
-        )
-
-        if (is.null(model_fit) || is.null(model_fit$classification)) {
-          stop("Model did not converge")
-        }
-
-        # Check cluster usage
-        unique_clusters <- length(unique(model_fit$classification))
-        if (unique_clusters < G) {
-          stop(paste("Only", unique_clusters, "of", G, "clusters used"))
-        }
-
-        model_fit
-      }, error = function(e) {
-        if (verbose) cat("FAILED -", e$message, "\n")
-        failed_models <<- c(failed_models, model_id)
-        detailed_errors[[model_id]] <<- e$message
-        return(NULL)
-      })
-
-      if (is.null(fit_result)) next
-
-      # -----------------------------------------------------------------------
-      # Generate Results
-      # -----------------------------------------------------------------------
-      cluster_assignments <- fit_result$classification
-
-      # Original scale results
-      original_results <- tryCatch({
-        orig_with_cluster <- cbind(cluster_data, cluster = cluster_assignments)
-
-        orig_means <- orig_with_cluster %>%
-          dplyr::group_by(cluster) %>%
-          dplyr::summarise(dplyr::across(dplyr::all_of(cluster_vars),
-                                         \(x) mean(x, na.rm = TRUE)),
-                          .groups = 'drop') %>%
-          as.data.frame()
-
-        cluster_sizes <- table(cluster_assignments)
-        sizes_df <- data.frame(
-          cluster = as.numeric(names(cluster_sizes)),
-          size = as.numeric(cluster_sizes),
-          percentage = round(as.numeric(cluster_sizes) / length(cluster_assignments) * 100, 1)
-        )
-
-        # Enhanced means with sizes
-        enhanced_means <- merge(sizes_df, orig_means, by = "cluster") %>%
-          dplyr::arrange(cluster)
-        names(enhanced_means)[2:3] <- c("n_members", "percent")
-
-        # Profile plot
-        plot_data <- orig_with_cluster %>%
-          tidyr::pivot_longer(cols = dplyr::all_of(cluster_vars),
-                             names_to = "variable", values_to = "value") %>%
-          dplyr::group_by(cluster, variable) %>%
-          dplyr::summarise(mean_value = mean(value, na.rm = TRUE), .groups = 'drop')
-
-        orig_plot <- ggplot2::ggplot(plot_data,
-                                     ggplot2::aes(x = variable, y = mean_value,
-                                                  group = cluster, color = factor(cluster))) +
-          ggplot2::geom_line(linewidth = 1.2) +
-          ggplot2::geom_point(size = 3) +
-          ggplot2::labs(title = paste("Profile Plot -", model_id, "(Original Scale)"),
-                       x = "Variables", y = "Mean Value", color = "Cluster") +
-          ggplot2::theme_minimal() +
-          ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
-          ggplot2::scale_color_viridis_d()
-
-        list(means = orig_means, enhanced_means = enhanced_means,
-             sizes = sizes_df, plot = orig_plot)
-      }, error = function(e) {
-        warning("Failed to generate original scale results: ", e$message)
-        NULL
-      })
-
-      # Scaled data results
-      scaled_results <- tryCatch({
-        scaled_with_cluster <- cbind(scaled_data, cluster = cluster_assignments)
-
-        scaled_means <- scaled_with_cluster %>%
-          dplyr::group_by(cluster) %>%
-          dplyr::summarise(dplyr::across(dplyr::all_of(cluster_vars),
-                                         \(x) mean(x, na.rm = TRUE)),
-                          .groups = 'drop') %>%
-          as.data.frame()
-
-        # Profile plot
-        plot_data <- scaled_with_cluster %>%
-          tidyr::pivot_longer(cols = dplyr::all_of(cluster_vars),
-                             names_to = "variable", values_to = "value") %>%
-          dplyr::group_by(cluster, variable) %>%
-          dplyr::summarise(mean_value = mean(value, na.rm = TRUE), .groups = 'drop')
-
-        scaled_plot <- ggplot2::ggplot(plot_data,
-                                       ggplot2::aes(x = variable, y = mean_value,
-                                                    group = cluster, color = factor(cluster))) +
-          ggplot2::geom_line(linewidth = 1.2) +
-          ggplot2::geom_point(size = 3) +
-          ggplot2::labs(title = paste("Profile Plot -", model_id, "(Scaled Data)"),
-                       x = "Variables", y = "Mean Value", color = "Cluster") +
-          ggplot2::theme_minimal() +
-          ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
-          ggplot2::scale_color_viridis_d()
-
-        list(means = scaled_means, plot = scaled_plot)
-      }, error = function(e) {
-        warning("Failed to generate scaled results: ", e$message)
-        NULL
-      })
-
-      # Store results
-      if (!is.null(original_results) && !is.null(scaled_results)) {
-        results[[model_id]] <- list(
-          model_fit = fit_result,
-          model_info = list(
-            model_name = model_name,
-            n_clusters = G,
-            n_observations = nrow(cluster_data),
-            variables = cluster_vars,
-            scaling_method = scaling_method,
-            loglik = fit_result$LOGLIK,
-            aic = fit_result$aic,
-            bic = fit_result$bic,
-            icl = fit_result$icl
-          ),
-          original_scale = original_results,
-          scaled_data = scaled_results,
-          cluster_assignments = cluster_assignments
-        )
-
-        successful_models <- successful_models + 1
-        if (verbose) cat("SUCCESS\n")
-      } else {
-        if (verbose) cat("FAILED - Error generating results\n")
-        failed_models <- c(failed_models, model_id)
-      }
+      cat(sprintf("  %s with %d profiles: logLik = %.1f, BIC = %.1f, converged = %s\n",
+                  best_fit$covariance_structure, n_profiles,
+                  best_fit$log_likelihood, best_fit$bic,
+                  best_fit$converged))
     }
   }
 
-  # -------------------------------------------------------------------------
-  # Summary
-  # -------------------------------------------------------------------------
-  if (verbose) {
-    cat("\n", rep("=", 50), "\n")
-    cat("ANALYSIS COMPLETE\n")
-    cat(rep("=", 50), "\n")
-    cat("Successful:", successful_models, "of",
-        length(models_to_test) * length(n_clusters), "\n")
-
-    if (length(failed_models) > 0) {
-      cat("Failed:", paste(failed_models, collapse = ", "), "\n")
-    }
-  }
-
-  # -------------------------------------------------------------------------
-  # Build Output Object
-  # -------------------------------------------------------------------------
-  output <- list(
-    models = results,
-    data = list(
-      original_data = cluster_data,
-      scaled_data = scaled_data,
-      full_input_data = full_input_data,
-      analysis_data = input_data,
-      complete_rows = complete_rows,
-      n_removed = n_removed
+  structure(
+    list(
+      fit = best_fit,
+      enumeration = enumeration,
+      data = list(
+        original_data = cluster_data,
+        scaled_data = scaled_data,
+        full_input_data = full_input_data,
+        complete_rows = complete_rows,
+        n_removed = n_removed
+      ),
+      parameters = list(
+        cluster_vars = vars,
+        n_profiles = n_profiles,
+        scaling_method = scaling,
+        models_tested = models_to_test,
+        sample_size = nrow(cluster_data)
+      )
     ),
-    parameters = list(
-      cluster_vars = cluster_vars,
-      n_clusters = n_clusters,
-      scaling_method = scaling_method,
-      models_tested = models_to_test,
-      sample_size = nrow(cluster_data)
-    ),
-    call = list(
-      function_call = match.call(),
-      analysis_date = Sys.time(),
-      r_version = R.version.string
-    ),
-    summary = list(
-      n_successful = successful_models,
-      n_failed = length(failed_models),
-      failed_models = failed_models,
-      successful_models = names(results),
-      detailed_errors = detailed_errors
-    )
+    class = "saqr_clustering"
   )
-
-  # Find best model by BIC
-  if (successful_models > 0) {
-    bic_values <- sapply(results, function(x) {
-      bic <- x$model_info$bic
-      if (is.null(bic) || is.na(bic)) -Inf else bic
-    })
-    if (any(is.finite(bic_values))) {
-      output$summary$best_model_bic <- names(which.max(bic_values))
-      output$summary$best_bic_value <- max(bic_values, na.rm = TRUE)
-
-      if (verbose) {
-        cat("Best model (BIC):", output$summary$best_model_bic,
-            "(BIC =", round(output$summary$best_bic_value, 2), ")\n")
-      }
-    }
-  }
-
-  class(output) <- c("moe_analysis", "list")
-  output$comparison <- compare_models(output, sort_by = "bic")
-  return(output)
 }
 
 #' @rdname clustering
 #' @export
-cluster <- function(data,
-                    vars,
-                    n_clusters,
-                    scaling = "standardize",
-                    models = "all",
-                    verbose = TRUE,
-                    na_action = "omit") {
-  clustering(
-    data = data,
-    vars = vars,
-    n_clusters = n_clusters,
-    scaling = scaling,
-    models = models,
-    verbose = verbose,
-    na_action = na_action
-  )
-}
-
-# =============================================================================
-# VIEW RESULTS FUNCTION
-# =============================================================================
-
-#' View Results from MoEClust Analysis (Deprecated)
-#'
-#' @description
-#' Display plots or tables from the analysis results. Supports multiple
-#' visualization types including profile plots, heatmaps, bar charts, and
-#' cluster size charts.
-#'
-#' Note: Consider using the S3 plot() method instead: plot(results, type = "...")
-#'
-#' @param results Object from clustering()
-#' @param what What to display: "plots", "tables", "heatmap", "barchart",
-#'   "cluster_sizes", or "all"
-#' @param scale Data scale: "original" or "scaled"
-#' @param model_name Specific model(s) to view, or "all"
-#' @param cluster_range Optional cluster range to filter
-#' @param plot_type Plot type: "profile", "heatmap", "barchart", "cluster_sizes", "all"
-#' @param verbose Print headers and metadata
-#' @param colors Optional custom colors for plots
-#'
-#' @return NULL (invisibly). Used for side effects.
-#'
-#' @export
-view_results <- function(results,
-                         what = "plots",
-                         scale = "original",
-                         model_name = "all",
-                         cluster_range = NULL,
-                         plot_type = "profile",
-                         verbose = FALSE,
-                         colors = NULL) {
-
-  # Validation
-  if (!inherits(results, "moe_analysis") && !is.list(results)) {
-    stop("results must be from clustering()")
-  }
-
-  valid_what <- c("plots", "tables", "heatmap", "barchart", "cluster_sizes", "all")
-  if (!what %in% valid_what) {
-    stop("what must be one of: ", paste(valid_what, collapse = ", "))
-  }
-
-  if (!scale %in% c("original", "scaled")) {
-    stop("scale must be 'original' or 'scaled'")
-  }
-
-  # Get models list
-  models_data <- if ("models" %in% names(results)) results$models else results
-  available_models <- names(models_data)
-
-  if (length(available_models) == 0) {
-    message("No successful models found.")
-    return(invisible(NULL))
-  }
-
-  # Filter models
-  if (length(model_name) == 1 && model_name[1] == "all") {
-    models_to_display <- available_models
-  } else {
-    models_to_display <- intersect(model_name, available_models)
-    if (length(models_to_display) == 0) {
-      stop("No matching models. Available: ", paste(available_models, collapse = ", "))
-    }
-  }
-
-  # Filter by cluster range
-  if (!is.null(cluster_range)) {
-    models_to_display <- models_to_display[sapply(models_to_display, function(m) {
-      models_data[[m]]$model_info$n_clusters %in% cluster_range
-    })]
-  }
-
-  # Display based on 'what' parameter
-  for (model in models_to_display) {
-    model_result <- models_data[[model]]
-    cluster_vars <- model_result$model_info$variables
-
-    if (verbose) {
-      cat("\n--- Model:", model, "(G =", model_result$model_info$n_clusters, ") ---\n")
-    }
-
-    # Tables
-    if (what %in% c("tables", "all")) {
-      if (scale == "original") {
-        cat("\nCluster Summary (Original Scale):\n")
-        print(model_result$original_scale$enhanced_means)
-      } else {
-        cat("\nCluster Summary (Scaled):\n")
-        print(model_result$scaled_data$means)
-      }
-      cat("\nCluster Sizes:\n")
-      print(model_result$original_scale$sizes)
-    }
-
-    # Plots
-    if (what %in% c("plots", "all") || plot_type == "profile") {
-      if (scale == "original") {
-        print(model_result$original_scale$plot)
-      } else {
-        print(model_result$scaled_data$plot)
-      }
-    }
-
-    if (what == "heatmap" || plot_type == "heatmap" || (what == "all" && plot_type == "all")) {
-      heatmap <- create_cluster_heatmap(model_result, cluster_vars, scale, model)
-      print(heatmap)
-    }
-
-    if (what == "barchart" || plot_type == "barchart" || (what == "all" && plot_type == "all")) {
-      barchart <- create_cluster_barchart(model_result, cluster_vars, scale, model)
-      print(barchart)
-    }
-
-    if (what == "cluster_sizes" || plot_type == "cluster_sizes" || (what == "all" && plot_type == "all")) {
-      sizes_chart <- create_cluster_sizes_chart(model_result, model, colors)
-      print(sizes_chart)
-    }
-  }
-
-  invisible(NULL)
-}
-
-# =============================================================================
-# UTILITY FUNCTIONS
-# =============================================================================
-
-#' Compare Models by Information Criteria
-#'
-#' @param results Object from run_full_moe_analysis
-#' @param sort_by Criterion to sort by: "bic", "aic", or "icl"
-#'
-#' @return Data frame with model comparison
-#' @export
-compare_models <- function(results, sort_by = "bic") {
-  models_data <- if ("models" %in% names(results)) results$models else results
-
-  if (length(models_data) == 0) {
-    message("No models to compare")
-    return(NULL)
-  }
-
-  comparison <- data.frame(
-    model = names(models_data),
-    n_clusters = sapply(models_data, function(x) x$model_info$n_clusters),
-    loglik = sapply(models_data, function(x) x$model_info$loglik),
-    aic = sapply(models_data, function(x) x$model_info$aic),
-    bic = sapply(models_data, function(x) x$model_info$bic),
-    icl = sapply(models_data, function(x) x$model_info$icl),
-    stringsAsFactors = FALSE
-  )
-
-  comparison <- comparison[order(comparison[[sort_by]], decreasing = TRUE), ]
-  rownames(comparison) <- NULL
-
-  comparison
-}
-
-#' Get Best Model
-#'
-#' @param results Object from run_full_moe_analysis
-#' @param criterion Selection criterion: "bic", "aic", or "icl"
-#' @param what What to return: the model "name", the complete stored "result",
-#'   or the raw fitted MoEClust "fit".
-#'
-#' @return The requested representation of the best model.
-#' @export
-get_best_model <- function(results, criterion = "bic",
-                           what = c("name", "result", "fit")) {
-  if (!criterion %in% c("bic", "aic", "icl")) {
-    stop("criterion must be 'bic', 'aic', or 'icl'")
-  }
-
-  what <- match.arg(what)
-  models_data <- if ("models" %in% names(results)) results$models else results
-  values <- sapply(models_data, function(x) x$model_info[[criterion]])
-  best_name <- names(which.max(values))
-
-  switch(
-    what,
-    name = best_name,
-    result = models_data[[best_name]],
-    fit = models_data[[best_name]]$model_fit
-  )
-}
-
-#' List Available Models
-#'
-#' @param results Object from run_full_moe_analysis
-#'
-#' @return Character vector of model names (invisibly)
-#' @export
-list_models <- function(results) {
-  models_data <- if ("models" %in% names(results)) results$models else results
-
-  if (length(models_data) == 0) {
-    cat("No models available.\n")
-    return(invisible(character(0)))
-  }
-
-  cat("Available models:\n")
-  for (i in seq_along(models_data)) {
-    m <- names(models_data)[i]
-    bic <- round(models_data[[m]]$model_info$bic, 2)
-    cat(sprintf("  %d. %s (BIC: %.2f)\n", i, m, bic))
-  }
-
-  invisible(names(models_data))
-}
+cluster <- clustering
 
 # =============================================================================
 # S3 METHODS
 # =============================================================================
 
-#' Print method for moe_analysis objects
-#'
-#' @param x An moe_analysis object
-#' @param ... Additional arguments (ignored)
 #' @export
-print.moe_analysis <- function(x, ...) {
-  cat("MoEClust Analysis Results\n")
-  cat("=========================\n")
-  cat("Sample size:", x$parameters$sample_size, "\n")
-  cat("Variables:", paste(x$parameters$cluster_vars, collapse = ", "), "\n")
-  cat("Scaling:", x$parameters$scaling_method, "\n")
-  cat("Successful models:", x$summary$n_successful, "\n")
-
-  if (!is.null(x$summary$best_model_bic)) {
-    cat("Best model (BIC):", x$summary$best_model_bic,
-        "(BIC =", round(x$summary$best_bic_value, 2), ")\n")
+print.saqr_clustering <- function(x, ...) {
+  fit <- x$fit
+  cat("Latent Profile Clustering\n")
+  cat(sprintf("  n = %d, %d variables, scaling = %s\n",
+              x$parameters$sample_size, length(x$parameters$cluster_vars),
+              x$parameters$scaling_method))
+  cat(sprintf("  Best model: %s with %d profiles\n",
+              fit$covariance_structure, fit$n_profiles))
+  cat(sprintf("  BIC = %.1f, logLik = %.1f, converged = %s\n",
+              fit$bic, fit$log_likelihood, fit$converged))
+  if (!is.null(x$enumeration)) {
+    n_converged <- sum(x$enumeration$table$converged, na.rm = TRUE)
+    cat(sprintf("  Enumeration: %d candidates, %d converged\n",
+                nrow(x$enumeration$table), n_converged))
   }
-
-  cat("\nUse plot() to visualize results:\n")
-  cat("  plot(x)                          # Cluster plots\n")
-  cat("  plot(x, type = 'diagnostics')    # Certainty, AvePP, projection\n")
-  cat("  plot(x, type = 'selection')      # BIC, AIC, ICL\n")
-  cat("  plot(x, type = 'all')            # Everything\n")
-  cat("  clustering_plot_types()          # Every plot type\n")
-  cat("Use compare_models() or model_comparison_table() for model comparison\n")
-
+  cat("\nUse plot() to visualise, as.data.frame() for profile means,\n")
+  cat("fitted() for observations with assignments, summary() for the grid.\n")
   invisible(x)
 }
 
-#' Summary method for moe_analysis objects
+#' Summarise a Clustering Result
 #'
-#' @param object An moe_analysis object
-#' @param ... Additional arguments (ignored)
-#' @return A tibble with one row per fitted model, sorted from best to worst
-#'   by BIC. The `best` column identifies the selected model.
-#' @export
-summary.moe_analysis <- function(object, ...) {
-  comparison <- object$comparison
-  if (is.null(comparison)) {
-    comparison <- compare_models(object, sort_by = "bic")
-  }
-
-  comparison$best <- comparison$model == get_best_model(object, "bic")
-  comparison <- comparison[
-    c("model", "best", "n_clusters", "loglik", "aic", "bic", "icl")
-  ]
-
-  tibble::as_tibble(comparison)
-}
-
-#' Extract Fitted Clustering Data
-#'
-#' @param object An moe_analysis object.
-#' @param model Model name. If NULL, uses the best model by BIC.
-#' @param probabilities Include cluster-membership probabilities and certainty.
-#' @param ... Additional arguments (ignored).
-#'
-#' @return A tibble containing the original data and a `cluster` column.
-#'   Rows omitted during fitting are retained with `NA` fitted values.
-#' @export
-fitted.moe_analysis <- function(object, model = NULL,
-                                probabilities = FALSE, ...) {
-  if (is.null(model)) {
-    model <- get_best_model(object, criterion = "bic")
-  }
-
-  fitted_data <- get_cluster_assignments(
-    object,
-    model_name = model,
-    include_probabilities = probabilities
-  )
-
-  tibble::as_tibble(fitted_data)
-}
-
-#' Plot One Fitted Clustering Model
-#'
-#' @param results An moe_analysis object.
-#' @param model Name of the fitted model.
-#' @param type Plot type: "profile", "heatmap", "barchart", "sizes", or "all".
-#' @param scale Data scale: "original" or "scaled".
-#'
-#' @return A ggplot object, or a named list of four ggplot objects when
-#'   `type = "all"`.
-#' @export
-plot_model <- function(results, model,
-                       type = c("all", "profile", "heatmap", "barchart", "sizes"),
-                       scale = c("original", "scaled")) {
-  type <- match.arg(type)
-  scale <- match.arg(scale)
-
-  if (!inherits(results, "moe_analysis")) {
-    stop("results must be from clustering()")
-  }
-  if (!model %in% names(results$models)) {
-    stop("Model '", model, "' not found. Available models: ",
-         paste(names(results$models), collapse = ", "))
-  }
-
-  model_result <- results$models[[model]]
-  cluster_vars <- results$parameters$cluster_vars
-  plots <- list()
-
-  if (type %in% c("profile", "all")) {
-    plots$profile <- if (scale == "original") {
-      model_result$original_scale$plot
-    } else {
-      model_result$scaled_data$plot
-    }
-  }
-  if (type %in% c("heatmap", "all")) {
-    plots$heatmap <- create_cluster_heatmap(
-      model_result, cluster_vars, scale, model
-    )
-  }
-  if (type %in% c("barchart", "all")) {
-    plots$barchart <- create_cluster_barchart(
-      model_result, cluster_vars, scale, model
-    )
-  }
-  if (type %in% c("sizes", "all")) {
-    plots$sizes <- create_cluster_sizes_chart(model_result, model)
-  }
-
-  invisible(lapply(plots, print))
-
-  if (type == "all") {
-    invisible(plots)
-  } else {
-    invisible(plots[[1]])
-  }
-}
-
-#' Plot the Best Fitted Clustering Model
-#'
-#' @param results An moe_analysis object.
-#' @param type Plot type: "profile", "heatmap", "barchart", "sizes", or "all".
-#' @param criterion Criterion used to select the best model.
-#' @param scale Data scale: "original" or "scaled".
-#'
-#' @return A ggplot object, or a named list of four ggplot objects when
-#'   `type = "all"`.
-#' @export
-plot_best_model <- function(
-    results,
-    type = c("all", "profile", "heatmap", "barchart", "sizes"),
-    criterion = c("bic", "aic", "icl"),
-    scale = c("original", "scaled")) {
-  type <- match.arg(type)
-  criterion <- match.arg(criterion)
-  scale <- match.arg(scale)
-  model <- get_best_model(results, criterion = criterion)
-
-  plot_model(
-    results,
-    model = model,
-    type = type,
-    scale = scale
-  )
-}
-
-#' Plot method for moe_analysis objects
-#'
-#' @md
-#' @description
-#' Draws plots of a [clustering()] result. This method is the drawing front
-#' end for [plot_clustering()]: it accepts the same `type`, `model`, and
-#' `scale` arguments, prints the plots, and returns them invisibly. See
-#' [clustering_plot_types()] for the catalogue of plot types and groups.
-#'
-#' @param x An moe_analysis object returned by [clustering()].
-#' @inheritParams plot_clustering
+#' @param object A `saqr_clustering` object.
 #' @param ... Ignored.
-#'
-#' @return The value of [plot_clustering()], invisibly: a single ggplot when
-#'   `type` resolves to one plot, otherwise a `clustering_plots` object.
-#'   Raises the same classed errors as [plot_clustering()].
-#'
-#' @examples
-#' \donttest{
-#' fit <- clustering(
-#'   iris,
-#'   vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
-#'   n_clusters = 2:3,
-#'   models = c("EII", "EEE"),
-#'   verbose = FALSE
-#' )
-#'
-#' plot(fit)                          # the cluster plots
-#' plot(fit, type = "diagnostics")
-#' plot(fit, type = "selection")
-#' plot(fit, type = "heatmap", scale = "scaled")
-#' plot(fit, type = "profile", model = "all")  # one plot type, every model
-#' plot(fit, type = "all")                    # every plot, every model
-#' }
-#'
+#' @return When an enumeration was fitted, a data.frame with one row per
+#'   candidate model. Otherwise a one-row summary of the single fit.
 #' @export
-plot.moe_analysis <- function(x,
-                              type = "clusters",
-                              model = NULL,
-                              scale = c("original", "scaled"),
-                              ...) {
-  plots <- plot_clustering(x, type = type, model = model, scale = scale)
-  print(plots)
-  invisible(plots)
+summary.saqr_clustering <- function(object, ...) {
+
+  if (!is.null(object$enumeration)) {
+    tab <- object$enumeration$table
+    best_bic <- min(tab$bic_individual[tab$converged], na.rm = TRUE)
+    tab$delta_bic <- tab$bic_individual - best_bic
+    tab$best <- !is.na(tab$bic_individual) & tab$converged &
+      vapply(tab$bic_individual, \(v) isTRUE(all.equal(v, best_bic)),
+             logical(1L))
+    out <- tab[, c("n_profiles", "model", "log_likelihood", "n_parameters",
+                    "aic", "bic_individual", "delta_bic", "icl_individual",
+                    "profile_entropy", "converged", "best"),
+               drop = FALSE]
+    names(out)[names(out) == "bic_individual"] <- "bic"
+    names(out)[names(out) == "icl_individual"] <- "icl"
+    rownames(out) <- NULL
+    return(out)
+  }
+
+  fit <- object$fit
+  data.frame(
+    n_profiles = fit$n_profiles,
+    model = fit$covariance_structure,
+    log_likelihood = fit$log_likelihood,
+    n_parameters = fit$n_parameters,
+    aic = fit$aic,
+    bic = fit$bic,
+    icl = if ("icl_individual" %in% names(fit)) fit$icl_individual else NA_real_,
+    profile_entropy = if (fit$n_profiles > 1L) {
+      .lpa_relative_entropy(fit$subject_posteriors)
+    } else NA_real_,
+    converged = fit$converged,
+    best = TRUE,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' @noRd
+.lpa_relative_entropy <- function(posteriors) {
+  if (is.null(posteriors) || ncol(posteriors) <= 1L) return(NA_real_)
+  positive <- posteriors > 0
+  e <- -sum(posteriors[positive] * log(posteriors[positive]))
+  1 - e / (nrow(posteriors) * log(ncol(posteriors)))
+}
+
+#' Extract Profile Means
+#'
+#' @param x A `saqr_clustering` object.
+#' @param row.names,optional Ignored.
+#' @param ... Ignored.
+#' @return A data.frame with one row per profile and indicator, with columns
+#'   `profile`, `indicator`, `mean`, `variance`, `standard_deviation`.
+#' @export
+as.data.frame.saqr_clustering <- function(x, row.names = NULL,
+                                          optional = FALSE, ...) {
+  as.data.frame(x$fit)
+}
+
+#' Extract Fitted Observations with Profile Assignments
+#'
+#' @param object A `saqr_clustering` object.
+#' @param ... Ignored.
+#' @return A data.frame with all columns of the input data plus `profile`,
+#'   `uncertainty`, and posterior probability columns. Rows removed during
+#'   fitting get `NA` fitted values.
+#' @export
+fitted.saqr_clustering <- function(object, ...) {
+  assignments <- latents::get_results(object$fit, what = "assignments")
+  complete_rows <- object$data$complete_rows
+  full_data <- object$data$full_input_data
+
+  if (all(complete_rows)) return(cbind(full_data, assignments[, -(seq_along(object$parameters$cluster_vars)), drop = FALSE]))
+
+  n_full <- nrow(full_data)
+  extra_cols <- setdiff(names(assignments), object$parameters$cluster_vars)
+  pad <- as.data.frame(
+    matrix(NA_real_, nrow = n_full, ncol = length(extra_cols),
+           dimnames = list(NULL, extra_cols))
+  )
+  pad[complete_rows, ] <- assignments[, extra_cols, drop = FALSE]
+  cbind(full_data, pad)
+}
+
+# =============================================================================
+# BACKWARD-COMPATIBLE ACCESSORS
+# =============================================================================
+
+#' Get Cluster Assignments with Original Data
+#'
+#' @param results A `saqr_clustering` object.
+#' @param model_name Ignored (kept for backward compatibility).
+#' @param include_probabilities Logical. Include posterior probabilities.
+#' @param cluster_col_name Name for the assignment column.
+#'
+#' @return A data.frame with the original data plus a cluster/profile column.
+#' @export
+get_cluster_assignments <- function(results, model_name = NULL,
+                                    include_probabilities = FALSE,
+                                    cluster_col_name = "cluster") {
+  if (inherits(results, "saqr_clustering")) {
+    out <- fitted(results)
+    names(out)[names(out) == "profile"] <- cluster_col_name
+    if (!include_probabilities) {
+      post_cols <- grep("^posterior_profile_|^uncertainty$", names(out))
+      if (length(post_cols) > 0L) out <- out[, -post_cols, drop = FALSE]
+    }
+    return(out)
+  }
+  stop(errorCondition(
+    "`results` must be a saqr_clustering object from clustering()",
+    class = "saqrmisc_bad_input", call = NULL))
+}
+
+#' Compare Models from an Enumeration
+#'
+#' @param results A `saqr_clustering` object.
+#' @param sort_by Criterion to sort by: `"bic"` (default), `"aic"`, or
+#'   `"icl"`.
+#'
+#' @return A data.frame, or `NULL` if no enumeration was run.
+#' @export
+compare_models <- function(results, sort_by = "bic") {
+  if (!inherits(results, "saqr_clustering")) {
+    stop("`results` must be from clustering()")
+  }
+  if (is.null(results$enumeration)) {
+    message("Only one model was fitted; use n_profiles = 2:5 or multiple models to compare.")
+    return(NULL)
+  }
+  tab <- summary(results)
+  col <- if (sort_by == "icl") "icl" else sort_by
+  tab[order(tab[[col]]), , drop = FALSE]
+}
+
+#' Get Best Model Name
+#'
+#' @param results A `saqr_clustering` object.
+#' @param criterion Selection criterion.
+#' @param what What to return: `"name"` or `"fit"`.
+#'
+#' @return A character string (model name) or a `multilpa` fit.
+#' @export
+get_best_model <- function(results, criterion = "bic",
+                           what = c("name", "fit")) {
+  what <- match.arg(what)
+  if (!inherits(results, "saqr_clustering")) {
+    stop("`results` must be from clustering()")
+  }
+  switch(what,
+         name = results$fit$covariance_structure,
+         fit = results$fit)
+}
+
+#' List Available Models
+#'
+#' @param results A `saqr_clustering` object.
+#'
+#' @return Character vector of model names (invisibly).
+#' @export
+list_models <- function(results) {
+  if (!inherits(results, "saqr_clustering")) {
+    stop("`results` must be from clustering()")
+  }
+  if (is.null(results$enumeration)) {
+    cat("Single model:", results$fit$covariance_structure,
+        "with", results$fit$n_profiles, "profiles\n")
+    return(invisible(results$fit$covariance_structure))
+  }
+  tab <- results$enumeration$table
+  ok <- tab[tab$converged, , drop = FALSE]
+  cat("Converged models:\n")
+  vapply(seq_len(nrow(ok)), \(i) {
+    cat(sprintf("  %d. %s (G=%d, BIC=%.1f)\n",
+                i, ok$model[i], ok$n_profiles[i], ok$bic_individual[i]))
+    ok$model[i]
+  }, character(1L))
+  invisible(paste0(ok$model, "_G", ok$n_profiles))
+}
+
+# =============================================================================
+# DIAGNOSTICS
+# =============================================================================
+
+#' Classification Diagnostics
+#'
+#' @param results A `saqr_clustering` object.
+#'
+#' @return A `multilpa_diagnostics` object (from \pkg{latents}).
+#' @export
+cluster_diagnostics <- function(results) {
+  if (!inherits(results, "saqr_clustering")) {
+    stop("`results` must be from clustering()")
+  }
+  latents::diagnostics(results$fit)
 }
 
 # =============================================================================
@@ -1050,861 +523,170 @@ plot.moe_analysis <- function(x,
 
 #' Create Formatted Model Comparison Table
 #'
-#' @description
-#' Generates a publication-ready gt table comparing all fitted models
-#' by BIC, AIC, ICL, and log-likelihood. Highlights the best model
-#' and provides interpretation guidance.
+#' @param results A `saqr_clustering` object.
+#' @param sort_by Criterion to sort by: `"bic"` (default), `"aic"`.
+#' @param top_n Number of top models to display. `NULL` shows all.
+#' @param highlight_best Highlight the best model row.
 #'
-#' @param results Object from clustering()
-#' @param sort_by Criterion to sort by: "bic" (default), "aic", or "icl"
-#' @param top_n Number of top models to display. NULL shows all. Defaults to NULL.
-#' @param highlight_best Logical. Highlight the best model row. Defaults to TRUE.
-#'
-#' @return A gt table object
-#'
-#' @examples
-#' \dontrun{
-#' results <- clustering(data, vars, n_clusters = 3)
-#' model_comparison_table(results)
-#' model_comparison_table(results, sort_by = "aic", top_n = 5)
-#' }
-#'
+#' @return A gt table object, or `NULL` if no enumeration was run.
 #' @export
 model_comparison_table <- function(results, sort_by = "bic", top_n = NULL,
                                    highlight_best = TRUE) {
-
   if (!requireNamespace("gt", quietly = TRUE)) {
     stop("gt package required. Install with: install.packages('gt')")
   }
-
-  # Get comparison data
   comparison <- compare_models(results, sort_by = sort_by)
+  if (is.null(comparison) || nrow(comparison) == 0L) return(NULL)
 
-  if (is.null(comparison) || nrow(comparison) == 0) {
-    message("No models to compare")
-    return(NULL)
-  }
-
-  # Limit to top_n if specified
   if (!is.null(top_n) && top_n < nrow(comparison)) {
-    comparison <- comparison[1:top_n, ]
+    comparison <- comparison[seq_len(top_n), , drop = FALSE]
   }
+  comparison$rank <- seq_len(nrow(comparison))
 
-  # Add rank column
-  comparison$rank <- 1:nrow(comparison)
+  display <- comparison[, c("rank", "n_profiles", "model", "log_likelihood",
+                            "aic", "bic", "delta_bic", "profile_entropy",
+                            "converged"),
+                        drop = FALSE]
 
-  # Calculate delta from best
-  best_bic <- min(comparison$bic, na.rm = TRUE)
-  best_aic <- min(comparison$aic, na.rm = TRUE)
-  best_icl <- min(comparison$icl, na.rm = TRUE)
-
-  comparison$delta_bic <- comparison$bic - best_bic
-  comparison$delta_aic <- comparison$aic - best_aic
-  comparison$delta_icl <- comparison$icl - best_icl
-
-  # Identify best model
-  comparison$is_best <- comparison$rank == 1
-
-  # Reorder columns
-  comparison <- comparison[, c("rank", "model", "n_clusters", "loglik",
-                               "bic", "delta_bic", "aic", "delta_aic",
-                               "icl", "delta_icl", "is_best")]
-
-  # Create gt table
-  gt_table <- comparison %>%
-    dplyr::select(-is_best) %>%
-    gt::gt() %>%
+  gt_table <- gt::gt(display) |>
     gt::tab_header(
-      title = "Model Comparison Summary",
+      title = "Model Comparison",
       subtitle = paste0("Sorted by ", toupper(sort_by), " (lower is better)")
-    ) %>%
-    gt::cols_label(
-      rank = "Rank",
-      model = "Model",
-      n_clusters = "G",
-      loglik = "Log-Lik",
-      bic = "BIC",
-      delta_bic = "\u0394BIC",
-      aic = "AIC",
-      delta_aic = "\u0394AIC",
-      icl = "ICL",
-      delta_icl = "\u0394ICL"
-    ) %>%
-    gt::fmt_number(
-      columns = c(loglik, bic, aic, icl),
-      decimals = 1
-    ) %>%
-    gt::fmt_number(
-      columns = c(delta_bic, delta_aic, delta_icl),
-      decimals = 1
-    ) %>%
-    gt::cols_align(align = "center") %>%
-    gt::tab_style(
-      style = gt::cell_text(weight = "bold"),
-      locations = gt::cells_column_labels()
-    ) %>%
-    gt::tab_options(
-      table.font.size = gt::px(12),
-      heading.title.font.size = gt::px(16),
-      heading.subtitle.font.size = gt::px(12),
-      column_labels.font.weight = "bold"
-    ) %>%
-    gt::tab_spanner(
-      label = "Information Criteria",
-      columns = c(bic, delta_bic, aic, delta_aic, icl, delta_icl)
-    ) %>%
-    gt::tab_footnote(
-      footnote = paste0("G = number of clusters; \u0394 = difference from best model; ",
-                        "BIC = Bayesian IC; AIC = Akaike IC; ICL = Integrated Complete-data Likelihood"),
-      locations = gt::cells_title(groups = "subtitle")
-    )
+    ) |>
+    gt::fmt_number(columns = c("log_likelihood", "aic", "bic", "delta_bic"),
+                   decimals = 1) |>
+    gt::fmt_number(columns = "profile_entropy", decimals = 3) |>
+    gt::cols_align(align = "center")
 
-  # Highlight best model
   if (highlight_best) {
-    gt_table <- gt_table %>%
+    gt_table <- gt_table |>
       gt::tab_style(
-        style = list(
-          gt::cell_fill(color = "#E8F5E9"),
-          gt::cell_text(weight = "bold")
-        ),
+        style = list(gt::cell_fill(color = "#E8F5E9"),
+                     gt::cell_text(weight = "bold")),
         locations = gt::cells_body(rows = 1)
       )
   }
-
-  # Color code delta columns (green = good, red = bad) if scales is available
-  if (requireNamespace("scales", quietly = TRUE)) {
-    gt_table <- gt_table %>%
-      gt::data_color(
-        columns = c(delta_bic, delta_aic, delta_icl),
-        fn = function(x) {
-          scales::col_numeric(
-            palette = c("#E8F5E9", "#FFEBEE"),
-            domain = c(0, max(x, na.rm = TRUE))
-          )(x)
-        }
-      )
-  }
-
-  return(gt_table)
+  gt_table
 }
 
 # =============================================================================
-# GET CLUSTER ASSIGNMENTS
+# REPORT
 # =============================================================================
 
-#' Get Cluster Assignments with Original Data
+#' Generate Cluster Report
 #'
-#' @description
-#' Extracts cluster assignments from a fitted model and adds them to the
-#' original data frame. Optionally includes cluster membership probabilities.
+#' @param results A `saqr_clustering` object.
+#' @param output_format `"console"` (default), `"gt"`, or `"markdown"`.
+#' @param include_recommendations Include interpretation guidelines.
 #'
-#' @param results Object from clustering()
-#' @param model_name Name of the model to use. If NULL (default), uses the best
-#'   model by BIC.
-#' @param include_probabilities Logical. If TRUE, includes probability of
-#'   membership for each cluster. Defaults to FALSE.
-#' @param cluster_col_name Name for the cluster assignment column.
-#'   Defaults to "cluster".
-#'
-#' @return A data frame containing the original data plus cluster assignments
-#'   (and optionally probabilities).
-#'
-#' @examples
-#' \dontrun{
-#' results <- clustering(data, vars, n_clusters = 3)
-#'
-#' # Get data with cluster assignments
-#' data_with_clusters <- get_cluster_assignments(results)
-#'
-#' # Specify a particular model
-#' data_with_clusters <- get_cluster_assignments(results, model_name = "VVV")
-#'
-#' # Include membership probabilities
-#' data_with_clusters <- get_cluster_assignments(results, include_probabilities = TRUE)
-#' }
-#'
+#' @return Invisibly `NULL` for console; a gt table list for `"gt"`;
+#'   a character string for `"markdown"`.
 #' @export
-get_cluster_assignments <- function(results, model_name = NULL,
-                                    include_probabilities = FALSE,
-                                    cluster_col_name = "cluster") {
-
-  if (!inherits(results, "moe_analysis")) {
-    stop("results must be from clustering()")
-  }
-
-  # Get model name
-  if (is.null(model_name)) {
-    model_name <- results$summary$best_model_bic
-    if (is.null(model_name)) {
-      model_name <- names(results$models)[1]
-    }
-    message("Using model: ", model_name)
-  }
-
-  # Validate model exists
-  if (!model_name %in% names(results$models)) {
-    stop("Model '", model_name, "' not found. Available models: ",
-         paste(names(results$models), collapse = ", "))
-  }
-
-  # Get original data and assignments
-  original_data <- results$data$full_input_data
-  model_result <- results$models[[model_name]]
-  assignments <- model_result$cluster_assignments
-  complete_rows <- results$data$complete_rows
-
-  if (is.null(complete_rows)) {
-    complete_rows <- rep(TRUE, nrow(original_data))
-  }
-
-  if (sum(complete_rows) != length(assignments)) {
-    stop("Stored analysis rows do not match the model assignments")
-  }
-
-  # Add cluster column
-  output_data <- original_data
-  full_assignments <- rep(NA_integer_, nrow(original_data))
-  full_assignments[complete_rows] <- assignments
-  output_data[[cluster_col_name]] <- full_assignments
-
-  # Add probabilities if requested
-  if (include_probabilities) {
-    model_fit <- model_result$model_fit
-
-    if (!is.null(model_fit$z)) {
-      probs <- as.data.frame(model_fit$z)
-      n_clusters <- ncol(probs)
-      names(probs) <- paste0("prob_cluster_", 1:n_clusters)
-
-      full_probs <- as.data.frame(
-        matrix(
-          NA_real_,
-          nrow = nrow(original_data),
-          ncol = n_clusters
-        )
-      )
-      names(full_probs) <- names(probs)
-      full_probs[complete_rows, ] <- probs
-
-      full_probs$cluster_certainty <- NA_real_
-      full_probs$cluster_certainty[complete_rows] <- apply(probs, 1, max)
-
-      output_data <- cbind(output_data, full_probs)
-    } else {
-      warning("Membership probabilities not available for this model")
-    }
-  }
-
-  # Add metadata as attributes
-  attr(output_data, "model_used") <- model_name
-  attr(output_data, "n_clusters") <- model_result$model_info$n_clusters
-  attr(output_data, "cluster_vars") <- results$parameters$cluster_vars
-
-  return(output_data)
-}
-
-# =============================================================================
-# BOOTSTRAP STABILITY ASSESSMENT
-# =============================================================================
-
-#' Assess Cluster Stability via Bootstrap
-#'
-#' @description
-#' Evaluates the stability of cluster assignments for a SINGLE selected model
-#' using bootstrap resampling. For each bootstrap sample, the clustering is
-#' re-run with the same model specification and assignments are compared to
-#' the original using the Adjusted Rand Index.
-#'
-#' Note: This function assesses one model at a time. If you tested multiple
-#' models, use the model_name parameter to specify which model to assess,
-#' or leave NULL to use the best model by BIC.
-#'
-#' @param results Object from clustering()
-#' @param model_name Model to assess (single model). If NULL, uses best model by BIC.
-#' @param n_boot Number of bootstrap iterations. Defaults to 100.
-#' @param verbose Print progress. Defaults to TRUE.
-#' @param seed Random seed for reproducibility. Defaults to NULL.
-#'
-#' @return A list of class "cluster_stability" containing:
-#' \itemize{
-#'   \item{\code{overall_stability}}: Mean Adjusted Rand Index across bootstraps
-#'   \item{\code{stability_sd}}: Standard deviation of ARI
-#'   \item{\code{bootstrap_ari}}: Vector of ARI values for each bootstrap
-#'   \item{\code{observation_stability}}: Proportion of times each observation
-#'     was assigned to the same cluster as in the original
-#'   \item{\code{cluster_stability}}: Stability score for each cluster
-#'   \item{\code{interpretation}}: Text interpretation of stability
-#' }
-#'
-#' @examples
-#' \dontrun{
-#' results <- clustering(data, vars, n_clusters = 3)
-#'
-#' # Assess stability of best model (default)
-#' stability <- assess_cluster_stability(results, n_boot = 100)
-#'
-#' # Assess a specific model
-#' stability <- assess_cluster_stability(results, model_name = "VVV", n_boot = 50)
-#'
-#' # View results
-#' print(stability)
-#' stability$overall_stability
-#' stability$interpretation
-#'
-#' # Plot observation stability
-#' hist(stability$observation_stability, main = "Observation Stability")
-#' }
-#'
-#' @export
-assess_cluster_stability <- function(results, model_name = NULL, n_boot = 100,
-                                     verbose = TRUE, seed = NULL) {
-
-  if (!inherits(results, "moe_analysis")) {
-    stop("results must be from clustering()")
-  }
-
-  # Set seed if provided
-  if (!is.null(seed)) set.seed(seed)
-
-  # Get model
-  if (is.null(model_name)) {
-    model_name <- results$summary$best_model_bic
-    if (is.null(model_name)) model_name <- names(results$models)[1]
-  }
-
-  if (!model_name %in% names(results$models)) {
-    stop("Model not found: ", model_name)
-  }
-
-  model_result <- results$models[[model_name]]
-  original_assignments <- model_result$cluster_assignments
-  n_obs <- length(original_assignments)
-  n_clusters <- model_result$model_info$n_clusters
-  scaling_method <- results$parameters$scaling_method
-  cluster_vars <- results$parameters$cluster_vars
-
-  # Get scaled data
-  scaled_data <- results$data$scaled_data
-
-  if (verbose) {
-    cat("Assessing cluster stability for model:", model_name, "\n")
-    cat("Bootstrap iterations:", n_boot, "\n")
-    cat("Sample size:", n_obs, "\n")
-    cat("Number of clusters:", n_clusters, "\n\n")
-  }
-
-  # Storage for results
-  boot_ari <- numeric(n_boot)
-  obs_same_cluster <- matrix(0, nrow = n_obs, ncol = n_boot)
-  cluster_matches <- vector("list", n_boot)
-
-  # Progress tracking
-  if (verbose) cat("Running bootstrap iterations:\n")
-
-  for (b in 1:n_boot) {
-    if (verbose && b %% 10 == 0) cat("  Iteration", b, "of", n_boot, "\n")
-
-    # Bootstrap sample (with replacement)
-    boot_indices <- sample(1:n_obs, n_obs, replace = TRUE)
-    boot_data <- scaled_data[boot_indices, , drop = FALSE]
-
-    # Fit model to bootstrap sample
-    boot_fit <- tryCatch({
-      MoEClust::MoE_clust(
-        data = boot_data,
-        G = n_clusters,
-        modelNames = gsub("_G[0-9]+$", "", model_name),
-        verbose = FALSE
-      )
-    }, error = function(e) NULL)
-
-    if (is.null(boot_fit) || is.null(boot_fit$classification)) {
-      boot_ari[b] <- NA
-      next
-    }
-
-    boot_assignments <- boot_fit$classification
-
-    # Calculate Adjusted Rand Index
-    # Only for observations that appear in bootstrap sample
-    original_boot <- original_assignments[boot_indices]
-
-    boot_ari[b] <- tryCatch({
-      # Simple ARI calculation
-      calc_ari(original_boot, boot_assignments)
-    }, error = function(e) NA)
-
-    # Track which observations were assigned to same cluster
-    # Map bootstrap clusters to original clusters
-    cluster_map <- find_cluster_mapping(original_boot, boot_assignments, n_clusters)
-
-    for (i in 1:n_obs) {
-      if (i %in% boot_indices) {
-        boot_idx <- which(boot_indices == i)[1]
-        mapped_cluster <- cluster_map[boot_assignments[boot_idx]]
-        if (!is.na(mapped_cluster) && mapped_cluster == original_assignments[i]) {
-          obs_same_cluster[i, b] <- 1
-        }
-      }
-    }
-  }
-
-  # Calculate observation-level stability
-  obs_stability <- rowMeans(obs_same_cluster, na.rm = TRUE)
-
-  # Calculate cluster-level Jaccard similarity
-  cluster_jaccard <- sapply(1:n_clusters, function(k) {
-    orig_in_k <- which(original_assignments == k)
-    prop_stable <- mean(obs_stability[orig_in_k], na.rm = TRUE)
-    prop_stable
-  })
-  names(cluster_jaccard) <- paste0("Cluster_", 1:n_clusters)
-
-  # Overall stability
-  overall_ari <- mean(boot_ari, na.rm = TRUE)
-  ari_sd <- sd(boot_ari, na.rm = TRUE)
-
-  # Interpretation
-  interpretation <- if (is.na(overall_ari)) {
-    "Unable to assess stability (bootstrap failures)"
-  } else if (overall_ari >= 0.9) {
-    "Excellent stability: Cluster solution is highly reproducible"
-  } else if (overall_ari >= 0.75) {
-    "Good stability: Cluster solution is reasonably stable"
-  } else if (overall_ari >= 0.5) {
-    "Moderate stability: Some uncertainty in cluster assignments"
-  } else {
-    "Poor stability: Cluster solution may not be reliable"
-  }
-
-  # Build output
-  output <- list(
-    overall_stability = overall_ari,
-    stability_sd = ari_sd,
-    stability_ci = c(
-      lower = overall_ari - 1.96 * ari_sd,
-      upper = overall_ari + 1.96 * ari_sd
-    ),
-    bootstrap_ari = boot_ari,
-    observation_stability = obs_stability,
-    cluster_stability = cluster_jaccard,
-    n_successful_boots = sum(!is.na(boot_ari)),
-    model_name = model_name,
-    n_boot = n_boot,
-    interpretation = interpretation
-  )
-
-  class(output) <- c("cluster_stability", "list")
-
-  if (verbose) {
-    cat("\n=== Stability Results ===\n")
-    cat("Overall ARI:", round(overall_ari, 3), "+/-", round(ari_sd, 3), "\n")
-    cat("95% CI: [", round(output$stability_ci[1], 3), ",",
-        round(output$stability_ci[2], 3), "]\n")
-    cat("\nCluster-level stability:\n")
-    for (k in 1:n_clusters) {
-      cat("  Cluster", k, ":", round(cluster_jaccard[k], 3), "\n")
-    }
-    cat("\n", interpretation, "\n")
-  }
-
-  return(output)
-}
-
-#' Calculate Adjusted Rand Index
-#' @noRd
-calc_ari <- function(labels1, labels2) {
-  # Contingency table
-  tab <- table(labels1, labels2)
-  n <- sum(tab)
-
-  # Sum of combinations
-  sum_comb_rows <- sum(choose(rowSums(tab), 2))
-  sum_comb_cols <- sum(choose(colSums(tab), 2))
-  sum_comb_tab <- sum(choose(tab, 2))
-  comb_n <- choose(n, 2)
-
-  # Expected index
-  expected <- (sum_comb_rows * sum_comb_cols) / comb_n
-  max_index <- (sum_comb_rows + sum_comb_cols) / 2
-
-  # ARI
-  if (max_index == expected) return(1)
-  (sum_comb_tab - expected) / (max_index - expected)
-}
-
-#' Find optimal cluster mapping between two solutions
-#' @noRd
-find_cluster_mapping <- function(original, bootstrap, n_clusters) {
-  # Create contingency table
-  tab <- table(original, bootstrap)
-
-  # Find best mapping using Hungarian algorithm (greedy approximation)
-  mapping <- rep(NA, n_clusters)
-  used_orig <- rep(FALSE, n_clusters)
-
-  for (i in 1:min(n_clusters, ncol(tab))) {
-    # Find maximum remaining
-    remaining <- tab
-    remaining[, which(1:ncol(tab) %in% mapping)] <- 0
-    remaining[used_orig, ] <- 0
-
-    if (max(remaining) == 0) break
-
-    idx <- which(remaining == max(remaining), arr.ind = TRUE)[1, ]
-    mapping[idx[2]] <- idx[1]
-    used_orig[idx[1]] <- TRUE
-  }
-
-  mapping
-}
-
-#' Print method for cluster_stability
-#' @param x A cluster_stability object
-#' @param ... Additional arguments (ignored)
-#' @export
-print.cluster_stability <- function(x, ...) {
-  cat("Cluster Stability Assessment\n")
-  cat("============================\n")
-  cat("Model:", x$model_name, "\n")
-  cat("Bootstrap iterations:", x$n_boot, "(", x$n_successful_boots, "successful)\n\n")
-  cat("Overall Adjusted Rand Index:", round(x$overall_stability, 3), "\n")
-  cat("Standard Deviation:", round(x$stability_sd, 3), "\n")
-  cat("95% CI: [", round(x$stability_ci[1], 3), ",", round(x$stability_ci[2], 3), "]\n\n")
-  cat(x$interpretation, "\n")
-  invisible(x)
-}
-
-# =============================================================================
-# GENERATE CLUSTER REPORT
-# =============================================================================
-
-#' Generate Interpretable Cluster Report
-#'
-#' @description
-#' Creates a comprehensive, interpretable report of the clustering results
-#' including model selection summary, cluster profiles, and practical
-#' interpretations.
-#'
-#' @param results Object from clustering()
-#' @param model_name Model to report on. If NULL, uses best model by BIC.
-#' @param output_format Output format: "console" (default), "gt" (returns gt tables),
-#'   or "markdown" (returns markdown text).
-#' @param include_recommendations Logical. Include interpretation guidelines. Defaults to TRUE.
-#'
-#' @return Depending on output_format:
-#' \itemize{
-#'   \item{"console"}: Prints report and returns NULL invisibly
-#'   \item{"gt"}: Returns a list of gt table objects
-#'   \item{"markdown"}: Returns markdown text as character string
-#' }
-#'
-#' @examples
-#' \dontrun{
-#' results <- clustering(data, vars, n_clusters = 3)
-#'
-#' # Print to console
-#' generate_cluster_report(results)
-#'
-#' # Get gt tables
-#' tables <- generate_cluster_report(results, output_format = "gt")
-#'
-#' # Get markdown
-#' md_text <- generate_cluster_report(results, output_format = "markdown")
-#' }
-#'
-#' @export
-generate_cluster_report <- function(results, model_name = NULL,
+generate_cluster_report <- function(results,
                                     output_format = "console",
                                     include_recommendations = TRUE) {
-
-  if (!inherits(results, "moe_analysis")) {
-    stop("results must be from clustering()")
+  if (!inherits(results, "saqr_clustering")) {
+    stop("`results` must be from clustering()")
   }
+  fit <- results$fit
+  vars <- results$parameters$cluster_vars
+  n_profiles <- fit$n_profiles
 
-  # Get model
-  if (is.null(model_name)) {
-    model_name <- results$summary$best_model_bic
-    if (is.null(model_name)) model_name <- names(results$models)[1]
-  }
+  assignments <- latents::get_results(fit, what = "assignments")
+  profile_col <- assignments$profile
+  sizes <- tabulate(profile_col, nbins = n_profiles)
+  pcts <- round(100 * sizes / sum(sizes), 1)
 
-  if (!model_name %in% names(results$models)) {
-    stop("Model not found: ", model_name)
-  }
+  means_df <- as.data.frame(fit)
 
-  model_result <- results$models[[model_name]]
-  cluster_vars <- results$parameters$cluster_vars
-  n_clusters <- model_result$model_info$n_clusters
+  if (identical(output_format, "console")) {
+    cat("\n", strrep("=", 60), "\n")
+    cat("        LATENT PROFILE CLUSTERING REPORT\n")
+    cat(strrep("=", 60), "\n\n")
 
-  # Build report sections
-  report <- list()
+    cat("Model:", fit$covariance_structure, "| Profiles:", n_profiles, "\n")
+    cat("n =", results$parameters$sample_size,
+        "| Scaling:", results$parameters$scaling_method, "\n")
+    cat("BIC =", round(fit$bic, 1),
+        "| LogLik =", round(fit$log_likelihood, 1),
+        "| Converged:", fit$converged, "\n\n")
 
-  # -------------------------------------------------------------------------
-  # Section 1: Analysis Overview
-  # -------------------------------------------------------------------------
-  overview <- data.frame(
-    Parameter = c("Analysis Date", "Sample Size", "Variables", "Scaling Method",
-                  "Models Tested", "Successful Models", "Selected Model",
-                  "Number of Clusters", "BIC", "AIC", "ICL"),
-    Value = c(
-      as.character(results$call$analysis_date),
-      results$parameters$sample_size,
-      paste(cluster_vars, collapse = ", "),
-      results$parameters$scaling_method,
-      length(results$parameters$models_tested),
-      results$summary$n_successful,
-      model_name,
-      n_clusters,
-      round(model_result$model_info$bic, 1),
-      round(model_result$model_info$aic, 1),
-      round(model_result$model_info$icl, 1)
-    ),
-    stringsAsFactors = FALSE
-  )
+    cat("Profile sizes:\n")
+    vapply(seq_len(n_profiles), \(k) {
+      cat(sprintf("  Profile %d: %d (%.1f%%)\n", k, sizes[k], pcts[k]))
+      ""
+    }, character(1L))
 
-  # -------------------------------------------------------------------------
-  # Section 2: Cluster Sizes
-  # -------------------------------------------------------------------------
-  sizes <- model_result$original_scale$sizes
-  sizes$interpretation <- sapply(sizes$percentage, function(p) {
-    if (p < 5) "Very small (< 5%)"
-    else if (p < 15) "Small (5-15%)"
-    else if (p < 30) "Medium (15-30%)"
-    else if (p < 50) "Large (30-50%)"
-    else "Dominant (> 50%)"
-  })
+    cat("\nProfile means (scaled data):\n")
+    print(means_df, row.names = FALSE)
 
-  # -------------------------------------------------------------------------
-  # Section 3: Cluster Profiles (Original Scale)
-  # -------------------------------------------------------------------------
-  means <- model_result$original_scale$means
-
-  # Calculate which clusters are highest/lowest on each variable
-  profile_description <- list()
-  for (var in cluster_vars) {
-    var_means <- means[[var]]
-    highest <- which.max(var_means)
-    lowest <- which.min(var_means)
-    range_val <- max(var_means) - min(var_means)
-
-    profile_description[[var]] <- data.frame(
-      Variable = var,
-      Highest = paste0("Cluster ", highest, " (", round(var_means[highest], 2), ")"),
-      Lowest = paste0("Cluster ", lowest, " (", round(var_means[lowest], 2), ")"),
-      Range = round(range_val, 2),
-      stringsAsFactors = FALSE
-    )
-  }
-  profile_df <- do.call(rbind, profile_description)
-
-  # -------------------------------------------------------------------------
-  # Section 4: Cluster Characterizations
-  # -------------------------------------------------------------------------
-  # For each cluster, describe its distinctive features
-  scaled_means <- model_result$scaled_data$means
-
-  characterizations <- lapply(1:n_clusters, function(k) {
-    cluster_profile <- scaled_means[k, cluster_vars]
-
-    # Find variables where this cluster is notably high (> 0.5 SD) or low (< -0.5 SD)
-    high_vars <- names(cluster_profile)[cluster_profile > 0.5]
-    low_vars <- names(cluster_profile)[cluster_profile < -0.5]
-
-    list(
-      cluster = k,
-      size = sizes$size[k],
-      percent = sizes$percentage[k],
-      high_on = if(length(high_vars) > 0) paste(high_vars, collapse = ", ") else "None notably",
-      low_on = if(length(low_vars) > 0) paste(low_vars, collapse = ", ") else "None notably"
-    )
-  })
-
-  # -------------------------------------------------------------------------
-  # Output based on format
-  # -------------------------------------------------------------------------
-  if (output_format == "console") {
-    cat("\n")
-    cat(strrep("=", 70), "\n")
-    cat("                    CLUSTER ANALYSIS REPORT\n")
-    cat(strrep("=", 70), "\n\n")
-
-    # Overview
-    cat("1. ANALYSIS OVERVIEW\n")
-    cat(strrep("-", 40), "\n")
-    for (i in 1:nrow(overview)) {
-      cat(sprintf("%-20s: %s\n", overview$Parameter[i], overview$Value[i]))
-    }
-    cat("\n")
-
-    # Cluster sizes
-    cat("2. CLUSTER SIZES\n")
-    cat(strrep("-", 40), "\n")
-    for (i in 1:nrow(sizes)) {
-      cat(sprintf("Cluster %d: %d members (%.1f%%) - %s\n",
-                  sizes$cluster[i], sizes$size[i], sizes$percentage[i],
-                  sizes$interpretation[i]))
-    }
-    cat("\n")
-
-    # Variable summary
-    cat("3. VARIABLE DIFFERENTIATION\n")
-    cat(strrep("-", 40), "\n")
-    print(profile_df, row.names = FALSE)
-    cat("\n")
-
-    # Cluster characterizations
-    cat("4. CLUSTER CHARACTERIZATIONS\n")
-    cat(strrep("-", 40), "\n")
-    for (char in characterizations) {
-      cat(sprintf("\nCluster %d (%d members, %.1f%%):\n",
-                  char$cluster, char$size, char$percent))
-      cat(sprintf("  High on: %s\n", char$high_on))
-      cat(sprintf("  Low on:  %s\n", char$low_on))
-    }
-
-    # Recommendations
     if (include_recommendations) {
-      cat("\n")
-      cat("5. INTERPRETATION GUIDELINES\n")
-      cat(strrep("-", 40), "\n")
-      cat("- 'High on' means > 0.5 SD above the sample mean\n")
-      cat("- 'Low on' means > 0.5 SD below the sample mean\n")
-      cat("- Consider cluster sizes when interpreting: very small clusters\n")
-      cat("  may not be reliable or generalizable\n")
-      cat("- Use assess_cluster_stability() to evaluate solution robustness\n")
-      cat("- Consider validating clusters against external variables\n")
+      cat("\nUse plot(x) for visual profiles, diagnostics(x) for classification quality.\n")
     }
-
-    cat("\n")
-    cat(strrep("=", 70), "\n")
-    cat("Report generated:", as.character(Sys.time()), "\n")
-    cat(strrep("=", 70), "\n")
-
+    cat(strrep("=", 60), "\n")
     return(invisible(NULL))
+  }
 
-  } else if (output_format == "gt") {
+  if (identical(output_format, "markdown")) {
+    md <- sprintf("# Latent Profile Clustering Report\n\n")
+    md <- paste0(md, sprintf("**Model:** %s | **Profiles:** %d | **n:** %d\n\n",
+                             fit$covariance_structure, n_profiles,
+                             results$parameters$sample_size))
+    md <- paste0(md, "## Profile sizes\n\n| Profile | n | % |\n|---|---|---|\n")
+    vapply(seq_len(n_profiles), \(k) {
+      md <<- paste0(md, sprintf("| %d | %d | %.1f%% |\n", k, sizes[k], pcts[k]))
+      ""
+    }, character(1L))
+    return(md)
+  }
+
+  if (identical(output_format, "gt")) {
     if (!requireNamespace("gt", quietly = TRUE)) {
       stop("gt package required for gt output")
     }
-
-    tables <- list()
-
-    # Overview table
-    tables$overview <- overview %>%
-      gt::gt() %>%
-      gt::tab_header(title = "Analysis Overview") %>%
-      gt::cols_label(Parameter = "Parameter", Value = "Value") %>%
-      gt::tab_options(table.font.size = gt::px(11))
-
-    # Sizes table
-    tables$sizes <- sizes %>%
-      gt::gt() %>%
-      gt::tab_header(title = "Cluster Sizes") %>%
-      gt::fmt_number(columns = percentage, decimals = 1) %>%
-      gt::tab_options(table.font.size = gt::px(11))
-
-    # Profile table
-    tables$profiles <- profile_df %>%
-      gt::gt() %>%
-      gt::tab_header(title = "Variable Differentiation Across Clusters") %>%
-      gt::tab_options(table.font.size = gt::px(11))
-
-    # Means table
-    tables$means <- means %>%
-      gt::gt() %>%
-      gt::tab_header(title = "Cluster Means (Original Scale)") %>%
-      gt::fmt_number(columns = dplyr::all_of(cluster_vars), decimals = 2) %>%
-      gt::tab_options(table.font.size = gt::px(11))
-
-    return(tables)
-
-  } else if (output_format == "markdown") {
-    md <- character()
-
-    md <- c(md, "# Cluster Analysis Report\n")
-    md <- c(md, paste0("*Generated: ", Sys.time(), "*\n\n"))
-
-    md <- c(md, "## 1. Analysis Overview\n")
-    md <- c(md, "| Parameter | Value |")
-    md <- c(md, "|-----------|-------|")
-    for (i in 1:nrow(overview)) {
-      md <- c(md, paste0("| ", overview$Parameter[i], " | ", overview$Value[i], " |"))
-    }
-    md <- c(md, "\n")
-
-    md <- c(md, "## 2. Cluster Sizes\n")
-    md <- c(md, "| Cluster | N | % | Interpretation |")
-    md <- c(md, "|---------|---|---|----------------|")
-    for (i in 1:nrow(sizes)) {
-      md <- c(md, paste0("| ", sizes$cluster[i], " | ", sizes$size[i], " | ",
-                         sizes$percentage[i], "% | ", sizes$interpretation[i], " |"))
-    }
-    md <- c(md, "\n")
-
-    md <- c(md, "## 3. Cluster Characterizations\n")
-    for (char in characterizations) {
-      md <- c(md, paste0("### Cluster ", char$cluster,
-                         " (", char$size, " members, ", char$percent, "%)\n"))
-      md <- c(md, paste0("- **High on:** ", char$high_on, "\n"))
-      md <- c(md, paste0("- **Low on:** ", char$low_on, "\n\n"))
-    }
-
-    return(paste(md, collapse = "\n"))
+    size_df <- data.frame(Profile = seq_len(n_profiles), n = sizes,
+                          Percent = pcts)
+    list(
+      sizes = gt::gt(size_df) |> gt::tab_header(title = "Profile Sizes"),
+      means = gt::gt(means_df) |> gt::tab_header(title = "Profile Means") |>
+        gt::fmt_number(columns = c("mean", "variance", "standard_deviation"),
+                       decimals = 3)
+    )
   }
 }
 
 # =============================================================================
-# CONSISTENT OPTIONAL ALIASES
+# ALIASES (backward compatibility)
 # =============================================================================
 
-#' Optional `cluster_*` aliases
-#'
-#' These aliases provide a consistent naming family without replacing or
-#' deprecating the original function names.
-#'
-#' @name clustering_aliases
-NULL
-
-#' @rdname clustering_aliases
+#' @rdname clustering
 #' @export
 cluster_fit <- clustering
 
-#' @rdname clustering_aliases
+#' @rdname list_models
 #' @export
 cluster_models <- list_models
 
-#' @rdname clustering_aliases
+#' @rdname get_best_model
 #' @export
 cluster_best <- get_best_model
 
-#' @rdname clustering_aliases
+#' @rdname compare_models
 #' @export
 cluster_compare <- compare_models
 
-#' @rdname clustering_aliases
+#' @rdname model_comparison_table
 #' @export
 cluster_compare_table <- model_comparison_table
 
-#' @rdname clustering_aliases
+#' @rdname get_cluster_assignments
 #' @export
 cluster_assignments <- get_cluster_assignments
 
-#' @rdname clustering_aliases
-#' @export
-cluster_view <- view_results
-
-#' @rdname clustering_aliases
-#' @export
-cluster_plot_model <- plot_model
-
-#' @rdname clustering_aliases
-#' @export
-cluster_plot_best <- plot_best_model
-
-#' @rdname clustering_aliases
-#' @export
-cluster_stability <- assess_cluster_stability
-
-#' @rdname clustering_aliases
+#' @rdname generate_cluster_report
 #' @export
 cluster_report <- generate_cluster_report
+
+#' @rdname cluster_diagnostics
+#' @export
+cluster_stability <- cluster_diagnostics

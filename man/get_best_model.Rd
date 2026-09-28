@@ -2,21 +2,23 @@
 % Please edit documentation in R/clustering.R
 \name{get_best_model}
 \alias{get_best_model}
-\title{Get Best Model}
+\alias{cluster_best}
+\title{Get Best Model Name}
 \usage{
-get_best_model(results, criterion = "bic", what = c("name", "result", "fit"))
+get_best_model(results, criterion = "bic", what = c("name", "fit"))
+
+cluster_best(results, criterion = "bic", what = c("name", "fit"))
 }
 \arguments{
-\item{results}{Object from run_full_moe_analysis}
+\item{results}{A `saqr_clustering` object.}
 
-\item{criterion}{Selection criterion: "bic", "aic", or "icl"}
+\item{criterion}{Selection criterion.}
 
-\item{what}{What to return: the model "name", the complete stored "result",
-or the raw fitted MoEClust "fit".}
+\item{what}{What to return: `"name"` or `"fit"`.}
 }
 \value{
-The requested representation of the best model.
+A character string (model name) or a `multilpa` fit.
 }
 \description{
-Get Best Model
+Get Best Model Name
 }

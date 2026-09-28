@@ -2,6 +2,7 @@
 % Please edit documentation in R/clustering.R
 \name{get_cluster_assignments}
 \alias{get_cluster_assignments}
+\alias{cluster_assignments}
 \title{Get Cluster Assignments with Original Data}
 \usage{
 get_cluster_assignments(
@@ -10,39 +11,26 @@ get_cluster_assignments(
   include_probabilities = FALSE,
   cluster_col_name = "cluster"
 )
+
+cluster_assignments(
+  results,
+  model_name = NULL,
+  include_probabilities = FALSE,
+  cluster_col_name = "cluster"
+)
 }
 \arguments{
-\item{results}{Object from clustering()}
+\item{results}{A `saqr_clustering` object.}
 
-\item{model_name}{Name of the model to use. If NULL (default), uses the best
-model by BIC.}
+\item{model_name}{Ignored (kept for backward compatibility).}
 
-\item{include_probabilities}{Logical. If TRUE, includes probability of
-membership for each cluster. Defaults to FALSE.}
+\item{include_probabilities}{Logical. Include posterior probabilities.}
 
-\item{cluster_col_name}{Name for the cluster assignment column.
-Defaults to "cluster".}
+\item{cluster_col_name}{Name for the assignment column.}
 }
 \value{
-A data frame containing the original data plus cluster assignments
-  (and optionally probabilities).
+A data.frame with the original data plus a cluster/profile column.
 }
 \description{
-Extracts cluster assignments from a fitted model and adds them to the
-original data frame. Optionally includes cluster membership probabilities.
-}
-\examples{
-\dontrun{
-results <- clustering(data, vars, n_clusters = 3)
-
-# Get data with cluster assignments
-data_with_clusters <- get_cluster_assignments(results)
-
-# Specify a particular model
-data_with_clusters <- get_cluster_assignments(results, model_name = "VVV")
-
-# Include membership probabilities
-data_with_clusters <- get_cluster_assignments(results, include_probabilities = TRUE)
-}
-
+Get Cluster Assignments with Original Data
 }

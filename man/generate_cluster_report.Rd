@@ -2,50 +2,32 @@
 % Please edit documentation in R/clustering.R
 \name{generate_cluster_report}
 \alias{generate_cluster_report}
-\title{Generate Interpretable Cluster Report}
+\alias{cluster_report}
+\title{Generate Cluster Report}
 \usage{
 generate_cluster_report(
   results,
-  model_name = NULL,
+  output_format = "console",
+  include_recommendations = TRUE
+)
+
+cluster_report(
+  results,
   output_format = "console",
   include_recommendations = TRUE
 )
 }
 \arguments{
-\item{results}{Object from clustering()}
+\item{results}{A `saqr_clustering` object.}
 
-\item{model_name}{Model to report on. If NULL, uses best model by BIC.}
+\item{output_format}{`"console"` (default), `"gt"`, or `"markdown"`.}
 
-\item{output_format}{Output format: "console" (default), "gt" (returns gt tables),
-or "markdown" (returns markdown text).}
-
-\item{include_recommendations}{Logical. Include interpretation guidelines. Defaults to TRUE.}
+\item{include_recommendations}{Include interpretation guidelines.}
 }
 \value{
-Depending on output_format:
-\itemize{
-  \item{"console"}: Prints report and returns NULL invisibly
-  \item{"gt"}: Returns a list of gt table objects
-  \item{"markdown"}: Returns markdown text as character string
-}
+Invisibly `NULL` for console; a gt table list for `"gt"`;
+  a character string for `"markdown"`.
 }
 \description{
-Creates a comprehensive, interpretable report of the clustering results
-including model selection summary, cluster profiles, and practical
-interpretations.
-}
-\examples{
-\dontrun{
-results <- clustering(data, vars, n_clusters = 3)
-
-# Print to console
-generate_cluster_report(results)
-
-# Get gt tables
-tables <- generate_cluster_report(results, output_format = "gt")
-
-# Get markdown
-md_text <- generate_cluster_report(results, output_format = "markdown")
-}
-
+Generate Cluster Report
 }

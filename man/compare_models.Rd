@@ -2,18 +2,22 @@
 % Please edit documentation in R/clustering.R
 \name{compare_models}
 \alias{compare_models}
-\title{Compare Models by Information Criteria}
+\alias{cluster_compare}
+\title{Compare Models from an Enumeration}
 \usage{
 compare_models(results, sort_by = "bic")
+
+cluster_compare(results, sort_by = "bic")
 }
 \arguments{
-\item{results}{Object from run_full_moe_analysis}
+\item{results}{A `saqr_clustering` object.}
 
-\item{sort_by}{Criterion to sort by: "bic", "aic", or "icl"}
+\item{sort_by}{Criterion to sort by: `"bic"` (default), `"aic"`, or
+`"icl"`.}
 }
 \value{
-Data frame with model comparison
+A data.frame, or `NULL` if no enumeration was run.
 }
 \description{
-Compare Models by Information Criteria
+Compare Models from an Enumeration
 }

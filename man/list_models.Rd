@@ -2,15 +2,18 @@
 % Please edit documentation in R/clustering.R
 \name{list_models}
 \alias{list_models}
+\alias{cluster_models}
 \title{List Available Models}
 \usage{
 list_models(results)
+
+cluster_models(results)
 }
 \arguments{
-\item{results}{Object from run_full_moe_analysis}
+\item{results}{A `saqr_clustering` object.}
 }
 \value{
-Character vector of model names (invisibly)
+Character vector of model names (invisibly).
 }
 \description{
 List Available Models

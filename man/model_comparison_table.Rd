@@ -2,6 +2,7 @@
 % Please edit documentation in R/clustering.R
 \name{model_comparison_table}
 \alias{model_comparison_table}
+\alias{cluster_compare_table}
 \title{Create Formatted Model Comparison Table}
 \usage{
 model_comparison_table(
@@ -10,29 +11,26 @@ model_comparison_table(
   top_n = NULL,
   highlight_best = TRUE
 )
+
+cluster_compare_table(
+  results,
+  sort_by = "bic",
+  top_n = NULL,
+  highlight_best = TRUE
+)
 }
 \arguments{
-\item{results}{Object from clustering()}
+\item{results}{A `saqr_clustering` object.}
 
-\item{sort_by}{Criterion to sort by: "bic" (default), "aic", or "icl"}
+\item{sort_by}{Criterion to sort by: `"bic"` (default), `"aic"`.}
 
-\item{top_n}{Number of top models to display. NULL shows all. Defaults to NULL.}
+\item{top_n}{Number of top models to display. `NULL` shows all.}
 
-\item{highlight_best}{Logical. Highlight the best model row. Defaults to TRUE.}
+\item{highlight_best}{Highlight the best model row.}
 }
 \value{
-A gt table object
+A gt table object, or `NULL` if no enumeration was run.
 }
 \description{
-Generates a publication-ready gt table comparing all fitted models
-by BIC, AIC, ICL, and log-likelihood. Highlights the best model
-and provides interpretation guidance.
-}
-\examples{
-\dontrun{
-results <- clustering(data, vars, n_clusters = 3)
-model_comparison_table(results)
-model_comparison_table(results, sort_by = "aic", top_n = 5)
-}
-
+Create Formatted Model Comparison Table
 }

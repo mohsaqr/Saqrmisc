@@ -1,16 +1,17 @@
 Package: Saqrmisc
 Type: Package
 Title: Miscellaneous Functions for Data Processing and Analysis
-Version: 0.9.4
+Version: 0.9.5
 Authors@R: 
     person("Mohammed", "Saqr", 
            email = "saqr@saqr.me",
            role = c("aut", "cre"))
-Description: A comprehensive R package providing miscellaneous functions for data processing, 
-    statistical analysis, and visualization. Includes functions for model-based clustering 
-    analysis using MoEClust, comparison plots with statistical testing, and mosaic plot 
-    analysis for categorical variables. The package offers robust error handling, 
-    comprehensive documentation, and user-friendly interfaces for complex statistical tasks.
+Description: A comprehensive R package providing miscellaneous functions for data processing,
+    statistical analysis, and visualization. Includes functions for latent profile
+    clustering via the 'latents' package, comparison plots with statistical testing,
+    and mosaic plot analysis for categorical variables. The package offers robust error
+    handling, comprehensive documentation, and user-friendly interfaces for complex
+    statistical tasks.
 License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.3
@@ -19,7 +20,7 @@ BugReports: https://github.com/mohsaqr/Saqrmisc/issues
 Depends:
     R (>= 4.1.0)
 Imports:
-    MoEClust,
+    latents,
     dplyr,
     ggplot2,
     vcd,

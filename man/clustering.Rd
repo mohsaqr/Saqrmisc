@@ -3,14 +3,18 @@
 \name{clustering}
 \alias{clustering}
 \alias{cluster}
-\title{Model-Based Clustering Analysis}
+\alias{cluster_fit}
+\title{Latent Profile Clustering}
 \usage{
 clustering(
   data,
   vars,
-  n_clusters,
+  n_profiles = NULL,
+  n_clusters = NULL,
   scaling = "standardize",
-  models = "all",
+  models = "VVI",
+  n_starts = 10L,
+  seed = NULL,
   verbose = TRUE,
   na_action = "omit"
 )
@@ -18,76 +22,90 @@ clustering(
 cluster(
   data,
   vars,
-  n_clusters,
+  n_profiles = NULL,
+  n_clusters = NULL,
   scaling = "standardize",
-  models = "all",
+  models = "VVI",
+  n_starts = 10L,
+  seed = NULL,
+  verbose = TRUE,
+  na_action = "omit"
+)
+
+cluster_fit(
+  data,
+  vars,
+  n_profiles = NULL,
+  n_clusters = NULL,
+  scaling = "standardize",
+  models = "VVI",
+  n_starts = 10L,
+  seed = NULL,
   verbose = TRUE,
   na_action = "omit"
 )
 }
 \arguments{
-\item{data}{A data frame containing the dataset.}
+\item{data}{A data frame.}
 
-\item{vars}{A character vector of column names to use for clustering.}
+\item{vars}{Character vector of column names to cluster on.}
 
-\item{n_clusters}{An integer or vector specifying the number of clusters (G) to fit.}
+\item{n_profiles}{Number of profiles (clusters). A single integer for one
+model, or a range like \code{2:5} for enumeration. Alias: \code{n_clusters}.}
 
-\item{scaling}{Scaling method: "standardize" (z-score), "center" (mean only),
-"minmax" (0-1 range), or "none". Defaults to "standardize".}
+\item{n_clusters}{Alias for \code{n_profiles}.}
 
-\item{models}{Character vector of model names to test, or "all" for all 14 models.
-Valid models: EII, VII, EEI, VEI, EVI, VVI, EEE, EVE, VEE, VVE, EEV, VEV, EVV, VVV.}
+\item{scaling}{Scaling applied before fitting: \code{"standardize"} (default),
+\code{"center"}, \code{"minmax"}, or \code{"none"}.}
 
-\item{verbose}{Logical. If TRUE, prints progress messages. Defaults to TRUE.}
+\item{models}{Covariance structure(s) to fit. A character vector of
+three-letter mclust codes (e.g. \code{"EEE"}, \code{"VVI"}) or \code{"all"} for all 14.
+Defaults to \code{"VVI"}.}
 
-\item{na_action}{How to handle NAs: "omit" (remove rows) or "fail" (stop with error).
-Defaults to "omit".}
+\item{n_starts}{Number of random starts per model. Defaults to 10.}
+
+\item{seed}{Random seed for reproducibility.}
+
+\item{verbose}{Print progress. Defaults to \code{TRUE}.}
+
+\item{na_action}{How to handle missing values: \code{"omit"} (default) drops
+incomplete rows, \code{"fail"} raises an error.}
 }
 \value{
-An object of class "moe_analysis" containing:
-\itemize{
-  \item{\code{models}}: List of fitted models with results
-  \item{\code{data}}: Original and scaled data used
-  \item{\code{parameters}}: Analysis parameters
-  \item{\code{summary}}: Summary statistics including best model
+An object of class \code{"saqr_clustering"} containing:
+\describe{
+\item{fit}{The best \code{multilpa} object (from \pkg{latents}).}
+\item{enumeration}{The \code{multilpa_enumeration} grid, or \code{NULL} when only
+one candidate was fitted.}
+\item{data}{List with \code{original_data}, \code{scaled_data}, \code{full_input_data},
+\code{complete_rows}, and \code{n_removed}.}
+\item{parameters}{List with \code{cluster_vars}, \code{n_profiles}, \code{scaling_method},
+\code{models_tested}, and \code{sample_size}.}
 }
+
+Use \code{plot()} to visualise, \code{as.data.frame()} for the profile means,
+\code{fitted()} for observations with assignments, and \code{summary()} for the
+enumeration table.
 }
 \description{
-Performs comprehensive model-based clustering analysis using the MoEClust package.
-Systematically tests multiple covariance models and provides results on both
-original and scaled data scales for interpretation.
+Fits latent profile models via the \pkg{latents} package. A single
+\code{n_profiles} value fits one model with \code{\link[latents:lpa]{latents::lpa()}}; multiple values
+or covariance \code{models} enumerate candidates with
+\code{\link[latents:enumerate_classes]{latents::enumerate_classes()}} and select the best by BIC.
 }
 \examples{
-\dontrun{
-# Basic usage with iris data
-results <- clustering(
-  data = iris,
+\donttest{
+fit <- clustering(iris,
   vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
-  n_clusters = 3
-)
-
-# Test specific models
-results <- clustering(
-  data = iris,
-  vars = c("Sepal.Length", "Sepal.Width"),
-  n_clusters = 2:4,
-  models = c("EEE", "VVV", "VEV")
-)
-
-# View results using plot()
-plot(results)                        # cluster plots
-plot(results, type = "diagnostics")
-plot(results, type = "selection")
-plot(results, type = "all")
-
-# Get cluster assignments
-data_clustered <- get_cluster_assignments(results)
-
-# Assess stability
-stability <- assess_cluster_stability(results)
-
-# Generate report
-generate_cluster_report(results)
+  n_profiles = 3, models = "EEE", seed = 1)
+fit
+plot(fit)
+as.data.frame(fit)
+fitted(fit)
 }
 
+}
+\seealso{
+\code{\link[=plot_clustering]{plot_clustering()}}, \code{\link[latents:lpa]{latents::lpa()}},
+\code{\link[latents:enumerate_classes]{latents::enumerate_classes()}}
 }

@@ -55,6 +55,7 @@ utils::globalVariables(c(
   # Clustering variables
   "Cluster",
   "cluster",
+  "profile",
   "Proportion",
   "Model",
   "BIC",
@@ -62,8 +63,6 @@ utils::globalVariables(c(
   "AIC",
   "loglik",
   "G",
-  "expert_type",
-  "gating_type",
 
   # Network variables
   "from",
