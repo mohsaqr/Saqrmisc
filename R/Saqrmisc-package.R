@@ -78,12 +78,10 @@
 #' \subsection{Clustering}{
 #' \itemize{
 #'   \item \code{\link{clustering}}: Latent profile clustering via the
-#'     \pkg{latents} package. Supports all 14 covariance structures.
-#'   \item \code{\link{get_cluster_assignments}}: Extract cluster assignments with
-#'     optional membership probabilities.
-#'   \item \code{\link{cluster_diagnostics}}: Classification diagnostics.
-#'   \item \code{\link{model_comparison_table}}: Compare models by BIC, AIC, or ICL.
-#'   \item \code{\link{generate_cluster_report}}: Generate comprehensive cluster reports.
+#'     \pkg{latents} package, selecting among profile counts and the 14
+#'     covariance structures by BIC.
+#'   \item \code{\link{plot_clustering}}: Profile, diagnostic and model
+#'     selection plots of a clustering result.
 #' }
 #' }
 #'

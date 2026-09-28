@@ -1,108 +1,52 @@
-fit_single <- local({
-  clustering(
-    data = iris,
-    vars = names(iris)[1:4],
-    n_profiles = 3,
-    models = "EEE",
-    seed = 1,
-    n_starts = 3,
-    verbose = FALSE
-  )
-})
+iris_vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
 
-fit_enum <- local({
-  clustering(
-    data = iris,
-    vars = names(iris)[1:4],
-    n_profiles = 2:3,
-    models = c("EII", "EEE"),
-    seed = 1,
-    n_starts = 3,
-    verbose = FALSE
-  )
-})
+fit_one <- clustering(iris, iris_vars, n_profiles = 3, models = "EEE",
+                      n_starts = 3, seed = 1, verbose = FALSE)
+fit_grid <- clustering(iris, iris_vars, n_profiles = 2:3,
+                       models = c("EII", "EEE"), n_starts = 3, seed = 1,
+                       verbose = FALSE)
 
-test_that("catalogue is tidy and groups are complete", {
+test_that("the catalogue is tidy and every type has a latents description", {
   types <- clustering_plot_types()
-  expect_s3_class(types, "data.frame")
   expect_named(types, c("type", "group", "description"))
   expect_false(anyDuplicated(types$type) > 0L)
-  expect_setequal(
-    unique(types$group),
-    c("clusters", "diagnostics", "selection")
-  )
+  expect_false(anyNA(types$description))
+  expect_setequal(types$group, c("clusters", "diagnostics", "selection"))
 })
 
-test_that("plot_clustering draws cluster plots by default", {
+test_that("every plot type draws without a condition", {
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
-
-  result <- plot_clustering(fit_single)
-  expect_s3_class(result, "multilpa")
+  lapply(clustering_plot_types()$type, \(view) {
+    expect_silent(plot_clustering(fit_grid, type = view))
+  })
 })
 
-test_that("individual latents plot types work", {
+test_that("groups and 'all' draw and return the result invisibly", {
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
-
-  for (what in c("profiles", "bars", "heatmap", "sizes", "avepp")) {
-    expect_silent(plot_clustering(fit_single, type = what))
-  }
+  expect_invisible(plot_clustering(fit_grid))
+  expect_identical(plot_clustering(fit_grid, type = "diagnostics"), fit_grid)
+  expect_silent(plot_clustering(fit_grid, type = "all"))
+  expect_silent(plot_clustering(fit_one, type = "profiles",
+                                scale = "standardized"))
 })
 
-test_that("diagnostics group draws multiple plots", {
+test_that("plot() dispatches to plot_clustering()", {
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
-
-  expect_silent(plot_clustering(fit_single, type = "diagnostics"))
+  expect_identical(plot(fit_one, type = "sizes"), fit_one)
 })
 
-test_that("enumeration plot works when enumeration exists", {
+test_that("a single candidate has no enumeration to draw", {
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
-
-  expect_silent(plot_clustering(fit_enum, type = "selection"))
+  expect_message(plot_clustering(fit_one, type = "selection"),
+                 "Only one candidate")
 })
 
-test_that("enumeration plot message when no enumeration", {
-  grDevices::pdf(NULL)
-  on.exit(grDevices::dev.off(), add = TRUE)
-
-  expect_message(
-    plot_clustering(fit_single, type = "enumeration"),
-    "No enumeration"
-  )
-})
-
-test_that("plot.saqr_clustering dispatches to plot_clustering", {
-  grDevices::pdf(NULL)
-  on.exit(grDevices::dev.off(), add = TRUE)
-
-  result <- plot(fit_single)
-  expect_s3_class(result, "multilpa")
-})
-
-test_that("bad inputs raise classed errors", {
+test_that("bad input raises classed errors", {
   expect_error(plot_clustering(list()), class = "saqrmisc_bad_input")
-  expect_error(plot_clustering(fit_single, type = "nope"),
+  expect_error(plot_clustering(fit_one, type = "nope"),
                class = "saqrmisc_bad_type")
-  expect_error(plot_clustering(fit_single, scale = "log"))
-})
-
-test_that("all draws everything without error", {
-  grDevices::pdf(NULL)
-  on.exit(grDevices::dev.off(), add = TRUE)
-
-  # Single model: enumeration type produces a message, not an error
-  expect_message(plot_clustering(fit_single, type = "all"), "No enumeration")
-
-  # Enum model: all types work silently
-  expect_silent(plot_clustering(fit_enum, type = "all"))
-})
-
-test_that("relative entropy helper is correct", {
-  crisp <- diag(3)
-  uniform <- matrix(1 / 3, nrow = 4, ncol = 3)
-  expect_equal(Saqrmisc:::.lpa_relative_entropy(crisp), 1)
-  expect_equal(Saqrmisc:::.lpa_relative_entropy(uniform), 0, tolerance = 1e-12)
 })

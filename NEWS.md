@@ -1,3 +1,32 @@
+# Saqrmisc 0.9.7
+
+## Clustering module rebuilt on latents 0.8.6
+
+* `clustering()` fits every candidate through `latents::enumerate_lpa()` (one
+  candidate is a grid of one) and returns the BIC-best fit. The result is now
+  a `latents` fit with class `c("saqr_clustering", "multilpa")`, so
+  `as.data.frame()`, `latents::diagnostics()`, `latents::get_results()` and
+  `predict()` work on it directly.
+* `summary()` returns one row per candidate with `aic`, `bic`, `icl`,
+  `entropy`, `boundary`, `delta_bic` and `selected` (was `best`). `icl` is no
+  longer `NA` for a single model.
+* `fitted()` matches columns by name, not position.
+* Progress is reported with `message()`. The latents single-level notice no
+  longer leaks into the output.
+* New checks: non-numeric or constant `vars` raise `saqrmisc_bad_input`;
+  `scaling` and `na_action` are matched arguments.
+* `plot_clustering()` takes `type` and passes `...` (e.g.
+  `scale = "standardized"`) to latents. Plot descriptions come from
+  `latents::plot_views()`.
+* **Removed** (use the verbs above): `cluster()`, `cluster_fit()`,
+  `get_cluster_assignments()`/`cluster_assignments()` -> `fitted()`;
+  `compare_models()`/`cluster_compare()`, `model_comparison_table()`/
+  `cluster_compare_table()`, `list_models()`/`cluster_models()`,
+  `get_best_model()`/`cluster_best()` -> `summary()`;
+  `cluster_diagnostics()`/`cluster_stability()` -> `latents::diagnostics()`;
+  `generate_cluster_report()`/`cluster_report()` -> `print()`/`summary()`.
+* Requires latents >= 0.8.6.
+
 # Saqrmisc 0.9.4
 
 ## Systematic clustering plots

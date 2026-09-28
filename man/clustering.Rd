@@ -2,8 +2,6 @@
 % Please edit documentation in R/clustering.R
 \name{clustering}
 \alias{clustering}
-\alias{cluster}
-\alias{cluster_fit}
 \title{Latent Profile Clustering}
 \usage{
 clustering(
@@ -11,101 +9,80 @@ clustering(
   vars,
   n_profiles = NULL,
   n_clusters = NULL,
-  scaling = "standardize",
   models = "VVI",
+  scaling = c("standardize", "center", "minmax", "none"),
   n_starts = 10L,
   seed = NULL,
-  verbose = TRUE,
-  na_action = "omit"
-)
-
-cluster(
-  data,
-  vars,
-  n_profiles = NULL,
-  n_clusters = NULL,
-  scaling = "standardize",
-  models = "VVI",
-  n_starts = 10L,
-  seed = NULL,
-  verbose = TRUE,
-  na_action = "omit"
-)
-
-cluster_fit(
-  data,
-  vars,
-  n_profiles = NULL,
-  n_clusters = NULL,
-  scaling = "standardize",
-  models = "VVI",
-  n_starts = 10L,
-  seed = NULL,
-  verbose = TRUE,
-  na_action = "omit"
+  na_action = c("omit", "fail"),
+  verbose = TRUE
 )
 }
 \arguments{
 \item{data}{A data frame.}
 
-\item{vars}{Character vector of column names to cluster on.}
+\item{vars}{Character vector of numeric columns to cluster on.}
 
-\item{n_profiles}{Number of profiles (clusters). A single integer for one
-model, or a range like \code{2:5} for enumeration. Alias: \code{n_clusters}.}
+\item{n_profiles}{Number(s) of profiles, each at least 2: one value, or a
+range such as \code{2:5} to compare.}
 
 \item{n_clusters}{Alias for \code{n_profiles}.}
 
-\item{scaling}{Scaling applied before fitting: \code{"standardize"} (default),
-\code{"center"}, \code{"minmax"}, or \code{"none"}.}
+\item{models}{Covariance structure(s) as three-letter mclust codes (e.g.
+\code{"EEE"}, \code{"VVI"}), or \code{"all"} for all 14.}
 
-\item{models}{Covariance structure(s) to fit. A character vector of
-three-letter mclust codes (e.g. \code{"EEE"}, \code{"VVI"}) or \code{"all"} for all 14.
-Defaults to \code{"VVI"}.}
+\item{scaling}{Transformation applied to \code{vars} before fitting:
+\code{"standardize"} (mean 0, SD 1), \code{"center"}, \code{"minmax"} (0 to 1), or
+\code{"none"}.}
 
-\item{n_starts}{Number of random starts per model. Defaults to 10.}
+\item{n_starts}{Random starts per candidate.}
 
-\item{seed}{Random seed for reproducibility.}
+\item{seed}{Random seed passed to \pkg{latents}.}
 
-\item{verbose}{Print progress. Defaults to \code{TRUE}.}
+\item{na_action}{\code{"omit"} drops rows with a missing value in \code{vars};
+\code{"fail"} raises an error instead.}
 
-\item{na_action}{How to handle missing values: \code{"omit"} (default) drops
-incomplete rows, \code{"fail"} raises an error.}
+\item{verbose}{Report progress with \code{\link[=message]{message()}}.}
 }
 \value{
-An object of class \code{"saqr_clustering"} containing:
-\describe{
-\item{fit}{The best \code{multilpa} object (from \pkg{latents}).}
-\item{enumeration}{The \code{multilpa_enumeration} grid, or \code{NULL} when only
-one candidate was fitted.}
-\item{data}{List with \code{original_data}, \code{scaled_data}, \code{full_input_data},
-\code{complete_rows}, and \code{n_removed}.}
-\item{parameters}{List with \code{cluster_vars}, \code{n_profiles}, \code{scaling_method},
-\code{models_tested}, and \code{sample_size}.}
-}
-
-Use \code{plot()} to visualise, \code{as.data.frame()} for the profile means,
-\code{fitted()} for observations with assignments, and \code{summary()} for the
-enumeration table.
+An object of class \code{c("saqr_clustering", "multilpa")}: the
+selected \pkg{latents} fit, fitted to the scaled data. Methods:
+\code{print()}, \code{summary()} (one row per candidate), \code{fitted()} (the input
+data with profile assignments), \code{plot()}.
 }
 \description{
-Fits latent profile models via the \pkg{latents} package. A single
-\code{n_profiles} value fits one model with \code{\link[latents:lpa]{latents::lpa()}}; multiple values
-or covariance \code{models} enumerate candidates with
-\code{\link[latents:enumerate_classes]{latents::enumerate_classes()}} and select the best by BIC.
+Fits latent profile models with the \pkg{latents} package and keeps the
+candidate with the lowest BIC. Every combination of \code{n_profiles} and
+\code{models} is fitted by \code{\link[latents:enumerate_lpa]{latents::enumerate_lpa()}}; a single combination is
+simply a grid of one.
+
+The result is a \pkg{latents} fit, so its verbs apply directly:
+\code{as.data.frame(fit)} for profile means, \code{latents::diagnostics(fit)} for
+classification quality, \code{latents::get_results(fit, what)} for any table.
 }
+\section{Errors}{
+
+Raises \code{saqrmisc_bad_input} for unknown \code{models}, non-numeric or constant
+\code{vars}, missing values under \code{na_action = "fail"}, or fewer than 10
+complete rows; \code{saqrmisc_no_converged} when no candidate converged.
+}
+
 \examples{
 \donttest{
-fit <- clustering(iris,
-  vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
-  n_profiles = 3, models = "EEE", seed = 1)
+set.seed(1)
+vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+fit <- clustering(iris, vars, n_profiles = 2:4, models = c("EEE", "VVI"))
 fit
-plot(fit)
+summary(fit)
 as.data.frame(fit)
 fitted(fit)
+plot(fit)
 }
 
 }
+\references{
+Vermunt, J. K. (2003). Multilevel latent class models. \emph{Sociological
+Methodology}, 33, 213-239.
+}
 \seealso{
-\code{\link[=plot_clustering]{plot_clustering()}}, \code{\link[latents:lpa]{latents::lpa()}},
-\code{\link[latents:enumerate_classes]{latents::enumerate_classes()}}
+\code{\link[=plot_clustering]{plot_clustering()}}, \code{\link[latents:enumerate_lpa]{latents::enumerate_lpa()}}
 }

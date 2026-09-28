@@ -2,56 +2,50 @@
 % Please edit documentation in R/plot_clustering.R
 \name{plot_clustering}
 \alias{plot_clustering}
-\title{Plot Clustering Results}
+\title{Plot a Clustering Result}
 \usage{
-plot_clustering(
-  results,
-  type = "clusters",
-  scale = c("raw", "standardized"),
-  ...
-)
+plot_clustering(results, type = "clusters", ...)
 }
 \arguments{
 \item{results}{A \code{saqr_clustering} object from \code{\link[=clustering]{clustering()}}.}
 
-\item{type}{Character vector of plot types and/or groups. Defaults to
-\code{"clusters"}.}
+\item{type}{Plot types and/or groups; see \code{\link[=clustering_plot_types]{clustering_plot_types()}}.}
 
-\item{scale}{\code{"raw"} (default, shows the data as fitted) or
-\code{"standardized"}.}
-
-\item{...}{Further arguments passed to \code{plot.multilpa()}.}
+\item{...}{Passed to the \pkg{latents} plot method of the selected fit,
+e.g. \code{scale = "standardized"} or \code{main}.}
 }
 \value{
-Invisibly, the fitted \code{multilpa} object (or enumeration).
+\code{results}, invisibly. Called for its plots.
 }
 \description{
-Draws plots of a \code{\link[=clustering]{clustering()}} result by delegating to the
-\pkg{latents} package's \code{plot.multilpa()} method. Plots are organised
-into three groups:
+Draws figures of a \code{\link[=clustering]{clustering()}} result with \pkg{latents}. \code{type} takes
+any mix of plot types and groups:
 \itemize{
-\item \code{"clusters"} — profile shape: \code{"profiles"}, \code{"bars"}, \code{"heatmap"},
-\code{"raincloud"}, \code{"sizes"}.
-\item \code{"diagnostics"} — classification quality: \code{"entropy"},
-\code{"posteriors"}, \code{"avepp"}.
-\item \code{"selection"} — model comparison: \code{"enumeration"} (requires
-enumeration via multiple \code{n_profiles} or \code{models}).
-\item \code{"all"} — every available plot.
+\item \code{"clusters"}: \code{"profiles"}, \code{"bars"}, \code{"heatmap"}, \code{"raincloud"},
+\code{"sizes"}.
+\item \code{"diagnostics"}: \code{"entropy"}, \code{"posteriors"}, \code{"avepp"}.
+\item \code{"selection"}: \code{"enumeration"}, information criteria across the
+candidates (needs more than one candidate).
+\item \code{"all"}: every type above.
+}
+}
+\section{Errors}{
+
+Raises \code{saqrmisc_bad_input} when \code{results} is not a \code{\link[=clustering]{clustering()}} result
+and \code{saqrmisc_bad_type} for an unknown \code{type}.
 }
 
-Use \code{\link[=clustering_plot_types]{clustering_plot_types()}} for the full catalogue.
-}
 \examples{
 \donttest{
-fit <- clustering(iris,
-  vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
-  n_profiles = 3, models = "EEE", seed = 1)
+set.seed(1)
+vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
 plot_clustering(fit)
 plot_clustering(fit, type = "diagnostics")
-plot_clustering(fit, type = "heatmap")
+plot_clustering(fit, type = c("heatmap", "enumeration"))
 }
 
 }
 \seealso{
-\code{\link[=clustering]{clustering()}}, \code{\link[=clustering_plot_types]{clustering_plot_types()}}, \code{\link[latents:plot_views]{latents::plot_views()}}
+\code{\link[=clustering]{clustering()}}, \code{\link[=clustering_plot_types]{clustering_plot_types()}}
 }

@@ -2,19 +2,21 @@
 % Please edit documentation in R/clustering.R
 \name{summary.saqr_clustering}
 \alias{summary.saqr_clustering}
-\title{Summarise a Clustering Result}
+\title{Compare the Candidate Models of a Clustering Result}
 \usage{
 \method{summary}{saqr_clustering}(object, ...)
 }
 \arguments{
-\item{object}{A `saqr_clustering` object.}
+\item{object}{A `saqr_clustering` object from [clustering()].}
 
 \item{...}{Ignored.}
 }
 \value{
-When an enumeration was fitted, a data.frame with one row per
-  candidate model. Otherwise a one-row summary of the single fit.
+A data.frame with one row per candidate (profiles x covariance
+  model): `n_profiles`, `model`, `log_likelihood`, `n_parameters`, `aic`,
+  `bic`, `icl`, `entropy` (relative), `converged`, `boundary`, `delta_bic`
+  (distance from the selected model) and `selected`.
 }
 \description{
-Summarise a Clustering Result
+Compare the Candidate Models of a Clustering Result
 }

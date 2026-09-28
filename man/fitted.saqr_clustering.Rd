@@ -2,20 +2,21 @@
 % Please edit documentation in R/clustering.R
 \name{fitted.saqr_clustering}
 \alias{fitted.saqr_clustering}
-\title{Extract Fitted Observations with Profile Assignments}
+\title{Input Data with Profile Assignments}
 \usage{
 \method{fitted}{saqr_clustering}(object, ...)
 }
 \arguments{
-\item{object}{A `saqr_clustering` object.}
+\item{object}{A `saqr_clustering` object from [clustering()].}
 
 \item{...}{Ignored.}
 }
 \value{
-A data.frame with all columns of the input data plus `profile`,
-  `uncertainty`, and posterior probability columns. Rows removed during
-  fitting get `NA` fitted values.
+The data frame passed to [clustering()], one row per input row,
+  with `profile` (modal assignment), `uncertainty` and one
+  `posterior_profile_<k>` column per profile added. Rows dropped for
+  missing values carry `NA` in the added columns.
 }
 \description{
-Extract Fitted Observations with Profile Assignments
+Input Data with Profile Assignments
 }

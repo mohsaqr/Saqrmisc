@@ -1,171 +1,118 @@
-# Saqrmisc Package: Plotting for clustering() results
+# Saqrmisc Package: plots of a clustering() result
 #
-# Delegates to the latents package's plot.multilpa() for the actual figures.
-# plot_clustering() is the public verb; plot.saqr_clustering() is the S3 method.
-
-#' @importFrom ggplot2 ggplot aes labs theme_minimal theme element_text
-#'   geom_line geom_point scale_x_continuous
-NULL
-
-# =============================================================================
-# CATALOGUE
-# =============================================================================
+# Every figure is drawn by latents: plot.multilpa() for the selected fit and
+# plot.multilpa_enumeration() for the candidate grid. This file only maps the
+# Saqrmisc groups onto latents' views.
 
 #' @noRd
-.clustering_plot_catalogue <- function() {
-  data.frame(
-    type = c(
-      "profiles", "bars", "heatmap", "raincloud", "sizes",
-      "entropy", "posteriors", "avepp",
-      "enumeration"
-    ),
-    group = c(
-      rep("clusters", 5L),
-      rep("diagnostics", 3L),
-      "selection"
-    ),
-    description = c(
-      "Profile means across indicators, one line per profile",
-      "Profile means as grouped bars with 95% intervals",
-      "Profile means as a diverging heatmap (SDs from grand mean)",
-      "Density + box + jitter of each indicator by profile",
-      "Number and percentage of observations per profile",
-      "Posterior-probability histogram (classification entropy)",
-      "Per-observation posterior by assigned profile",
-      "Average posterior probability matrix (assigned x posterior)",
-      "BIC / AIC across enumerated candidates"
-    ),
-    stringsAsFactors = FALSE
-  )
-}
+.clustering_plot_groups <- c(
+  profiles = "clusters", bars = "clusters", heatmap = "clusters",
+  raincloud = "clusters", sizes = "clusters",
+  entropy = "diagnostics", posteriors = "diagnostics", avepp = "diagnostics",
+  enumeration = "selection"
+)
 
 #' List the Plot Types of plot_clustering()
+#'
 #' @md
-#'
 #' @description
-#' Returns the catalogue of plots that [plot_clustering()] can draw.
-#' Any `type` value, group name, or `"all"` can be passed to
-#' [plot_clustering()].
+#' The figures [plot_clustering()] can draw. Any `type`, any `group`, or
+#' `"all"` can be passed as its `type`.
 #'
-#' @return A data.frame with columns `type`, `group`, and `description`.
+#' @return A data.frame with one row per plot type and columns `type`,
+#'   `group` (`"clusters"`, `"diagnostics"` or `"selection"`) and
+#'   `description`.
 #'
 #' @examples
 #' clustering_plot_types()
 #'
 #' @export
 clustering_plot_types <- function() {
-  .clustering_plot_catalogue()
+  views <- latents::plot_views()
+  types <- names(.clustering_plot_groups)
+  data.frame(
+    type = types,
+    group = unname(.clustering_plot_groups),
+    description = views$description[match(types, views$type)],
+    stringsAsFactors = FALSE
+  )
 }
 
-# =============================================================================
-# PUBLIC VERB
-# =============================================================================
-
-#' Plot Clustering Results
+#' Plot a Clustering Result
 #'
 #' @md
 #' @description
-#' Draws plots of a [clustering()] result by delegating to the
-#' \pkg{latents} package's `plot.multilpa()` method. Plots are organised
-#' into three groups:
+#' Draws figures of a [clustering()] result with \pkg{latents}. `type` takes
+#' any mix of plot types and groups:
 #'
-#' * `"clusters"` — profile shape: `"profiles"`, `"bars"`, `"heatmap"`,
-#'   `"raincloud"`, `"sizes"`.
-#' * `"diagnostics"` — classification quality: `"entropy"`,
-#'   `"posteriors"`, `"avepp"`.
-#' * `"selection"` — model comparison: `"enumeration"` (requires
-#'   enumeration via multiple `n_profiles` or `models`).
-#' * `"all"` — every available plot.
-#'
-#' Use [clustering_plot_types()] for the full catalogue.
+#' * `"clusters"`: `"profiles"`, `"bars"`, `"heatmap"`, `"raincloud"`,
+#'   `"sizes"`.
+#' * `"diagnostics"`: `"entropy"`, `"posteriors"`, `"avepp"`.
+#' * `"selection"`: `"enumeration"`, information criteria across the
+#'   candidates (needs more than one candidate).
+#' * `"all"`: every type above.
 #'
 #' @param results A `saqr_clustering` object from [clustering()].
-#' @param type Character vector of plot types and/or groups. Defaults to
-#'   `"clusters"`.
-#' @param scale `"raw"` (default, shows the data as fitted) or
-#'   `"standardized"`.
-#' @param ... Further arguments passed to `plot.multilpa()`.
+#' @param type Plot types and/or groups; see [clustering_plot_types()].
+#' @param ... Passed to the \pkg{latents} plot method of the selected fit,
+#'   e.g. `scale = "standardized"` or `main`.
 #'
-#' @return Invisibly, the fitted `multilpa` object (or enumeration).
+#' @return `results`, invisibly. Called for its plots.
 #'
-#' @seealso [clustering()], [clustering_plot_types()], [latents::plot_views()]
+#' @section Errors:
+#' Raises `saqrmisc_bad_input` when `results` is not a [clustering()] result
+#' and `saqrmisc_bad_type` for an unknown `type`.
+#'
+#' @seealso [clustering()], [clustering_plot_types()]
 #'
 #' @examples
 #' \donttest{
-#' fit <- clustering(iris,
-#'   vars = c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width"),
-#'   n_profiles = 3, models = "EEE", seed = 1)
+#' set.seed(1)
+#' vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+#' fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
 #' plot_clustering(fit)
 #' plot_clustering(fit, type = "diagnostics")
-#' plot_clustering(fit, type = "heatmap")
+#' plot_clustering(fit, type = c("heatmap", "enumeration"))
 #' }
 #'
 #' @export
-plot_clustering <- function(results,
-                            type = "clusters",
-                            scale = c("raw", "standardized"),
-                            ...) {
+plot_clustering <- function(results, type = "clusters", ...) {
   if (!inherits(results, "saqr_clustering")) {
     stop(errorCondition(
-      "`results` must be a saqr_clustering object from clustering()",
+      "`results` must be a clustering() result.",
       class = "saqrmisc_bad_input", call = NULL))
   }
-  scale <- match.arg(scale)
-
-  catalogue <- .clustering_plot_catalogue()
-  valid_types <- c(catalogue$type, unique(catalogue$group), "all")
-  unknown <- setdiff(type, valid_types)
+  groups <- .clustering_plot_groups
+  valid <- c(names(groups), unique(groups), "all")
+  unknown <- setdiff(type, valid)
   if (length(unknown) > 0L) {
     stop(errorCondition(
-      sprintf("Unknown `type`: %s. Valid values: %s",
-              paste(unknown, collapse = ", "),
-              paste(valid_types, collapse = ", ")),
+      sprintf("Unknown `type`: %s. Use one of: %s.",
+              paste(unknown, collapse = ", "), paste(valid, collapse = ", ")),
       class = "saqrmisc_bad_type", call = NULL))
   }
+  chosen <- names(groups)[names(groups) %in% type | groups %in% type |
+                            "all" %in% type]
 
-  # expand groups
-  selected <- catalogue$type %in% type |
-    catalogue$group %in% type |
-    "all" %in% type
-  chosen <- catalogue$type[selected]
-
-  fit <- results$fit
-
-  # cluster + diagnostic plots via latents
-  latents_types <- intersect(
-    chosen,
-    c("profiles", "bars", "heatmap", "raincloud", "sizes",
-      "entropy", "posteriors", "avepp")
-  )
-  vapply(latents_types, \(what) {
-    plot(fit, what = what, scale = scale, ...)
-    ""
-  }, character(1L))
-
-  # enumeration plot
-  if ("enumeration" %in% chosen) {
-    if (is.null(results$enumeration)) {
-      message("No enumeration to plot (only one model was fitted).")
-    } else {
-      plot(results$enumeration)
+  fit <- .as_multilpa(results)
+  enumeration <- results$clustering$enumeration
+  lapply(chosen, \(view) {
+    if (!identical(view, "enumeration")) return(plot(fit, what = view, ...))
+    if (nrow(as.data.frame(enumeration)) < 2L) {
+      return(message("Only one candidate was fitted; no enumeration to plot."))
     }
-  }
-
-  invisible(fit)
+    plot(enumeration)
+  })
+  invisible(results)
 }
 
-#' Plot method for saqr_clustering objects
+#' Plot Method for Clustering Results
 #'
-#' @param x A `saqr_clustering` object.
-#' @param type Plot type(s); see [plot_clustering()].
-#' @param scale `"raw"` or `"standardized"`.
-#' @param ... Further arguments passed to `plot.multilpa()`.
-#'
-#' @return Invisibly, the fitted `multilpa` object.
+#' @param x A `saqr_clustering` object from [clustering()].
+#' @param type Plot types and/or groups; see [plot_clustering()].
+#' @param ... Passed to [plot_clustering()].
+#' @return `x`, invisibly.
 #' @export
-plot.saqr_clustering <- function(x,
-                                 type = "clusters",
-                                 scale = c("raw", "standardized"),
-                                 ...) {
-  plot_clustering(x, type = type, scale = scale, ...)
+plot.saqr_clustering <- function(x, type = "clusters", ...) {
+  plot_clustering(x, type = type, ...)
 }

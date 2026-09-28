@@ -1,7 +1,7 @@
 Package: Saqrmisc
 Type: Package
 Title: Miscellaneous Functions for Data Processing and Analysis
-Version: 0.9.6
+Version: 0.9.7
 Authors@R: 
     person("Mohammed", "Saqr", 
            email = "saqr@saqr.me",
@@ -20,7 +20,7 @@ BugReports: https://github.com/mohsaqr/Saqrmisc/issues
 Depends:
     R (>= 4.1.0)
 Imports:
-    latents,
+    latents (>= 0.8.6),
     dplyr,
     ggplot2,
     vcd,

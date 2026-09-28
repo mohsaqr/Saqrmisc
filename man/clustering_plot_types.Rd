@@ -7,12 +7,13 @@
 clustering_plot_types()
 }
 \value{
-A data.frame with columns \code{type}, \code{group}, and \code{description}.
+A data.frame with one row per plot type and columns \code{type},
+\code{group} (\code{"clusters"}, \code{"diagnostics"} or \code{"selection"}) and
+\code{description}.
 }
 \description{
-Returns the catalogue of plots that \code{\link[=plot_clustering]{plot_clustering()}} can draw.
-Any \code{type} value, group name, or \code{"all"} can be passed to
-\code{\link[=plot_clustering]{plot_clustering()}}.
+The figures \code{\link[=plot_clustering]{plot_clustering()}} can draw. Any \code{type}, any \code{group}, or
+\code{"all"} can be passed as its \code{type}.
 }
 \examples{
 clustering_plot_types()

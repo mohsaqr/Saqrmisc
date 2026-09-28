@@ -2,22 +2,20 @@
 % Please edit documentation in R/plot_clustering.R
 \name{plot.saqr_clustering}
 \alias{plot.saqr_clustering}
-\title{Plot method for saqr_clustering objects}
+\title{Plot Method for Clustering Results}
 \usage{
-\method{plot}{saqr_clustering}(x, type = "clusters", scale = c("raw", "standardized"), ...)
+\method{plot}{saqr_clustering}(x, type = "clusters", ...)
 }
 \arguments{
-\item{x}{A `saqr_clustering` object.}
+\item{x}{A `saqr_clustering` object from [clustering()].}
 
-\item{type}{Plot type(s); see [plot_clustering()].}
+\item{type}{Plot types and/or groups; see [plot_clustering()].}
 
-\item{scale}{`"raw"` or `"standardized"`.}
-
-\item{...}{Further arguments passed to `plot.multilpa()`.}
+\item{...}{Passed to [plot_clustering()].}
 }
 \value{
-Invisibly, the fitted `multilpa` object.
+`x`, invisibly.
 }
 \description{
-Plot method for saqr_clustering objects
+Plot Method for Clustering Results
 }
