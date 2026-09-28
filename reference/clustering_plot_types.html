@@ -9,7 +9,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -61,26 +61,32 @@
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">clustering_plot_types</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>          type       group</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    profiles    clusters</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        bars    clusters</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3     heatmap    clusters</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4   raincloud    clusters</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5       sizes    clusters</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6     entropy diagnostics</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7  posteriors diagnostics</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8       avepp diagnostics</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9 enumeration   selection</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                                     description</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1        Profile means across indicators, point size showing profile prevalence</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        Profile means as grouped bars, with 95% intervals when `data` is given</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3         Profile means as standard deviations from each indicator's grand mean</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 Each indicator's distribution by assigned profile: density, box, observations</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                     Effective number of cases in each profile, with its share</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                  Per-case entropy contribution within each profile, as ridges</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7                      Posterior probability of the assigned profile, as ridges</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8          Average posterior probability: assigned profile by posterior profile</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9            Information criteria across a candidate grid (plot an enumeration)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           type       group</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     profiles    clusters</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2         bars    clusters</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3      heatmap    clusters</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    raincloud    clusters</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5     parallel    clusters</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6        pairs    clusters</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7        sizes    clusters</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8      entropy diagnostics</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9   posteriors diagnostics</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10       avepp diagnostics</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 11 enumeration   selection</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 12        tree   selection</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                                      description</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                 Profile means across indicators, one labelled line per profile</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                    Profile means as grouped bars from zero, with 95% intervals</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3           Profile means in observed standard deviations from the observed mean</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  Each indicator's distribution by assigned profile: density, box, observations</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                  Every case as a line across indicators, one panel per profile</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                 Scatter-plot matrix with each profile's 95% covariance ellipse</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7                      Effective number of cases in each profile, with its share</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8                   Each case's entropy relative to a flat posterior, by profile</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9              Posterior probability of each case's assigned profile, by profile</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10          Average posterior probability: assigned profile by posterior profile</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 11            Information criteria across a candidate grid (plot an enumeration)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 12                    How profiles split as more are added (plot an enumeration)</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

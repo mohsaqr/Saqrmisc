@@ -77,6 +77,8 @@
   : Print method for network_analysis objects
 - [`print(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_clustering.md)
   : Print a Clustering Result
+- [`print(`*`<saqr_plots>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_plots.md)
+  : Print Several Clustering Plots
 - [`print(`*`<saqr_result>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_result.md)
   : Print method for saqr_result
 - [`replace_missing()`](https://pak.dynasite.org/Saqrmisc/reference/replace_missing.md)

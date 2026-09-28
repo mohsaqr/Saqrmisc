@@ -1,5 +1,21 @@
 # Changelog
 
+## Saqrmisc 0.9.8
+
+### Clustering plots are ggplot objects
+
+- [`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md)
+  and [`plot()`](https://rdrr.io/r/graphics/plot.default.html) on a
+  [`clustering()`](https://pak.dynasite.org/Saqrmisc/reference/clustering.md)
+  result now return the plots instead of drawing them: one type gives a
+  ggplot object, several give a `saqr_plots` list, named by type, that
+  draws each when printed. This follows latents 0.8.8, whose
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) methods
+  return ggplot objects.
+- New types: `"parallel"` and `"pairs"` (group `"clusters"`) and
+  `"tree"` (group `"selection"`).
+- Requires latents \>= 0.8.8.
+
 ## Saqrmisc 0.9.7
 
 ### Clustering module rebuilt on latents 0.8.6

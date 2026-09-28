@@ -25,4 +25,4 @@ plot(x, type = "clusters", ...)
 
 ## Value
 
-\`x\`, invisibly.
+As \[plot_clustering()\]: a ggplot object, or a \`saqr_plots\` list.

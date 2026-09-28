@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,16 @@
       <small>Source: <a href="https://github.com/mohsaqr/Saqrmisc/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.8" id="saqrmisc-098">Saqrmisc 0.9.8<a class="anchor" aria-label="anchor" href="#saqrmisc-098"></a></h2>
+<div class="section level3">
+<h3 id="clustering-plots-are-ggplot-objects-0-9-8">Clustering plots are ggplot objects<a class="anchor" aria-label="anchor" href="#clustering-plots-are-ggplot-objects-0-9-8"></a></h3>
+<ul><li>
+<code><a href="../reference/plot_clustering.html">plot_clustering()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> on a <code><a href="../reference/clustering.html">clustering()</a></code> result now return the plots instead of drawing them: one type gives a ggplot object, several give a <code>saqr_plots</code> list, named by type, that draws each when printed. This follows latents 0.8.8, whose <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> methods return ggplot objects.</li>
+<li>New types: <code>"parallel"</code> and <code>"pairs"</code> (group <code>"clusters"</code>) and <code>"tree"</code> (group <code>"selection"</code>).</li>
+<li>Requires latents &gt;= 0.8.8.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.7" id="saqrmisc-097">Saqrmisc 0.9.7<a class="anchor" aria-label="anchor" href="#saqrmisc-097"></a></h2>
 <div class="section level3">
