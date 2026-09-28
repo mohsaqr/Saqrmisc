@@ -15,24 +15,28 @@ plot_clustering(results, type = "clusters", ...)
 e.g. \code{scale = "standardized"} or \code{main}.}
 }
 \value{
-\code{results}, invisibly. Called for its plots.
+One type: a ggplot object. Several: a \code{saqr_plots} list of ggplot
+objects named by type, which draws every one when printed. Print, save
+with \code{ggplot2::ggsave()}, or restyle with \code{+ ggplot2::theme()}.
 }
 \description{
-Draws figures of a \code{\link[=clustering]{clustering()}} result with \pkg{latents}. \code{type} takes
-any mix of plot types and groups:
+Builds figures of a \code{\link[=clustering]{clustering()}} result with \pkg{latents}, as ggplot
+objects. \code{type} takes any mix of plot types and groups:
 \itemize{
 \item \code{"clusters"}: \code{"profiles"}, \code{"bars"}, \code{"heatmap"}, \code{"raincloud"},
-\code{"sizes"}.
+\code{"parallel"}, \code{"pairs"}, \code{"sizes"}.
 \item \code{"diagnostics"}: \code{"entropy"}, \code{"posteriors"}, \code{"avepp"}.
-\item \code{"selection"}: \code{"enumeration"}, information criteria across the
-candidates (needs more than one candidate).
+\item \code{"selection"}: \code{"enumeration"} (information criteria across the
+candidates) and \code{"tree"} (how profiles split as more are added); both
+need more than one candidate.
 \item \code{"all"}: every type above.
 }
 }
 \section{Errors}{
 
 Raises \code{saqrmisc_bad_input} when \code{results} is not a \code{\link[=clustering]{clustering()}} result
-and \code{saqrmisc_bad_type} for an unknown \code{type}.
+and \code{saqrmisc_bad_type} for an unknown \code{type}. A selection view that needs
+more candidates than were fitted is skipped with a message.
 }
 
 \examples{
@@ -40,9 +44,9 @@ and \code{saqrmisc_bad_type} for an unknown \code{type}.
 set.seed(1)
 vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
 fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
-plot_clustering(fit)
+plot_clustering(fit, type = "profiles")
 plot_clustering(fit, type = "diagnostics")
-plot_clustering(fit, type = c("heatmap", "enumeration"))
+plot_clustering(fit, type = c("pairs", "tree"))
 }
 
 }

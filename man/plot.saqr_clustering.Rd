@@ -14,7 +14,7 @@
 \item{...}{Passed to [plot_clustering()].}
 }
 \value{
-`x`, invisibly.
+As [plot_clustering()]: a ggplot object, or a `saqr_plots` list.
 }
 \description{
 Plot Method for Clustering Results

@@ -1,15 +1,16 @@
 # Saqrmisc Package: plots of a clustering() result
 #
-# Every figure is drawn by latents: plot.multilpa() for the selected fit and
-# plot.multilpa_enumeration() for the candidate grid. This file only maps the
-# Saqrmisc groups onto latents' views.
+# Every figure is a ggplot object built by latents: plot.multilpa() for the
+# selected fit and plot.multilpa_enumeration() for the candidate grid. This
+# file only maps the Saqrmisc groups onto latents' views.
 
 #' @noRd
 .clustering_plot_groups <- c(
   profiles = "clusters", bars = "clusters", heatmap = "clusters",
-  raincloud = "clusters", sizes = "clusters",
+  raincloud = "clusters", parallel = "clusters", pairs = "clusters",
+  sizes = "clusters",
   entropy = "diagnostics", posteriors = "diagnostics", avepp = "diagnostics",
-  enumeration = "selection"
+  enumeration = "selection", tree = "selection"
 )
 
 #' List the Plot Types of plot_clustering()
@@ -42,14 +43,15 @@ clustering_plot_types <- function() {
 #'
 #' @md
 #' @description
-#' Draws figures of a [clustering()] result with \pkg{latents}. `type` takes
-#' any mix of plot types and groups:
+#' Builds figures of a [clustering()] result with \pkg{latents}, as ggplot
+#' objects. `type` takes any mix of plot types and groups:
 #'
 #' * `"clusters"`: `"profiles"`, `"bars"`, `"heatmap"`, `"raincloud"`,
-#'   `"sizes"`.
+#'   `"parallel"`, `"pairs"`, `"sizes"`.
 #' * `"diagnostics"`: `"entropy"`, `"posteriors"`, `"avepp"`.
-#' * `"selection"`: `"enumeration"`, information criteria across the
-#'   candidates (needs more than one candidate).
+#' * `"selection"`: `"enumeration"` (information criteria across the
+#'   candidates) and `"tree"` (how profiles split as more are added); both
+#'   need more than one candidate.
 #' * `"all"`: every type above.
 #'
 #' @param results A `saqr_clustering` object from [clustering()].
@@ -57,11 +59,14 @@ clustering_plot_types <- function() {
 #' @param ... Passed to the \pkg{latents} plot method of the selected fit,
 #'   e.g. `scale = "standardized"` or `main`.
 #'
-#' @return `results`, invisibly. Called for its plots.
+#' @return One type: a ggplot object. Several: a `saqr_plots` list of ggplot
+#'   objects named by type, which draws every one when printed. Print, save
+#'   with `ggplot2::ggsave()`, or restyle with `+ ggplot2::theme()`.
 #'
 #' @section Errors:
 #' Raises `saqrmisc_bad_input` when `results` is not a [clustering()] result
-#' and `saqrmisc_bad_type` for an unknown `type`.
+#' and `saqrmisc_bad_type` for an unknown `type`. A selection view that needs
+#' more candidates than were fitted is skipped with a message.
 #'
 #' @seealso [clustering()], [clustering_plot_types()]
 #'
@@ -70,9 +75,9 @@ clustering_plot_types <- function() {
 #' set.seed(1)
 #' vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
 #' fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
-#' plot_clustering(fit)
+#' plot_clustering(fit, type = "profiles")
 #' plot_clustering(fit, type = "diagnostics")
-#' plot_clustering(fit, type = c("heatmap", "enumeration"))
+#' plot_clustering(fit, type = c("pairs", "tree"))
 #' }
 #'
 #' @export
@@ -96,14 +101,36 @@ plot_clustering <- function(results, type = "clusters", ...) {
 
   fit <- .as_multilpa(results)
   enumeration <- results$clustering$enumeration
-  lapply(chosen, \(view) {
-    if (!identical(view, "enumeration")) return(plot(fit, what = view, ...))
-    if (nrow(as.data.frame(enumeration)) < 2L) {
-      return(message("Only one candidate was fitted; no enumeration to plot."))
+  several_candidates <- nrow(as.data.frame(enumeration)) > 1L
+  plots <- lapply(chosen, \(view) {
+    if (!view %in% c("enumeration", "tree")) return(plot(fit, what = view, ...))
+    if (!several_candidates) {
+      message(sprintf("Only one candidate was fitted; no %s to plot.", view))
+      return(NULL)
     }
-    plot(enumeration)
+    # A tree needs two numbers of profiles for one model; a grid of one
+    # count across models has none, which latents refuses by class.
+    tryCatch(plot(enumeration, what = view),
+             latents_nothing_to_plot = \(condition) {
+               message(conditionMessage(condition))
+               NULL
+             })
   })
-  invisible(results)
+  names(plots) <- chosen
+  plots <- Filter(Negate(is.null), plots)
+  if (length(plots) == 1L) return(plots[[1L]])
+  structure(plots, class = "saqr_plots")
+}
+
+#' Print Several Clustering Plots
+#'
+#' @param x A `saqr_plots` list from [plot_clustering()].
+#' @param ... Ignored.
+#' @return `x`, invisibly. Called for the side effect of drawing each plot.
+#' @export
+print.saqr_plots <- function(x, ...) {
+  invisible(lapply(x, print))
+  invisible(x)
 }
 
 #' Plot Method for Clustering Results
@@ -111,7 +138,7 @@ plot_clustering <- function(results, type = "clusters", ...) {
 #' @param x A `saqr_clustering` object from [clustering()].
 #' @param type Plot types and/or groups; see [plot_clustering()].
 #' @param ... Passed to [plot_clustering()].
-#' @return `x`, invisibly.
+#' @return As [plot_clustering()]: a ggplot object, or a `saqr_plots` list.
 #' @export
 plot.saqr_clustering <- function(x, type = "clusters", ...) {
   plot_clustering(x, type = type, ...)
