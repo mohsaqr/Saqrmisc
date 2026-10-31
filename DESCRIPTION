@@ -1,7 +1,7 @@
 Package: Saqrmisc
 Type: Package
 Title: Miscellaneous Functions for Data Processing and Analysis
-Version: 0.9.8
+Version: 0.9.9
 Authors@R: 
     person("Mohammed", "Saqr", 
            email = "saqr@saqr.me",
@@ -50,11 +50,16 @@ Suggests:
     kableExtra,
     TOSTER,
     httr2,
+    jsonlite,
+    readxl,
+    writexl,
     clipr,
     scales,
     NetworkComparisonTest,
     shiny,
-    DT
+    DT,
+    sbert
 Remotes:
-    mohsaqr/latents
+    mohsaqr/latents,
+    sonsoleslp/sbert
 VignetteBuilder: knitr
