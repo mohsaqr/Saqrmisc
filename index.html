@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -133,6 +133,15 @@
 <a href="#categorical-analysis">Categorical Analysis</a>
 <ul>
 <li><a href="#mosaic_analysis">mosaic_analysis()</a></li>
+</ul>
+</li>
+<li>
+<a href="#bibliometric-data">Bibliometric Data</a>
+<ul>
+<li><a href="#authors_clean">authors_clean()</a></li>
+<li><a href="#keywords_clean">keywords_clean()</a></li>
+<li><a href="#institutions_clean">institutions_clean()</a></li>
+<li><a href="#reviewing-keyword-merges">Reviewing keyword merges</a></li>
 </ul>
 </li>
 <li>
@@ -790,6 +799,158 @@
 </div>
 </div>
 <div class="section level2">
+<h2 id="bibliometric-data">Bibliometric Data<a class="anchor" aria-label="anchor" href="#bibliometric-data"></a>
+</h2>
+<div class="section level3">
+<h3 id="authors_clean">
+<code>authors_clean()</code><a class="anchor" aria-label="anchor" href="#authors_clean"></a>
+</h3>
+<p>Gives each author one spelling and keeps different people apart, by IDs only: the Scopus author IDs in the raw Scopus CSV exports, then ORCID. All spellings of one Scopus ID become one (accents kept); Scopus IDs whose papers carry the same ORCID (from OpenAlex, by DOI) become one person; different people who share a spelling become <code>"KIM J"</code>, <code>"KIM J (2)"</code>. Names never merge anyone. A merge whose spellings do not look like one name (<code>ENDRASS B</code> and <code>LUGRIN B</code> under one Scopus ID) is kept and flagged <code>check = TRUE</code>; lost accents, initials against given names and a dropped surname part count as one name.</p>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span><span class="va">data</span>, scopus <span class="op">=</span> <span class="cn">NULL</span>, author_ids <span class="op">=</span> <span class="st">"Author(s) ID"</span>, eid <span class="op">=</span> <span class="st">"eid"</span>,</span>
+<span>              authors <span class="op">=</span> <span class="st">"AU"</span>, doi <span class="op">=</span> <span class="st">"DI"</span>, year <span class="op">=</span> <span class="st">"PY"</span>, openalex <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>              mailto <span class="op">=</span> <span class="cn">NULL</span>, review <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<p>The Scopus author IDs come from the raw Scopus CSV exports (<code>scopus</code>), or from <code>data</code> itself when it has them (<code>author_ids</code>). bibliometrix drops them, so a bibliometrix data frame needs <code>scopus</code>; the exports also keep the accents bibliometrix strips.</p>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">authors</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span><span class="va">M</span>, scopus <span class="op">=</span> <span class="st">"Dlds"</span><span class="op">)</span>    <span class="co"># M: bibliometrix data; Dlds: Scopus CSVs</span></span>
+<span><span class="va">authors</span>                                          <span class="co"># counts, and the merges to check</span></span>
+<span><span class="fu"><a href="reference/authors_changes.html">authors_check</a></span><span class="op">(</span><span class="va">authors</span><span class="op">)</span>                           <span class="co"># the merges whose names look unlike</span></span>
+<span><span class="fu"><a href="reference/authors_changes.html">authors_changes</a></span><span class="op">(</span><span class="va">authors</span><span class="op">)</span>                         <span class="co"># every person whose name changed</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">authors</span><span class="op">)</span>                           <span class="co"># the papers, authors rewritten, new AU_ID</span></span>
+<span><span class="fu"><a href="reference/review_sheet.html">review_sheet</a></span><span class="op">(</span><span class="va">authors</span>, <span class="st">"authors_review.csv"</span><span class="op">)</span>      <span class="co"># every merge, the ones to check first</span></span></code></pre></div>
+<p>The cleaned papers are a copy of <code>M</code>; <code>M</code> and your files are left as they were.</p>
+<p>Write <code>split</code> in <code>decision</code> for a wrong merge, then pass the sheet back with <code>authors_clean(M, scopus = "Dlds", review = "authors_review.csv")</code>. A split person is taken apart into its Scopus IDs when ORCID joined several, otherwise into its Scopus spellings.</p>
+</div>
+<div class="section level3">
+<h3 id="keywords_clean">
+<code>keywords_clean()</code><a class="anchor" aria-label="anchor" href="#keywords_clean"></a>
+</h3>
+<p>Gives each concept one keyword. Every keyword is handled as a whole term, so its position in the list, the separator spacing and characters such as <code>(</code> or <code>+</code> make no difference.</p>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">data</span>, columns <span class="op">=</span> <span class="st">"DE"</span>, replace <span class="op">=</span> <span class="cn">NULL</span>, drop <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>               merge_similar <span class="op">=</span> <span class="cn">TRUE</span>, expand_acronyms <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="41%">
+<col width="58%">
+</colgroup>
+<thead><tr>
+<th>Argument</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>columns</code></td>
+<td>Keyword columns to clean, e.g. <code>c("DE", "ID")</code>
+</td>
+</tr>
+<tr>
+<td><code>replace</code></td>
+<td>Your <code>OLD</code>/<code>NEW</code> table: a data frame or a <code>.csv</code>/<code>.xlsx</code> file; several are applied in order, and a later row overrides an earlier one</td>
+</tr>
+<tr>
+<td><code>drop</code></td>
+<td>Keywords to delete (similar spellings go too)</td>
+</tr>
+<tr>
+<td><code>merge_similar</code></td>
+<td>Merge <code>CHAT BOT</code> / <code>CHAT-BOTS</code> / <code>CHATBOT</code> into one</td>
+</tr>
+<tr>
+<td><code>expand_acronyms</code></td>
+<td>
+<code>NLP</code> becomes <code>NATURAL LANGUAGE PROCESSING</code> when the data defines it, unambiguously, in brackets</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">keywords</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">keywords</span>                                      <span class="co"># counts per column</span></span>
+<span><span class="fu"><a href="reference/keywords_changes.html">keywords_changes</a></span><span class="op">(</span><span class="va">keywords</span><span class="op">)</span>                    <span class="co"># every keyword that changed, and why</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="institutions_clean">
+<code>institutions_clean()</code><a class="anchor" aria-label="anchor" href="#institutions_clean"></a>
+</h3>
+<p>Gives each institution one name by its OpenAlex institution ID (with its ROR ID where OpenAlex has one), the way <code><a href="reference/authors_clean.html">authors_clean()</a></code> uses Scopus author IDs. Papers OpenAlex does not cover are resolved from their addresses: first through the addresses OpenAlex linked on other papers, then by the institution part of the address (a university before a college, before an institute or company). What is left keeps its written name and goes to the review below. Two institutions that share a name get their country code (<code>NORTHEASTERN UNIVERSITY, US</code> / <code>, CN</code>).</p>
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">institutions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/institutions_clean.html">institutions_clean</a></span><span class="op">(</span><span class="va">M</span><span class="op">)</span>          <span class="co"># AU_UN and AU_UN_ID by OpenAlex ID</span></span>
+<span><span class="va">institutions</span></span>
+<span><span class="fu"><a href="reference/institutions_changes.html">institutions_changes</a></span><span class="op">(</span><span class="va">institutions</span><span class="op">)</span>             <span class="co"># every address and what it became</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="all-three-at-once">All three at once<a class="anchor" aria-label="anchor" href="#all-three-at-once"></a>
+</h3>
+<p>Each cleaner also takes the result of the one before, so the whole cleaning is one pipe, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the cleaned papers:</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="va">M</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span>scopus <span class="op">=</span> <span class="st">"Dlds"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span>replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/institutions_clean.html">institutions_clean</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">cleaned</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="reviewing-merges">Reviewing merges<a class="anchor" aria-label="anchor" href="#reviewing-merges"></a>
+</h3>
+<p>Keyword variants rules cannot settle, and institution names no ID covers, go through four steps. Nothing is merged until it is accepted.</p>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/suggest_merges.html">suggest_merges</a></span><span class="op">(</span><span class="va">keywords</span><span class="op">)</span>                  <span class="co"># 1. find possible merges</span></span>
+<span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ask_ai.html">ask_ai</a></span><span class="op">(</span><span class="va">merges</span>, model <span class="op">=</span> <span class="st">"gpt-5-mini"</span><span class="op">)</span>      <span class="co"># 2. the AI fills `decision`</span></span>
+<span><span class="fu"><a href="reference/review_sheet.html">review_sheet</a></span><span class="op">(</span><span class="va">merges</span>, <span class="st">"keyword_review.xlsx"</span><span class="op">)</span>         <span class="co"># 3. you overrule it in `decision_2`</span></span>
+<span><span class="fu"><a href="reference/review_report.html">review_report</a></span><span class="op">(</span><span class="st">"keyword_review.xlsx"</span><span class="op">)</span>                <span class="co">#    what was decided, AI agreement</span></span>
+<span><span class="va">keywords</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span>,</span>
+<span>                                          <span class="st">"keyword_review.xlsx"</span><span class="op">)</span><span class="op">)</span>   <span class="co"># 4. apply, after your own tables</span></span></code></pre></div>
+<p>For institutions: <code>suggest_merges(institutions)</code>, then the same steps, and <code>institutions_clean(M, replace = "institution_review.xlsx")</code>. Two identified institutions are never suggested as one.</p>
+<table class="table">
+<colgroup>
+<col width="47%">
+<col width="52%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>Arguments</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code><a href="reference/suggest_merges.html">suggest_merges()</a></code></td>
+<td>
+<code>data</code>, <code>columns = "DE"</code>, <code>skip = NULL</code> (earlier review sheets), <code>meaning = TRUE</code>
+</td>
+</tr>
+<tr>
+<td><code><a href="reference/ask_ai.html">ask_ai()</a></code></td>
+<td>
+<code>x</code>, <code>model</code>, <code>key = NULL</code>, <code>url = NULL</code>, <code>instructions = NULL</code>, <code>again = NULL</code>
+</td>
+</tr>
+<tr>
+<td><code><a href="reference/review_sheet.html">review_sheet()</a></code></td>
+<td>
+<code>x</code>, <code>file</code> (<code>.xlsx</code> or <code>.csv</code>)</td>
+</tr>
+<tr>
+<td><code><a href="reference/review_report.html">review_report()</a></code></td>
+<td><code>file</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>
+<strong>Meaning.</strong> With <a href="https://github.com/sonsoleslp/sbert" class="external-link">sbert</a> installed, each pair gets a <code>cosine</code> (how close the two are in meaning, from Sentence-BERT embeddings), the closest come first, and synonyms that share no spelling (<code>HUMAN-COMPUTER INTERFACE</code> / <code>HUMAN-MACHINE INTERFACE</code>) are suggested too. The cosine only orders the pairs: it cannot read acronyms or word order (<code>TEXT TO SPEECH</code> / <code>SPEECH TO TEXT</code> is 0.97), so the AI and you decide. <code>meaning = FALSE</code> works without sbert.</li>
+<li>
+<strong>Any model.</strong> A <code>claude-*</code> model goes to Anthropic (<code>ANTHROPIC_API_KEY</code>), a <code>gemini-*</code> model to Google (<code>GEMINI_API_KEY</code> or <code>GOOGLE_API_KEY</code>), anything else to OpenAI (<code>OPENAI_API_KEY</code>) or to the server in <code>url</code>, such as Ollama on your own computer: <code>url = "http://localhost:11434/v1"</code>. A key can also be given as <code>key</code>; it is never saved.</li>
+<li>
+<strong>No field built in.</strong> The model works out the field from the titles. Tell it more in one sentence: <code>instructions = "The papers are on chatbots in education."</code>
+</li>
+<li>
+<strong>Stops safely.</strong> Run <code><a href="reference/ask_ai.html">ask_ai()</a></code> again on its result to continue a stopped run; <code>again = "unsure"</code> with a stronger model asks only about the doubtful pairs.</li>
+<li>
+<strong>Two decisions.</strong> <code>decision</code> is the AI’s: <code>accept</code> or <code>reject</code> when it is at least 80% sure, else <code>check</code>. Write yours in <code>decision_2</code> (<code>accept</code>, <code>reject</code> or <code>check</code>) and correct <code>name</code> where needed. Where <code>decision_2</code> is filled it wins; where it is empty the AI’s stands. One in ten AI decisions is shown blind, so <code><a href="reference/review_report.html">review_report()</a></code> can say how often the AI is right.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
 <h2 id="ai-interpretation">AI Interpretation<a class="anchor" aria-label="anchor" href="#ai-interpretation"></a>
 </h2>
 <div class="section level3">
@@ -797,7 +958,7 @@
 <code>pass()</code><a class="anchor" aria-label="anchor" href="#pass"></a>
 </h3>
 <p>Pipe any R output to an AI model for scientific interpretation.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/pass.html">pass</a></span><span class="op">(</span><span class="va">result</span>, action <span class="op">=</span> <span class="st">"interpret"</span>, style <span class="op">=</span> <span class="st">"scientific"</span>, output <span class="op">=</span> <span class="st">"text"</span>,</span>
 <span>     provider <span class="op">=</span> <span class="st">"openai"</span>, model <span class="op">=</span> <span class="cn">NULL</span>, context <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>     system_message <span class="op">=</span> <span class="cn">NULL</span>, prompt <span class="op">=</span> <span class="cn">NULL</span>, base_url <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
@@ -842,13 +1003,13 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/t.test.html" class="external-link">t.test</a></span><span class="op">(</span><span class="va">mpg</span> <span class="op">~</span> <span class="va">am</span>, data <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/pass.html">pass</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">mpg</span> <span class="op">~</span> <span class="va">wt</span> <span class="op">+</span> <span class="va">hp</span>, data <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/pass.html">pass</a></span><span class="op">(</span>action <span class="op">=</span> <span class="st">"write"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level4">
 <h4 id="api-key-setup">API Key Setup<a class="anchor" aria-label="anchor" href="#api-key-setup"></a>
 </h4>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/set_openai_key.html">set_openai_key</a></span><span class="op">(</span><span class="st">"sk-..."</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/set_claude_key.html">set_claude_key</a></span><span class="op">(</span><span class="st">"sk-ant-..."</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/set_gemini_key.html">set_gemini_key</a></span><span class="op">(</span><span class="st">"AIza..."</span><span class="op">)</span></span>

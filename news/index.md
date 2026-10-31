@@ -1,5 +1,109 @@
 # Changelog
 
+## Saqrmisc 0.9.9
+
+### Author and keyword cleaning for bibliometric data
+
+- The cleaners are named by what they clean:
+  [`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md),
+  [`keywords_clean()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_clean.md),
+  [`institutions_clean()`](https://pak.dynasite.org/Saqrmisc/reference/institutions_clean.md),
+  each with a `_changes()` verb
+  ([`authors_changes()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md),
+  [`keywords_changes()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_changes.md),
+  `institutions_changes(source =)`) and
+  [`authors_check()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md).
+  [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) gives
+  the cleaned papers.
+
+- [`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md)
+  reads the Scopus author IDs from `data` when `scopus` is left out and
+  `data` has them (column `author_ids`, default `"Author(s) ID"`).
+
+- [`authors_changes()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md)
+  and
+  [`authors_check()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md)
+  give every changed person and the merges to check from an
+  [`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md)
+  result. [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html)
+  loses its `check` argument.
+
+- OpenAlex lookups no longer sleep until a spent daily request budget
+  resets (a 429 asking for hours): the request fails at once, the
+  cleaners warn `saqrmisc_openalex_failed` (“request limit reached, try
+  again in N hours”) and fall back, also when every request fails.
+
+- New
+  [`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md)
+  rewrites the author field of a bibliometric data frame from the Scopus
+  author IDs in the raw Scopus CSV exports: one spelling per person
+  (accents kept), different people sharing a spelling numbered
+  (`"KIM J (2)"`), generational suffixes and HTML entities repaired.
+  With `openalex = TRUE` it asks OpenAlex, by DOI, for every author’s
+  ORCID and joins Scopus IDs whose papers carry the same ORCID; authors
+  without a Scopus ID take their OpenAlex ID. Names never merge anyone:
+  a merge whose spellings do not look like one name is flagged
+  `check = TRUE`. `review_sheet(x, file)` writes the merges to
+  `.csv`/`.xlsx`; a merge marked `split` there is undone by
+  `authors_clean(review = file)`.
+  [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) gives
+  the cleaned data (with an aligned `AU_ID` column), `what = "changes"`
+  the audit and `what = "authors"` one row per author per paper. Uses
+  httr2 (Suggests).
+
+- [`review_sheet()`](https://pak.dynasite.org/Saqrmisc/reference/review_sheet.md)
+  is now generic, with methods for merge proposals and for
+  [`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md)
+  results.
+
+- New
+  `keywords_clean(data, columns, replace, drop, merge_similar, expand_acronyms)`
+  cleans keyword columns (`DE`, `ID`) term by term: text cleanup,
+  acronyms in brackets, unambiguous standalone acronyms expanded, your
+  `OLD`/`NEW` tables (data frames or `.csv`/`.xlsx` files, applied in
+  order; later rows override earlier ones, with a
+  `saqrmisc_replace_conflict` warning), similar spellings merged,
+  dropped keywords, and each keyword once per paper.
+  [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) gives
+  the cleaned data, `what = "changes"` the audit and `what = "terms"`
+  the keyword frequencies. Reading `.xlsx` uses readxl (Suggests).
+
+- New
+  [`institutions_clean()`](https://pak.dynasite.org/Saqrmisc/reference/institutions_clean.md)
+  names each paper’s institutions by OpenAlex institution ID
+  (ROR-backed) and resolves the rest from the `C1` addresses (addresses
+  OpenAlex linked elsewhere, then the institution part of the address);
+  adds `AU_UN` and `AU_UN_ID`, with `what = "institutions"` and
+  `what = "addresses"` tables.
+  [`suggest_merges()`](https://pak.dynasite.org/Saqrmisc/reference/suggest_merges.md)
+  on its result reviews only the names OpenAlex did not identify, with
+  an institution prompt for
+  [`ask_ai()`](https://pak.dynasite.org/Saqrmisc/reference/ask_ai.md),
+  and `institutions_clean(replace = )` applies the review.
+
+- OpenAlex requests now also retry on HTTP 500, 502 and 504.
+
+- New four-step review of keyword merges; nothing is merged until
+  accepted:
+  [`suggest_merges()`](https://pak.dynasite.org/Saqrmisc/reference/suggest_merges.md)
+  finds possible merges (spelling, word order, word endings, acronyms,
+  and meaning through Sentence-BERT embeddings from the sbert package)
+  with evidence, the pairs closest in meaning (`cosine`) first;
+  `ask_ai(merges, model, key, url, instructions)` has a language model
+  judge each pair through any OpenAI-compatible server or Anthropic, and
+  continues a stopped run when called again, giving every pair the AI’s
+  `decision` (accept or reject when at least 80% sure, else check),
+  which `keywords_clean(replace = merges)` applies directly;
+  [`review_sheet()`](https://pak.dynasite.org/Saqrmisc/reference/review_sheet.md)
+  writes an Excel sheet (or a `.csv`, with the AI’s answers in
+  `<name>_ai.csv`, for work in other programs; `;`-separated copies read
+  back too) where your `decision_2` overrules the AI’s, with a blind
+  sample;
+  [`review_report()`](https://pak.dynasite.org/Saqrmisc/reference/review_report.md)
+  reports the decisions and the AI’s agreement with you (Wilson
+  interval); and `keywords_clean(replace = "review.xlsx")` applies the
+  accepted pairs. Uses httr2, jsonlite and writexl (Suggests).
+
 ## Saqrmisc 0.9.8
 
 ### Clustering plots are ggplot objects
@@ -45,7 +149,7 @@
 - [`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md)
   takes `type` and passes `...` (e.g. `scale = "standardized"`) to
   latents. Plot descriptions come from
-  [`latents::plot_views()`](https://pak.dynasite.org/latents/reference/plot_views.html).
+  [`latents::plot_views()`](https://pak.dynasite.org/latents/reference/latents-plots.html).
 - **Removed** (use the verbs above): `cluster()`, `cluster_fit()`,
   `get_cluster_assignments()`/`cluster_assignments()` -\>
   [`fitted()`](https://rdrr.io/r/stats/fitted.values.html);

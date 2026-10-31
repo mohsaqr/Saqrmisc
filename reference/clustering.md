@@ -121,14 +121,14 @@ summary(fit)
 #> 2          3   EEE      -364.6929           24  777.3859  849.6411  862.2923
 #> 3          4   EEE      -331.3875           29  720.7751  808.0835  822.4806
 #> 4          2   VVI      -494.5242           17 1023.0485 1074.2293 1074.2296
-#> 5          3   VVI      -415.1993           26  882.3987  960.6752  981.5832
+#> 5          3   VVI      -415.1993           26  882.3987  960.6752  981.5831
 #> 6          4   VVI      -373.1865           35  816.3729  921.7451  943.4957
 #>     entropy converged boundary delta_bic selected
 #> 1 0.9999402      TRUE    FALSE  96.69152    FALSE
 #> 2 0.9616147      TRUE    FALSE  41.55763    FALSE
 #> 3 0.9653822      TRUE    FALSE   0.00000     TRUE
 #> 4 0.9999984      TRUE    FALSE 266.14579    FALSE
-#> 5 0.9365624      TRUE    FALSE 152.59174    FALSE
+#> 5 0.9365626      TRUE    FALSE 152.59174    FALSE
 #> 6 0.9477009      TRUE    FALSE 113.66166    FALSE
 as.data.frame(fit)
 #>    profile    indicator       mean   variance standard_deviation

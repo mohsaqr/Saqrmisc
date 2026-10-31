@@ -33,17 +33,17 @@ clustering_plot_types()
 #> 10       avepp diagnostics
 #> 11 enumeration   selection
 #> 12        tree   selection
-#>                                                                      description
-#> 1                 Profile means across indicators, one labelled line per profile
-#> 2                    Profile means as grouped bars from zero, with 95% intervals
-#> 3           Profile means in observed standard deviations from the observed mean
-#> 4  Each indicator's distribution by assigned profile: density, box, observations
-#> 5                  Every case as a line across indicators, one panel per profile
-#> 6                 Scatter-plot matrix with each profile's 95% covariance ellipse
-#> 7                      Effective number of cases in each profile, with its share
-#> 8                   Each case's entropy relative to a flat posterior, by profile
-#> 9              Posterior probability of each case's assigned profile, by profile
-#> 10          Average posterior probability: assigned profile by posterior profile
-#> 11            Information criteria across a candidate grid (plot an enumeration)
-#> 12                    How profiles split as more are added (plot an enumeration)
+#>                                                                                                                               description
+#> 1                                                                 Profile means, medians or modes across indicators, one line per profile
+#> 2                                                                             Profile means as grouped bars from zero, with 95% intervals
+#> 3                                                                    Profile means in observed standard deviations from the observed mean
+#> 4                                                           Each indicator's distribution by assigned profile: density, box, observations
+#> 5                                                                           Every case as a line across indicators, one panel per profile
+#> 6                                                                          Scatter-plot matrix with each profile's 95% covariance ellipse
+#> 7                                                                               Effective number of cases in each profile, with its share
+#> 8                                                                            Each case's entropy relative to a flat posterior, by profile
+#> 9                                                                       Posterior probability of each case's assigned profile, by profile
+#> 10                                                                   Average posterior probability: assigned profile by posterior profile
+#> 11 Information criteria across a candidate grid (plot any enumeration; or name criteria in `what`; plot_views(grid) lists a grid's views)
+#> 12                                           How classes split as more are added, one plot per tree (a profile, class or transition grid)
 ```

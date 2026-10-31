@@ -38,6 +38,11 @@ plain, markdown, latex, kable).
   - [compare_networks()](#compare_networks)
 - [Categorical Analysis](#categorical-analysis)
   - [mosaic_analysis()](#mosaic_analysis)
+- [Bibliometric Data](#bibliometric-data)
+  - [authors_clean()](#authors_clean)
+  - [keywords_clean()](#keywords_clean)
+  - [institutions_clean()](#institutions_clean)
+  - [Reviewing keyword merges](#reviewing-keyword-merges)
 - [AI Interpretation](#ai-interpretation)
   - [pass()](#pass)
 - [Output Formats](#output-formats)
@@ -507,6 +512,169 @@ mosaic_analysis(data, var1, var2, show_percentages = TRUE,
 ```
 
 **Returns:** Object with `$plot`, `$chi_test`, `$cramers_v`, `$summary`.
+
+------------------------------------------------------------------------
+
+## Bibliometric Data
+
+### `authors_clean()`
+
+Gives each author one spelling and keeps different people apart, by IDs
+only: the Scopus author IDs in the raw Scopus CSV exports, then ORCID.
+All spellings of one Scopus ID become one (accents kept); Scopus IDs
+whose papers carry the same ORCID (from OpenAlex, by DOI) become one
+person; different people who share a spelling become `"KIM J"`,
+`"KIM J (2)"`. Names never merge anyone. A merge whose spellings do not
+look like one name (`ENDRASS B` and `LUGRIN B` under one Scopus ID) is
+kept and flagged `check = TRUE`; lost accents, initials against given
+names and a dropped surname part count as one name.
+
+``` r
+
+authors_clean(data, scopus = NULL, author_ids = "Author(s) ID", eid = "eid",
+              authors = "AU", doi = "DI", year = "PY", openalex = TRUE,
+              mailto = NULL, review = NULL)
+```
+
+The Scopus author IDs come from the raw Scopus CSV exports (`scopus`),
+or from `data` itself when it has them (`author_ids`). bibliometrix
+drops them, so a bibliometrix data frame needs `scopus`; the exports
+also keep the accents bibliometrix strips.
+
+``` r
+
+authors <- authors_clean(M, scopus = "Dlds")    # M: bibliometrix data; Dlds: Scopus CSVs
+authors                                          # counts, and the merges to check
+authors_check(authors)                           # the merges whose names look unlike
+authors_changes(authors)                         # every person whose name changed
+as.data.frame(authors)                           # the papers, authors rewritten, new AU_ID
+review_sheet(authors, "authors_review.csv")      # every merge, the ones to check first
+```
+
+The cleaned papers are a copy of `M`; `M` and your files are left as
+they were.
+
+Write `split` in `decision` for a wrong merge, then pass the sheet back
+with `authors_clean(M, scopus = "Dlds", review = "authors_review.csv")`.
+A split person is taken apart into its Scopus IDs when ORCID joined
+several, otherwise into its Scopus spellings.
+
+### `keywords_clean()`
+
+Gives each concept one keyword. Every keyword is handled as a whole
+term, so its position in the list, the separator spacing and characters
+such as `(` or `+` make no difference.
+
+``` r
+
+keywords_clean(data, columns = "DE", replace = NULL, drop = NULL,
+               merge_similar = TRUE, expand_acronyms = TRUE)
+```
+
+| Argument | What it does |
+|----|----|
+| `columns` | Keyword columns to clean, e.g. `c("DE", "ID")` |
+| `replace` | Your `OLD`/`NEW` table: a data frame or a `.csv`/`.xlsx` file; several are applied in order, and a later row overrides an earlier one |
+| `drop` | Keywords to delete (similar spellings go too) |
+| `merge_similar` | Merge `CHAT BOT` / `CHAT-BOTS` / `CHATBOT` into one |
+| `expand_acronyms` | `NLP` becomes `NATURAL LANGUAGE PROCESSING` when the data defines it, unambiguously, in brackets |
+
+``` r
+
+keywords <- keywords_clean(M, replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx"))
+keywords                                      # counts per column
+keywords_changes(keywords)                    # every keyword that changed, and why
+```
+
+### `institutions_clean()`
+
+Gives each institution one name by its OpenAlex institution ID (with its
+ROR ID where OpenAlex has one), the way
+[`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md)
+uses Scopus author IDs. Papers OpenAlex does not cover are resolved from
+their addresses: first through the addresses OpenAlex linked on other
+papers, then by the institution part of the address (a university before
+a college, before an institute or company). What is left keeps its
+written name and goes to the review below. Two institutions that share a
+name get their country code (`NORTHEASTERN UNIVERSITY, US` / `, CN`).
+
+``` r
+
+institutions <- institutions_clean(M)          # AU_UN and AU_UN_ID by OpenAlex ID
+institutions
+institutions_changes(institutions)             # every address and what it became
+```
+
+### All three at once
+
+Each cleaner also takes the result of the one before, so the whole
+cleaning is one pipe, and
+[`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) gives the
+cleaned papers:
+
+``` r
+
+cleaned <- M |>
+  authors_clean(scopus = "Dlds") |>
+  keywords_clean(replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx")) |>
+  institutions_clean()
+as.data.frame(cleaned)
+```
+
+### Reviewing merges
+
+Keyword variants rules cannot settle, and institution names no ID
+covers, go through four steps. Nothing is merged until it is accepted.
+
+``` r
+
+merges <- suggest_merges(keywords)                  # 1. find possible merges
+merges <- ask_ai(merges, model = "gpt-5-mini")      # 2. the AI fills `decision`
+review_sheet(merges, "keyword_review.xlsx")         # 3. you overrule it in `decision_2`
+review_report("keyword_review.xlsx")                #    what was decided, AI agreement
+keywords <- keywords_clean(M, replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx",
+                                          "keyword_review.xlsx"))   # 4. apply, after your own tables
+```
+
+For institutions: `suggest_merges(institutions)`, then the same steps,
+and `institutions_clean(M, replace = "institution_review.xlsx")`. Two
+identified institutions are never suggested as one.
+
+| Function | Arguments |
+|----|----|
+| [`suggest_merges()`](https://pak.dynasite.org/Saqrmisc/reference/suggest_merges.md) | `data`, `columns = "DE"`, `skip = NULL` (earlier review sheets), `meaning = TRUE` |
+| [`ask_ai()`](https://pak.dynasite.org/Saqrmisc/reference/ask_ai.md) | `x`, `model`, `key = NULL`, `url = NULL`, `instructions = NULL`, `again = NULL` |
+| [`review_sheet()`](https://pak.dynasite.org/Saqrmisc/reference/review_sheet.md) | `x`, `file` (`.xlsx` or `.csv`) |
+| [`review_report()`](https://pak.dynasite.org/Saqrmisc/reference/review_report.md) | `file` |
+
+- **Meaning.** With [sbert](https://github.com/sonsoleslp/sbert)
+  installed, each pair gets a `cosine` (how close the two are in
+  meaning, from Sentence-BERT embeddings), the closest come first, and
+  synonyms that share no spelling (`HUMAN-COMPUTER INTERFACE` /
+  `HUMAN-MACHINE INTERFACE`) are suggested too. The cosine only orders
+  the pairs: it cannot read acronyms or word order (`TEXT TO SPEECH` /
+  `SPEECH TO TEXT` is 0.97), so the AI and you decide. `meaning = FALSE`
+  works without sbert.
+- **Any model.** A `claude-*` model goes to Anthropic
+  (`ANTHROPIC_API_KEY`), a `gemini-*` model to Google (`GEMINI_API_KEY`
+  or `GOOGLE_API_KEY`), anything else to OpenAI (`OPENAI_API_KEY`) or to
+  the server in `url`, such as Ollama on your own computer:
+  `url = "http://localhost:11434/v1"`. A key can also be given as `key`;
+  it is never saved.
+- **No field built in.** The model works out the field from the titles.
+  Tell it more in one sentence:
+  `instructions = "The papers are on chatbots in education."`
+- **Stops safely.** Run
+  [`ask_ai()`](https://pak.dynasite.org/Saqrmisc/reference/ask_ai.md)
+  again on its result to continue a stopped run; `again = "unsure"` with
+  a stronger model asks only about the doubtful pairs.
+- **Two decisions.** `decision` is the AI’s: `accept` or `reject` when
+  it is at least 80% sure, else `check`. Write yours in `decision_2`
+  (`accept`, `reject` or `check`) and correct `name` where needed. Where
+  `decision_2` is filled it wins; where it is empty the AI’s stands. One
+  in ten AI decisions is shown blind, so
+  [`review_report()`](https://pak.dynasite.org/Saqrmisc/reference/review_report.md)
+  can say how often the AI is right.
 
 ------------------------------------------------------------------------
 
