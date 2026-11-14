@@ -25,10 +25,11 @@
 #'   `description`.
 #'
 #' @examples
-#' clustering_plot_types()
+#' if (requireNamespace("latents", quietly = TRUE)) clustering_plot_types()
 #'
 #' @export
 clustering_plot_types <- function() {
+  .kr_need("latents")
   views <- latents::plot_views()
   types <- names(.clustering_plot_groups)
   data.frame(
@@ -59,9 +60,11 @@ clustering_plot_types <- function() {
 #' @param ... Passed to the \pkg{latents} plot method of the selected fit,
 #'   e.g. `scale = "standardized"` or `main`.
 #'
-#' @return One type: a ggplot object. Several: a `saqr_plots` list of ggplot
-#'   objects named by type, which draws every one when printed. Print, save
-#'   with `ggplot2::ggsave()`, or restyle with `+ ggplot2::theme()`.
+#' @return One plot: a ggplot object. Several: a `saqr_plots` list of ggplot
+#'   objects named by type, which draws every one when printed. A type that
+#'   \pkg{latents} draws once per model (`"tree"` on a grid of several models)
+#'   gives one entry per model, named `<type>_<model>` (`"tree_EEE"`). Print,
+#'   save with `ggplot2::ggsave()`, or restyle with `+ ggplot2::theme()`.
 #'
 #' @section Errors:
 #' Raises `saqrmisc_bad_input` when `results` is not a [clustering()] result
@@ -72,12 +75,14 @@ clustering_plot_types <- function() {
 #'
 #' @examples
 #' \donttest{
-#' set.seed(1)
-#' vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
-#' fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
-#' plot_clustering(fit, type = "profiles")
-#' plot_clustering(fit, type = "diagnostics")
-#' plot_clustering(fit, type = c("pairs", "tree"))
+#' if (requireNamespace("latents", quietly = TRUE)) {
+#'   set.seed(1)
+#'   vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+#'   fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
+#'   plot_clustering(fit, type = "profiles")
+#'   plot_clustering(fit, type = "diagnostics")
+#'   plot_clustering(fit, type = c("pairs", "tree"))
+#' }
 #' }
 #'
 #' @export
@@ -117,9 +122,20 @@ plot_clustering <- function(results, type = "clusters", ...) {
              })
   })
   names(plots) <- chosen
-  plots <- Filter(Negate(is.null), plots)
+  plots <- .flatten_plots(Filter(Negate(is.null), plots))
   if (length(plots) == 1L) return(plots[[1L]])
   structure(plots, class = "saqr_plots")
+}
+
+# latents >= 1.0 draws some views once per model and returns them as one
+# `latents_plots` list; each becomes its own entry, `<type>_<model>`, so the
+# result is always a flat list of ggplots.
+.flatten_plots <- function(plots) {
+  parts <- Map(\(plot, type) {
+    if (!inherits(plot, "latents_plots")) return(stats::setNames(list(plot), type))
+    stats::setNames(unclass(plot), paste(type, names(plot), sep = "_"))
+  }, plots, names(plots))
+  do.call(c, unname(parts)) %||% list()
 }
 
 #' Print Several Clustering Plots

@@ -1,3 +1,19 @@
+# Saqrmisc 0.9.11
+
+## Fewer dependencies
+
+* Imports are now `dplyr`, `ggplot2`, `gt`, `tidyr` and `rlang` (plus base
+  `grid`, `stats`, `grDevices`, `utils`).
+* Moved to Suggests, each checked where it is used (`saqrmisc_missing_package`
+  names what to install): `latents`, `bootnet`, `qgraph`, `mgm`,
+  `BayesFactor`, `vcd`, `gridExtra`.
+* Removed: `magrittr` (`%>%` comes from dplyr), `tibble` (mosaic tables are
+  data frames), `effsize` and `effectsize` (Cohen's d and eta squared in base
+  R, equal to both to 4.4e-16), and the unused Suggests `scales`, `roxygen2`,
+  `devtools`.
+* `mosaic_analysis()` tables are data frames instead of tibbles, with the
+  same values.
+
 # Saqrmisc 0.9.10
 
 ## `authors_clean()` redesigned (breaking)

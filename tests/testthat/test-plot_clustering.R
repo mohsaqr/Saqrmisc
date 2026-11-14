@@ -1,3 +1,5 @@
+skip_if_not_installed("latents")
+
 iris_vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
 
 fit_one <- clustering(iris, iris_vars, n_profiles = 3, models = "EEE",
@@ -20,10 +22,19 @@ test_that("the catalogue is tidy and every type has a latents description", {
   expect_true(all(types$type %in% latents::plot_views()$type))
 })
 
-test_that("each type returns one ggplot that builds cleanly", {
+test_that("each type returns ggplots that build cleanly", {
   lapply(clustering_plot_types()$type, \(view) {
-    expect_built(plot_clustering(fit_grid, type = view))
+    drawn <- plot_clustering(fit_grid, type = view)
+    if (inherits(drawn, "saqr_plots")) lapply(drawn, expect_built) else expect_built(drawn)
   })
+})
+
+test_that("a view latents draws once per model gives one entry per model", {
+  several <- structure(list(EII = ggplot2::ggplot(), EEE = ggplot2::ggplot()), class = "latents_plots")
+  flat <- .flatten_plots(list(sizes = ggplot2::ggplot(), tree = several))
+  expect_named(flat, c("sizes", "tree_EII", "tree_EEE"))
+  expect_true(all(vapply(flat, inherits, logical(1), what = "ggplot")))
+  expect_identical(.flatten_plots(list()), list())
 })
 
 test_that("groups and 'all' return a printable list named by type", {
@@ -32,7 +43,7 @@ test_that("groups and 'all' return a printable list named by type", {
   expect_named(clusters, c("profiles", "bars", "heatmap", "raincloud",
                            "parallel", "pairs", "sizes"))
   everything <- plot_clustering(fit_grid, type = "all")
-  expect_setequal(names(everything), clustering_plot_types()$type)
+  expect_setequal(unique(sub("_.*", "", names(everything))), clustering_plot_types()$type)
   path <- tempfile(fileext = ".pdf")
   grDevices::pdf(path)
   on.exit({ grDevices::dev.off(); unlink(path) }, add = TRUE, after = FALSE)

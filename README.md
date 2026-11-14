@@ -61,19 +61,17 @@ devtools::install_github("mohsaqr/Saqrmisc")
 library(Saqrmisc)
 ```
 
-**Dependencies:**
+Installing Saqrmisc brings only `dplyr`, `ggplot2`, `gt`, `tidyr` and `rlang`. Each feature below needs its own package, installed only if you use it; without it, the function stops and names the package to install.
 
-```r
-install.packages(c(
-  "dplyr", "ggplot2", "gt", "tibble", "tidyr", "rlang",
-  "MoEClust", "mclust", "vcd", "gridExtra",
-  "bootnet", "qgraph", "mgm",
-  "BayesFactor", "effectsize", "effsize"
-))
-
-# Optional
-install.packages(c("ggstatsplot", "TOSTER", "kableExtra", "httr2"))
-```
+| Feature | Install |
+|---------|---------|
+| `clustering()`, `plot_clustering()` | `remotes::install_github("mohsaqr/latents")` |
+| `estimate_single_network()`, `estimate_grouped_networks()` | `install.packages(c("bootnet", "qgraph", "mgm"))` |
+| `compare_networks()` | `install.packages("NetworkComparisonTest")` |
+| `compare_groups()` plots / `bayesian = TRUE` / `equivalence = TRUE` | `install.packages(c("gridExtra", "BayesFactor", "TOSTER"))` |
+| `mosaic_analysis(plot_style = "classic")` | `install.packages("vcd")` |
+| `authors_clean(level = "needs_decision")`, `institutions_clean()` with OpenAlex | `install.packages("httr2")` |
+| `.xlsx` sheets in the bibliometric cleaners | `install.packages(c("readxl", "writexl"))` |
 
 ---
 

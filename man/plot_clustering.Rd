@@ -15,9 +15,11 @@ plot_clustering(results, type = "clusters", ...)
 e.g. \code{scale = "standardized"} or \code{main}.}
 }
 \value{
-One type: a ggplot object. Several: a \code{saqr_plots} list of ggplot
-objects named by type, which draws every one when printed. Print, save
-with \code{ggplot2::ggsave()}, or restyle with \code{+ ggplot2::theme()}.
+One plot: a ggplot object. Several: a \code{saqr_plots} list of ggplot
+objects named by type, which draws every one when printed. A type that
+\pkg{latents} draws once per model (\code{"tree"} on a grid of several models)
+gives one entry per model, named \verb{<type>_<model>} (\code{"tree_EEE"}). Print,
+save with \code{ggplot2::ggsave()}, or restyle with \code{+ ggplot2::theme()}.
 }
 \description{
 Builds figures of a \code{\link[=clustering]{clustering()}} result with \pkg{latents}, as ggplot
@@ -41,12 +43,14 @@ more candidates than were fitted is skipped with a message.
 
 \examples{
 \donttest{
-set.seed(1)
-vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
-fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
-plot_clustering(fit, type = "profiles")
-plot_clustering(fit, type = "diagnostics")
-plot_clustering(fit, type = c("pairs", "tree"))
+if (requireNamespace("latents", quietly = TRUE)) {
+  set.seed(1)
+  vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+  fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
+  plot_clustering(fit, type = "profiles")
+  plot_clustering(fit, type = "diagnostics")
+  plot_clustering(fit, type = c("pairs", "tree"))
+}
 }
 
 }

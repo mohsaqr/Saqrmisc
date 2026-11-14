@@ -1,7 +1,7 @@
 Package: Saqrmisc
 Type: Package
 Title: Miscellaneous Functions for Data Processing and Analysis
-Version: 0.9.10
+Version: 0.9.11
 Authors@R: 
     person("Mohammed", "Saqr", 
            email = "saqr@saqr.me",
@@ -20,32 +20,26 @@ BugReports: https://github.com/mohsaqr/Saqrmisc/issues
 Depends:
     R (>= 4.1.0)
 Imports:
-    latents (>= 0.8.8),
     dplyr,
     ggplot2,
-    vcd,
     grid,
-    tibble,
     rlang,
-    gridExtra,
     gt,
-    magrittr,
     tidyr,
-    bootnet,
-    qgraph,
-    mgm,
     stats,
     grDevices,
-    utils,
-    BayesFactor,
-    effectsize,
-    effsize
+    utils
 Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown,
-    devtools,
-    roxygen2,
+    latents (>= 0.8.8),
+    bootnet,
+    qgraph,
+    mgm,
+    BayesFactor,
+    vcd,
+    gridExtra,
     ggstatsplot,
     kableExtra,
     TOSTER,
@@ -54,7 +48,6 @@ Suggests:
     readxl,
     writexl,
     clipr,
-    scales,
     NetworkComparisonTest,
     shiny,
     DT,

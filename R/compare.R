@@ -49,6 +49,17 @@ pooled_sd <- function(x, y) {
   sqrt(((n1 - 1) * stats::var(x) + (n2 - 1) * stats::var(y)) / (n1 + n2 - 2))
 }
 
+# Cohen's d with the pooled SD (Cohen, 1988), as effsize::cohen.d() computes it
+# by default (no Hedges correction).
+.cohens_d <- function(x, y) (mean(x) - mean(y)) / pooled_sd(x, y)
+
+# Eta squared of a one-way ANOVA, SS_effect / SS_total, from summary(aov)[[1]].
+# For one factor it equals effectsize::eta_squared()'s (partial) value.
+.eta_squared <- function(aov_table) {
+  sum_sq <- aov_table[["Sum Sq"]]
+  sum_sq[1L] / sum(sum_sq)
+}
+
 #' Reshape post-hoc p-value matrix to data frame
 #'
 #' @param p_matrix Matrix of p-values from pairwise tests
@@ -2309,17 +2320,8 @@ compare_groups <- function(data, category, Vars = NULL,
   # ===========================================================================
   # Check Required Packages
   # ===========================================================================
-  required_pkgs <- c("gridExtra")
-  if (format == "gt") required_pkgs <- c(required_pkgs, "gt")
-  if (bayesian) required_pkgs <- c(required_pkgs, "BayesFactor")
-  if (equivalence) required_pkgs <- c(required_pkgs, "TOSTER")
-  if (!nonparametric) required_pkgs <- c(required_pkgs, "effsize", "effectsize")
-
-  for (pkg in required_pkgs) {
-    if (!requireNamespace(pkg, quietly = TRUE)) {
-      stop("Package '", pkg, "' is required. Install with: install.packages('", pkg, "')")
-    }
-  }
+  required_pkgs <- c(if (plots) "gridExtra", if (bayesian) "BayesFactor", if (equivalence) "TOSTER")
+  invisible(lapply(required_pkgs, .kr_need))
 
   # Handle ggstatsplot separately - it's optional
 
@@ -2552,7 +2554,7 @@ compare_groups <- function(data, category, Vars = NULL,
                   t_statistic <- as.numeric(test_result$statistic)
                   t_df <- as.numeric(test_result$parameter)
                   test_type <- "t-test"
-                  efsz <- effsize::cohen.d(group1_data, group2_data)$estimate
+                  efsz <- .cohens_d(group1_data, group2_data)
                   ef_type <- "Cohen's d"
                 }, error = function(e) {
                   warning("Error in t-test: ", e$message)
@@ -2673,9 +2675,7 @@ compare_groups <- function(data, category, Vars = NULL,
                 df2 <- aov_summary[["Df"]][2]
                 test_type <- "ANOVA"
 
-                # Extract eta squared properly
-                es_result <- effectsize::eta_squared(aov_result)
-                efsz <- es_result$Eta2[1]
+                efsz <- .eta_squared(aov_summary)
                 ef_type <- "eta_sq"
 
                 # Effect size interpretation

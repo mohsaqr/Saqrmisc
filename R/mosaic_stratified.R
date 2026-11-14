@@ -327,9 +327,9 @@ print.mosaic_stratified <- function(x, ...) {
 summary.mosaic_stratified <- function(object, ...) {
   cat("\n=== STRATIFIED MOSAIC ANALYSIS ===\n\n")
   cat("Per-stratum tests (p adjusted across strata):\n")
-  print(tibble::as_tibble(object$strata_summary), n = Inf)
+  print(object$strata_summary, row.names = FALSE)
   cat("\nPooled and conditional tests:\n")
-  print(tibble::as_tibble(object$overall_summary), n = Inf)
+  print(object$overall_summary, row.names = FALSE)
   cat("\n")
   invisible(object$strata_summary)
 }

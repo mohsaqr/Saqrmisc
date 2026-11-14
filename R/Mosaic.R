@@ -3,10 +3,8 @@
 # This file contains functions for categorical variable analysis using mosaic plots.
 # Functions: mosaic_analysis
 
-#' @importFrom vcd mosaic labeling_values
 #' @importFrom grid gpar
 #' @importFrom dplyr select bind_rows mutate everything
-#' @importFrom tibble tibble
 #' @importFrom stats chisq.test fisher.test as.formula
 NULL
 
@@ -16,7 +14,7 @@ NULL
 #' @param expected Expected frequency table
 #' @param show_percentages Logical for showing percentages
 #' @param percentage_base Base for percentage calculation
-#' @return A tibble with consolidated results
+#' @return A data frame with consolidated results
 #' @noRd
 create_consolidated_table <- function(observed, expected, show_percentages = TRUE, percentage_base = "total") {
 
@@ -38,35 +36,20 @@ create_consolidated_table <- function(observed, expected, show_percentages = TRU
   }
 
   # Create consolidated table
-  consolidated <- tibble::tibble()
+  consolidated <- NULL
 
   for (i in 1:nrow(obs_df)) {
     row_name <- rownames(obs_df)[i]
 
     # Observed row
-    obs_row <- tibble::tibble(
-      Variable = row_name,
-      Type = "Observed",
-      !!!obs_df[i, ],
-      Total = sum(obs_df[i, ])
-    )
+    obs_row <- .mosaic_row(row_name, "Observed", obs_df[i, ], sum(obs_df[i, ]))
 
     # Expected row
-    exp_row <- tibble::tibble(
-      Variable = "",
-      Type = "Expected",
-      !!!round(exp_df[i, ], 1),
-      Total = round(sum(exp_df[i, ]), 1)
-    )
+    exp_row <- .mosaic_row("", "Expected", round(exp_df[i, ], 1), round(sum(exp_df[i, ]), 1))
 
     # Percentage row (if requested)
     if (show_percentages && !is.null(pct_df)) {
-      pct_row <- tibble::tibble(
-        Variable = "",
-        Type = paste0("% (", percentage_base, ")"),
-        !!!pct_df[i, ],
-        Total = if (percentage_base == "row") 100.0 else round(sum(pct_df[i, ]), 1)
-      )
+      pct_row <- .mosaic_row("", paste0("% (", percentage_base, ")"), pct_df[i, ], if (percentage_base == "row") 100.0 else round(sum(pct_df[i, ]), 1))
       consolidated <- dplyr::bind_rows(consolidated, obs_row, exp_row, pct_row)
     } else {
       consolidated <- dplyr::bind_rows(consolidated, obs_row, exp_row)
@@ -74,42 +57,17 @@ create_consolidated_table <- function(observed, expected, show_percentages = TRU
   }
 
   # Add totals row
-  total_obs <- tibble::tibble(
-    Variable = "Total",
-    Type = "Observed",
-    !!!colSums(obs_df),
-    Total = sum(obs_df)
-  )
+  total_obs <- .mosaic_row("Total", "Observed", colSums(obs_df), sum(obs_df))
 
-  total_exp <- tibble::tibble(
-    Variable = "",
-    Type = "Expected",
-    !!!round(colSums(exp_df), 1),
-    Total = round(sum(exp_df), 1)
-  )
+  total_exp <- .mosaic_row("", "Expected", round(colSums(exp_df), 1), round(sum(exp_df), 1))
 
   if (show_percentages && !is.null(pct_df)) {
     if (percentage_base == "total") {
-      total_pct <- tibble::tibble(
-        Variable = "",
-        Type = paste0("% (", percentage_base, ")"),
-        !!!round(colSums(observed) / sum(observed) * 100, 1),
-        Total = 100.0
-      )
+      total_pct <- .mosaic_row("", paste0("% (", percentage_base, ")"), round(colSums(observed) / sum(observed) * 100, 1), 100.0)
     } else if (percentage_base == "column") {
-      total_pct <- tibble::tibble(
-        Variable = "",
-        Type = paste0("% (", percentage_base, ")"),
-        !!!stats::setNames(rep(100.0, ncol(observed)), colnames(observed)),
-        Total = 100.0
-      )
+      total_pct <- .mosaic_row("", paste0("% (", percentage_base, ")"), stats::setNames(rep(100.0, ncol(observed)), colnames(observed)), 100.0)
     } else {
-      total_pct <- tibble::tibble(
-        Variable = "",
-        Type = paste0("% (", percentage_base, ")"),
-        !!!round(colSums(pct_df), 1),
-        Total = round(sum(pct_df), 1)
-      )
+      total_pct <- .mosaic_row("", paste0("% (", percentage_base, ")"), round(colSums(pct_df), 1), round(sum(pct_df), 1))
     }
     consolidated <- dplyr::bind_rows(consolidated, total_obs, total_exp, total_pct)
   } else {
@@ -619,7 +577,7 @@ if (!is.data.frame(data)) {
   if(removed_text == "") removed_text <- "None"
 
   # Statistical summary
-  stats_summary <- tibble::tibble(
+  stats_summary <- data.frame(
     Statistic = c("Test type", "Test statistic", "Degrees of freedom", "p-value",
                   "Cramer's V", "Effect size", "Sample size", "Categories removed"),
     Value = c(
@@ -672,20 +630,20 @@ if (!is.data.frame(data)) {
     # Print consolidated table
     cat("CONSOLIDATED FREQUENCY TABLE\n")
     cat("===========================\n")
-    print(tibble::as_tibble(consolidated_table), n = Inf)
+    print(consolidated_table, row.names = FALSE)
     cat("\n")
 
     # Print standardized residuals
     cat("STANDARDIZED RESIDUALS\n")
     cat("=====================\n")
     cat("(Values > |2| indicate significant deviation from expected)\n")
-    print(tibble::as_tibble(residuals_df), n = Inf)
+    print(residuals_df, row.names = FALSE)
     cat("\n")
 
     # Print statistical summary
     cat("STATISTICAL SUMMARY\n")
     cat("==================\n")
-    print(tibble::as_tibble(stats_summary), n = Inf)
+    print(stats_summary, row.names = FALSE)
     cat("\n")
 
     if (!is.null(strata)) {
@@ -693,11 +651,11 @@ if (!is.data.frame(data)) {
       cat("=================\n")
       cat("(p_adjusted corrects for the", strata$n_strata, "tests, method:",
           p_adjust, ")\n")
-      print(tibble::as_tibble(strata$strata_summary), n = Inf)
+      print(strata$strata_summary, row.names = FALSE)
       cat("\n")
       cat("POOLED VS CONDITIONAL\n")
       cat("=====================\n")
-      print(tibble::as_tibble(overall_summary), n = Inf)
+      print(overall_summary, row.names = FALSE)
       cat("\n")
     }
   }
@@ -811,7 +769,7 @@ if (!is.data.frame(data)) {
 #' res <- mosaic_analysis(d, "a", "b", min_count = 5, verbose = FALSE)
 #' \donttest{
 #' plot(res, tile_label = "percent", legend_size = 0.4)
-#' plot(res, plot_style = "classic")
+#' if (requireNamespace("vcd", quietly = TRUE)) plot(res, plot_style = "classic")
 #' }
 #' @export
 plot.mosaic_analysis <- function(x, ...) {
@@ -849,7 +807,17 @@ print.mosaic_analysis <- function(x, ...) {
 #' @export
 summary.mosaic_analysis <- function(object, ...) {
   cat("\n=== MOSAIC ANALYSIS SUMMARY ===\n\n")
-  print(object$stats_summary, n = Inf)
+  print(object$stats_summary, row.names = FALSE)
   cat("\n")
   invisible(object$stats_summary)
+}
+
+# One row of the consolidated table: its label, its type, one column per
+# category (named as the categories, even when they are not syntactic), and
+# the row total.
+.mosaic_row <- function(variable, type, values, total) {
+  cells <- as.data.frame(as.list(values), check.names = FALSE, stringsAsFactors = FALSE)
+  out <- cbind(data.frame(Variable = variable, Type = type, stringsAsFactors = FALSE), cells)
+  out$Total <- total
+  out
 }

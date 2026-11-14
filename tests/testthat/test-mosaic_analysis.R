@@ -98,12 +98,13 @@ test_that("plot_style switches between flat ggplot and classic vcd", {
                           plot_style = "flat", verbose = FALSE)
   expect_s3_class(flat$mosaic_plot, "ggplot")
 
+  # flat is the default
+  expect_identical(eval(formals(mosaic_analysis)$plot_style)[1], "flat")
+
+  skip_if_not_installed("vcd")
   classic <- mosaic_analysis(test_data, "var1", "var2", min_count = 5,
                              plot_style = "classic", verbose = FALSE)
   expect_s3_class(classic$mosaic_plot, "structable")
-
-  # flat is the default
-  expect_identical(eval(formals(mosaic_analysis)$plot_style)[1], "flat")
 })
 
 test_that("tile_label and category-label placement options work and validate", {
@@ -154,6 +155,7 @@ test_that("plot.mosaic_analysis re-renders from stored parts with overrides", {
   # re-render with new styling — returns a ggplot, no recomputation needed
   p1 <- plot(res, tile_label = "percent", legend_size = 0.4)
   expect_s3_class(p1, "ggplot")
+  skip_if_not_installed("vcd")
   p2 <- plot(res, plot_style = "classic")
   expect_s3_class(p2, "structable")
 

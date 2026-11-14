@@ -32,6 +32,6 @@ d <- data.frame(
 res <- mosaic_analysis(d, "a", "b", min_count = 5, verbose = FALSE)
 \donttest{
 plot(res, tile_label = "percent", legend_size = 0.4)
-plot(res, plot_style = "classic")
+if (requireNamespace("vcd", quietly = TRUE)) plot(res, plot_style = "classic")
 }
 }

@@ -11,7 +11,6 @@
 NULL
 
 # Import pipe operator for use in functions
-#' @importFrom magrittr %>%
 NULL
 
 # Suppress R CMD check notes for tidyverse-style code

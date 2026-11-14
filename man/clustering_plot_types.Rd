@@ -16,6 +16,6 @@ The figures \code{\link[=plot_clustering]{plot_clustering()}} can draw. Any \cod
 \code{"all"} can be passed as its \code{type}.
 }
 \examples{
-clustering_plot_types()
+if (requireNamespace("latents", quietly = TRUE)) clustering_plot_types()
 
 }

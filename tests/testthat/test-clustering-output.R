@@ -1,3 +1,5 @@
+skip_if_not_installed("latents")
+
 iris_vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
 
 fit_one <- clustering(iris, iris_vars, n_profiles = 3, models = "EEE",

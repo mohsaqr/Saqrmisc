@@ -68,14 +68,16 @@ complete rows; \code{saqrmisc_no_converged} when no candidate converged.
 
 \examples{
 \donttest{
-set.seed(1)
-vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
-fit <- clustering(iris, vars, n_profiles = 2:4, models = c("EEE", "VVI"))
-fit
-summary(fit)
-as.data.frame(fit)
-fitted(fit)
-plot(fit)
+if (requireNamespace("latents", quietly = TRUE)) {
+  set.seed(1)
+  vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+  fit <- clustering(iris, vars, n_profiles = 2:4, models = c("EEE", "VVI"))
+  fit
+  summary(fit)
+  as.data.frame(fit)
+  fitted(fit)
+  plot(fit)
+}
 }
 
 }

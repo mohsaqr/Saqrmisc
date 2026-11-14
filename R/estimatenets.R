@@ -172,12 +172,7 @@ estimate_single_network <- function(df,
   # ===========================================================================
   # Check Dependencies
   # ===========================================================================
-  required_pkgs <- c("bootnet", "mgm", "qgraph")
-  for (pkg in required_pkgs) {
-    if (!requireNamespace(pkg, quietly = TRUE)) {
-      stop("Package '", pkg, "' is required. Install with: install.packages('", pkg, "')")
-    }
-  }
+  invisible(lapply(c("bootnet", "mgm", "qgraph"), .kr_need))
 
   # ===========================================================================
   # Input Validation

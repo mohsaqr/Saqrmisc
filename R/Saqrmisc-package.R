@@ -139,12 +139,9 @@
 #'   sd var median quantile IQR complete.cases na.omit p.adjust qnorm qt pchisq qchisq
 #'   as.formula lm predict residuals setNames mahalanobis cov ave qqnorm qqline pt
 #' @importFrom rlang .data sym
-#' @importFrom tibble tibble
 #' @importFrom tidyr pivot_longer
-#' @importFrom magrittr %>%
 #' @importFrom grDevices colorRampPalette pdf png svg dev.off rgb
 #' @importFrom grid gpar
-#' @importFrom vcd mosaic labeling_values
 #' @importFrom utils modifyList packageVersion head combn
 #'
 #' @keywords internal

@@ -50,6 +50,7 @@ build_mosaic_plot <- function(parts, style) {
     # stratifier becomes a third splitting variable of a nested mosaic.
     set_vn <- c(parts$var1_label, parts$var2_label)
     names(set_vn) <- c(parts$var1_name, parts$var2_name)
+    .kr_need("vcd")
     rhs <- paste(parts$var1_name, "+", parts$var2_name)
     if (!is.null(parts$by_name)) {
       rhs <- paste(rhs, "+", parts$by_name)
