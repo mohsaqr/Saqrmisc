@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.12</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -890,7 +890,7 @@
 <code>keywords_clean()</code> and <code>keywords_merge()</code>
 <a class="anchor" aria-label="anchor" href="#keywords_clean-and-keywords_merge"></a>
 </h3>
-<p>Gives each concept one keyword in <code>DE</code> (and <code>ID</code>) and returns <code>M</code>, ready for bibliometrix. It works on the distinct keywords, never deletes one, and rewrites only the papers whose keywords change.</p>
+<p>Gives each concept one keyword in the author keywords (<code>DE</code>) and returns <code>M</code>, ready for bibliometrix. It works on the distinct keywords, never deletes one, and rewrites only the papers whose keywords change.</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">data</span>, columns <span class="op">=</span> <span class="st">"DE"</span>, level <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"confirmed"</span>, <span class="st">"all"</span><span class="op">)</span>, decisions <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>               min_papers <span class="op">=</span> <span class="fl">5</span>, replace <span class="op">=</span> <span class="cn">NULL</span>, titles <span class="op">=</span> <span class="st">"TI"</span>, output <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"minimal"</span>, <span class="st">"all"</span><span class="op">)</span><span class="op">)</span></span>
@@ -911,7 +911,7 @@
 </tr>
 <tr>
 <td><code>level = "all"</code></td>
-<td>The same, plus every merge written to the <code>decisions</code> sheet, with a prompt for a model beside it</td>
+<td>Merges nothing: returns <code>M</code> unchanged and writes every merge to the <code>decisions</code> sheet, with a prompt for a model beside it</td>
 </tr>
 <tr>
 <td><code>min_papers</code></td>
@@ -923,28 +923,29 @@
 </tr>
 <tr>
 <td><code>output = "all"</code></td>
-<td>Adds <code>DE_ORIGINAL</code> (and <code>ID_ORIGINAL</code>)</td>
+<td>Adds <code>DE_ORIGINAL</code>
+</td>
 </tr>
 </tbody>
 </table>
 <div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">M1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DE"</span>, <span class="st">"ID"</span><span class="op">)</span><span class="op">)</span>                    <span class="co"># confirmed only</span></span>
+<code class="sourceCode R"><span><span class="va">M1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span><span class="op">)</span>                                             <span class="co"># confirmed only</span></span>
 <span></span>
-<span><span class="va">M1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DE"</span>, <span class="st">"ID"</span><span class="op">)</span>, level <span class="op">=</span> <span class="st">"all"</span>,</span>
-<span>                     decisions <span class="op">=</span> <span class="st">"keyword_decisions.xlsx"</span><span class="op">)</span>           <span class="co"># + the sheet</span></span>
+<span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, level <span class="op">=</span> <span class="st">"all"</span>, decisions <span class="op">=</span> <span class="st">"keyword_decisions.xlsx"</span><span class="op">)</span>         <span class="co"># the sheet only; merges nothing</span></span>
 <span><span class="co"># ... a person or a model fills in `merge` (yes / no) ...</span></span>
-<span><span class="va">M2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_merge.html">keywords_merge</a></span><span class="op">(</span><span class="va">M</span>, decisions <span class="op">=</span> <span class="st">"keyword_decisions.xlsx"</span>, columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DE"</span>, <span class="st">"ID"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>The sheet has one group per <code>name</code>: the <code>name</code> row, its <code>confirmed</code> merges (applied) and its <code>needs_revision</code> candidates (keywords spelled alike, found by MinHash on character trigrams without comparing all pairs, and acronyms with their long forms from brackets in the data). Columns: <code>group</code>, <code>name</code>, <code>keyword</code>, <code>keyword_backup</code> (the copy <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> matches on), <code>status</code>, <code>merge</code>, <code>papers</code>, <code>source</code>, <code>example</code> (a title using the keyword). <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> merges a <code>needs_revision</code> row marked <code>yes</code>, keeps a <code>confirmed</code> row marked <code>no</code> apart, and renames a group whose <code>name</code> was edited. The prompt (<code>keyword_decisions_prompt.txt</code>, and a <code>prompt</code> tab in the <code>.xlsx</code>) tells a model what <code>yes</code> and <code>no</code> mean, with examples. A small local model is a first pass, not a judge: <code>qwen3-vl-4b</code> agreed with a person on 17 of 20 test pairs and merged a narrower term (<code>SMART CHATBOT</code> into <code>CHATBOT</code>).</p>
-</div>
-<div class="section level3">
-<h3 id="institutions_clean">
-<code>institutions_clean()</code><a class="anchor" aria-label="anchor" href="#institutions_clean"></a>
-</h3>
-<p>Gives each institution one name by its OpenAlex institution ID (with its ROR ID where OpenAlex has one), the way <code><a href="reference/authors_clean.html">authors_clean()</a></code> uses Scopus author IDs. Papers OpenAlex does not cover are resolved from their addresses: first through the addresses OpenAlex linked on other papers, then by the institution part of the address (a university before a college, before an institute or company). What is left keeps its written name and goes to the review below. Two institutions that share a name get their country code (<code>NORTHEASTERN UNIVERSITY, US</code> / <code>, CN</code>).</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">institutions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/institutions_clean.html">institutions_clean</a></span><span class="op">(</span><span class="va">M</span><span class="op">)</span>          <span class="co"># AU_UN and AU_UN_ID by OpenAlex ID</span></span>
-<span><span class="va">institutions</span></span>
-<span><span class="fu"><a href="reference/institutions_changes.html">institutions_changes</a></span><span class="op">(</span><span class="va">institutions</span><span class="op">)</span>             <span class="co"># every address and what it became</span></span></code></pre></div>
+<span><span class="va">M2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_merge.html">keywords_merge</a></span><span class="op">(</span><span class="va">M</span>, decisions <span class="op">=</span> <span class="st">"keyword_decisions.xlsx"</span><span class="op">)</span></span></code></pre></div>
+<p>The sheet has one group per <code>name</code>: the <code>name</code> row, its <code>confirmed</code> merges and its <code>needs_revision</code> candidates; nothing is merged until <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> (keywords spelled alike, found by MinHash on character trigrams without comparing all pairs, and acronyms with their long forms from brackets in the data). Columns: <code>group</code>, <code>name</code>, <code>keyword</code>, <code>keyword_backup</code> (the copy <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> matches on), <code>status</code>, <code>merge</code>, <code>papers</code>, <code>source</code>, <code>example</code> (a title using the keyword). Every keyword in <code>min_papers</code> or more papers is in the sheet, in a group or alone (<code>single</code>), so OpenRefine can also cluster the whole list. <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> reads the sheet one of two ways. <code>by = "merge"</code> (default): a <code>needs_revision</code> row marked <code>yes</code> is merged, a <code>confirmed</code> row marked <code>no</code> is kept apart, a group whose <code>name</code> was edited is renamed. <code>by = "edit"</code>: each keyword whose <code>keyword</code> was rewritten (by OpenRefine clustering, say) becomes the new text, matched on the untouched <code>keyword_backup</code>.</p>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a>M2 <span class="ot">&lt;-</span> <span class="fu">keywords_merge</span>(M, <span class="at">decisions =</span> <span class="st">"keyword_decisions.xlsx"</span>, <span class="at">by =</span> <span class="st">"edit"</span>)</span>
+<span id="cb37-2"><a href="#cb37-2" tabindex="-1"></a><span class="st">```</span><span class="at"> The prompt (</span><span class="st">`</span>keyword_decisions_prompt.txt<span class="st">`</span><span class="at">, and a </span><span class="st">`</span>prompt<span class="st">`</span><span class="at"> tab in the </span><span class="st">`</span>.xlsx<span class="st">`</span><span class="at">) tells a model what </span><span class="st">`</span>yes<span class="st">`</span><span class="at"> and </span><span class="st">`</span>no<span class="st">`</span><span class="at"> mean, with examples. A small local model is a first pass, not a judge: </span><span class="st">`</span>qwen3<span class="sc">-</span>vl<span class="dv">-4</span>b<span class="st">`</span><span class="at"> agreed with a person on 17 of 20 test pairs and merged a narrower term (</span><span class="st">`</span>SMART CHATBOT<span class="st">`</span><span class="at"> into </span><span class="st">`</span>CHATBOT<span class="st">`</span><span class="at">).</span></span>
+<span id="cb37-3"><a href="#cb37-3" tabindex="-1"></a></span>
+<span id="cb37-4"><a href="#cb37-4" tabindex="-1"></a><span class="at">### </span><span class="st">`</span><span class="fu">institutions_clean</span>()<span class="st">`</span></span>
+<span id="cb37-5"><a href="#cb37-5" tabindex="-1"></a></span>
+<span id="cb37-6"><a href="#cb37-6" tabindex="-1"></a><span class="at">Gives each institution one name by its OpenAlex institution ID (with its ROR ID where OpenAlex has one), the way </span><span class="st">`</span><span class="fu">authors_clean</span>()<span class="st">`</span><span class="at"> uses Scopus author IDs. Papers OpenAlex does not cover are resolved from their addresses: first through the addresses OpenAlex linked on other papers, then by the institution part of the address (a university before a college, before an institute or company). What is left keeps its written name and goes to the review below. Two institutions that share a name get their country code (</span><span class="st">`</span>NORTHEASTERN UNIVERSITY, US<span class="st">`</span><span class="at"> / </span><span class="st">`</span>, CN<span class="st">`</span><span class="at">).</span></span>
+<span id="cb37-7"><a href="#cb37-7" tabindex="-1"></a></span>
+<span id="cb37-8"><a href="#cb37-8" tabindex="-1"></a><span class="st">```</span>r</span>
+<span id="cb37-9"><a href="#cb37-9" tabindex="-1"></a>institutions <span class="ot">&lt;-</span> <span class="fu">institutions_clean</span>(M)          <span class="co"># AU_UN and AU_UN_ID by OpenAlex ID</span></span>
+<span id="cb37-10"><a href="#cb37-10" tabindex="-1"></a>institutions</span>
+<span id="cb37-11"><a href="#cb37-11" tabindex="-1"></a><span class="fu">institutions_changes</span>(institutions)             <span class="co"># every address and what it became</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="all-three-at-once">All three at once<a class="anchor" aria-label="anchor" href="#all-three-at-once"></a>
@@ -953,7 +954,7 @@
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="va">M</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="st">"scopus_exports"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span>columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DE"</span>, <span class="st">"ID"</span><span class="op">)</span>, replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/institutions_clean.html">institutions_clean</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">cleaned</span><span class="op">)</span></span></code></pre></div>
 </div>

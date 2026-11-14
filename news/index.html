@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.12</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,19 +39,27 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.13" id="saqrmisc-0913">Saqrmisc 0.9.13<a class="anchor" aria-label="anchor" href="#saqrmisc-0913"></a></h2>
+<ul><li>
+<code>keywords_clean(level = "all")</code> merges nothing: it returns the data unchanged and only writes the sheet; every merge happens in <code><a href="../reference/keywords_merge.html">keywords_merge()</a></code>.</li>
+<li>
+<code>keywords_merge(by = "edit")</code> applies keywords rewritten in another tool (OpenRefine clustering) against the untouched <code>keyword_backup</code>; the sheet lists every keyword in <code>min_papers</code> or more papers, grouped or <code>single</code>.</li>
+<li>Keyword cleaning is about the author keywords (<code>DE</code>, the default); the examples and README no longer use <code>ID</code>.</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.12" id="saqrmisc-0912">Saqrmisc 0.9.12<a class="anchor" aria-label="anchor" href="#saqrmisc-0912"></a></h2>
 <div class="section level3">
 <h3 id="keywords_clean-redesigned-breaking-new-keywords_merge-0-9-12">
 <code>keywords_clean()</code> redesigned (breaking), new <code>keywords_merge()</code>
 <a class="anchor" aria-label="anchor" href="#keywords_clean-redesigned-breaking-new-keywords_merge-0-9-12"></a></h3>
 <ul><li>Returns the data frame itself; only papers whose keywords change are rewritten, the others keep their text exactly. Nothing is ever deleted.</li>
-<li>Works on the distinct keywords of all columns at once (DE and ID agree on every spelling) and rewrites papers by lookup: about 2 million papers in minutes.</li>
+<li>Cleans the author keywords (<code>DE</code>, the default). Works on the distinct keywords and rewrites papers by lookup: about 2 million papers in minutes.</li>
 <li>
 <code>level = "confirmed"</code> (default): cleanup, brackets, your <code>replace</code> tables, and spelling variants (case, punctuation, accents, hyphens, spaces, plurals, in word order).</li>
 <li>
-<code>level = "all"</code> also writes every merge to a <code>decisions</code> sheet (<code>.xlsx</code> or <code>.csv</code>) for review outside R: one group per <code>name</code>, rows <code>confirmed</code> (applied) or <code>needs_revision</code> (keywords in <code>min_papers</code>, default 5, or more papers spelled alike by MinHash on character trigrams, or acronyms with their bracketed long forms), an empty <code>merge</code> column, a <code>keyword_backup</code> copy, and a prompt for a model beside it.</li>
+<code>level = "all"</code> merges nothing: it returns the data unchanged and writes every merge to a <code>decisions</code> sheet (<code>.xlsx</code> or <code>.csv</code>) for review outside R: one group per <code>name</code>, rows <code>confirmed</code> or <code>needs_revision</code> (keywords in <code>min_papers</code>, default 5, or more papers spelled alike by MinHash on character trigrams, or acronyms with their bracketed long forms), an empty <code>merge</code> column, a <code>keyword_backup</code> copy, and a prompt for a model beside it.</li>
 <li>
-<code><a href="../reference/keywords_merge.html">keywords_merge()</a></code> brings the checked sheet back into the data.</li>
+<code><a href="../reference/keywords_merge.html">keywords_merge()</a></code> brings the checked sheet back into the data: <code>by = "merge"</code> reads the <code>yes</code> / <code>no</code> answers, <code>by = "edit"</code> reads keywords rewritten in another tool (OpenRefine clustering) against the untouched <code>keyword_backup</code>. The sheet lists every keyword in <code>min_papers</code> or more papers, grouped or <code>single</code>, so the other tool can cluster them all.</li>
 <li>Removed: the <code>saqr_keywords</code> class and methods, <code>keywords_changes()</code>, <code>merge_similar</code>, <code>expand_acronyms</code> and <code>drop</code>; acronyms are no longer expanded without review.</li>
 </ul></div>
 </div>

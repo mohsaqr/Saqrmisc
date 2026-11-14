@@ -570,9 +570,9 @@ M2 <- authors_clean(M, ids = "scopus_exports", level = "needs_decision",
 
 ### `keywords_clean()` and `keywords_merge()`
 
-Gives each concept one keyword in `DE` (and `ID`) and returns `M`, ready
-for bibliometrix. It works on the distinct keywords, never deletes one,
-and rewrites only the papers whose keywords change.
+Gives each concept one keyword in the author keywords (`DE`) and returns
+`M`, ready for bibliometrix. It works on the distinct keywords, never
+deletes one, and rewrites only the papers whose keywords change.
 
 ``` r
 
@@ -584,52 +584,49 @@ keywords_merge(data, decisions, columns = "DE", replace = NULL, output = c("mini
 | Argument | What it does |
 |----|----|
 | `level = "confirmed"` | Default. Only what is certain: case, punctuation, accents, hyphens, spaces and plurals (`CHAT BOT` / `CHAT-BOTS` / `CHATBOT`, in word order), brackets (`(S)`, `(NLP)`) and your `replace` tables |
-| `level = "all"` | The same, plus every merge written to the `decisions` sheet, with a prompt for a model beside it |
+| `level = "all"` | Merges nothing: returns `M` unchanged and writes every merge to the `decisions` sheet, with a prompt for a model beside it |
 | `min_papers` | Only keywords in this many papers or more go to the sheet. Default 5 |
 | `replace` | Your `OLD`/`NEW` table: a data frame or a `.csv`/`.xlsx` file; several are applied in order |
-| `output = "all"` | Adds `DE_ORIGINAL` (and `ID_ORIGINAL`) |
+| `output = "all"` | Adds `DE_ORIGINAL` |
 
 ``` r
 
-M1 <- keywords_clean(M, columns = c("DE", "ID"))                    # confirmed only
+M1 <- keywords_clean(M)                                             # confirmed only
 
-M1 <- keywords_clean(M, columns = c("DE", "ID"), level = "all",
-                     decisions = "keyword_decisions.xlsx")           # + the sheet
+keywords_clean(M, level = "all", decisions = "keyword_decisions.xlsx")         # the sheet only; merges nothing
 # ... a person or a model fills in `merge` (yes / no) ...
-M2 <- keywords_merge(M, decisions = "keyword_decisions.xlsx", columns = c("DE", "ID"))
+M2 <- keywords_merge(M, decisions = "keyword_decisions.xlsx")
 ```
 
 The sheet has one group per `name`: the `name` row, its `confirmed`
-merges (applied) and its `needs_revision` candidates (keywords spelled
-alike, found by MinHash on character trigrams without comparing all
-pairs, and acronyms with their long forms from brackets in the data).
-Columns: `group`, `name`, `keyword`, `keyword_backup` (the copy
+merges and its `needs_revision` candidates; nothing is merged until
+[`keywords_merge()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_merge.md)
+(keywords spelled alike, found by MinHash on character trigrams without
+comparing all pairs, and acronyms with their long forms from brackets in
+the data). Columns: `group`, `name`, `keyword`, `keyword_backup` (the
+copy
 [`keywords_merge()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_merge.md)
 matches on), `status`, `merge`, `papers`, `source`, `example` (a title
-using the keyword).
+using the keyword). Every keyword in `min_papers` or more papers is in
+the sheet, in a group or alone (`single`), so OpenRefine can also
+cluster the whole list.
 [`keywords_merge()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_merge.md)
-merges a `needs_revision` row marked `yes`, keeps a `confirmed` row
-marked `no` apart, and renames a group whose `name` was edited. The
-prompt (`keyword_decisions_prompt.txt`, and a `prompt` tab in the
-`.xlsx`) tells a model what `yes` and `no` mean, with examples. A small
-local model is a first pass, not a judge: `qwen3-vl-4b` agreed with a
-person on 17 of 20 test pairs and merged a narrower term
-(`SMART CHATBOT` into `CHATBOT`).
+reads the sheet one of two ways. `by = "merge"` (default): a
+`needs_revision` row marked `yes` is merged, a `confirmed` row marked
+`no` is kept apart, a group whose `name` was edited is renamed.
+`by = "edit"`: each keyword whose `keyword` was rewritten (by OpenRefine
+clustering, say) becomes the new text, matched on the untouched
+`keyword_backup`.
+
+``` r
+M2 <- keywords_merge(M, decisions = "keyword_decisions.xlsx", by = "edit")
+``` The prompt (`keyword_decisions_prompt.txt`, and a `prompt` tab in the `.xlsx`) tells a model what `yes` and `no` mean, with examples. A small local model is a first pass, not a judge: `qwen3-vl-4b` agreed with a person on 17 of 20 test pairs and merged a narrower term (`SMART CHATBOT` into `CHATBOT`).
 
 ### `institutions_clean()`
 
-Gives each institution one name by its OpenAlex institution ID (with its
-ROR ID where OpenAlex has one), the way
-[`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md)
-uses Scopus author IDs. Papers OpenAlex does not cover are resolved from
-their addresses: first through the addresses OpenAlex linked on other
-papers, then by the institution part of the address (a university before
-a college, before an institute or company). What is left keeps its
-written name and goes to the review below. Two institutions that share a
-name get their country code (`NORTHEASTERN UNIVERSITY, US` / `, CN`).
+Gives each institution one name by its OpenAlex institution ID (with its ROR ID where OpenAlex has one), the way `authors_clean()` uses Scopus author IDs. Papers OpenAlex does not cover are resolved from their addresses: first through the addresses OpenAlex linked on other papers, then by the institution part of the address (a university before a college, before an institute or company). What is left keeps its written name and goes to the review below. Two institutions that share a name get their country code (`NORTHEASTERN UNIVERSITY, US` / `, CN`).
 
-``` r
-
+```r
 institutions <- institutions_clean(M)          # AU_UN and AU_UN_ID by OpenAlex ID
 institutions
 institutions_changes(institutions)             # every address and what it became
@@ -647,7 +644,7 @@ papers after
 
 cleaned <- M |>
   authors_clean(ids = "scopus_exports") |>
-  keywords_clean(columns = c("DE", "ID"), replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx")) |>
+  keywords_clean() |>
   institutions_clean()
 as.data.frame(cleaned)
 ```

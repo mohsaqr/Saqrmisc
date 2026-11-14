@@ -64,7 +64,7 @@ if (requireNamespace("writexl", quietly = TRUE) &&
   summary(report)
   as.data.frame(report)
 }
-#> file1e5c4274db2b.xlsx: 2 pair(s) to check (0 of them blind), 0 accepted and 0 rejected by the AI. Write yours in decision_2.
+#> file1eac7145ccdc.xlsx: 2 pair(s) to check (0 of them blind), 0 accepted and 0 rejected by the AI. Write yours in decision_2.
 #>   pair         keyword           variant decision decision_2 final
 #> 1    1 BEHAVIOR CHANGE  BEHAVIOUR CHANGE    check       <NA> check
 #> 2    2  SOCIAL NETWORK SOCIAL NETWORKING    check       <NA> check
