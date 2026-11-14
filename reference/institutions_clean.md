@@ -41,7 +41,7 @@ institutions_clean(
 
   Your papers, one row each (a bibliometrix data frame). The result of
   another \`clean\_\*()\` function works too, so the cleaners chain: \`M
-  \|\> authors_clean(scopus = "Dlds") \|\> keywords_clean()\`.
+  \|\> authors_clean(ids = "scopus_exports") \|\> keywords_clean()\`.
 
 - affiliations:
 

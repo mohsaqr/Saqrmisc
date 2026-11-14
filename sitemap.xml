@@ -12,13 +12,11 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/Saqrmisc-package.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/add_total.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.mosaic_analysis.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_authors.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_institutions.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_keywords.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_proposals.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_review.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/ask_ai.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/authors_changes.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/authors_clean.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/auto_describe.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/categorical_table.html</loc></url>
@@ -61,7 +59,6 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.mosaic_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.mosaic_stratified.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.network_analysis.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_authors.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_clustering.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_institutions.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_keywords.html</loc></url>
@@ -75,7 +72,6 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/reverse_code_vec.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/review_report.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/review_sheet.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/review_sheet.saqr_authors.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/saqr_result.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/scale_vars.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/scale_vec.html</loc></url>
@@ -90,7 +86,6 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.mosaic_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.mosaic_stratified.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.network_analysis.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_authors.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_clustering.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_institutions.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_keywords.html</loc></url>

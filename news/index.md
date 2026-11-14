@@ -1,5 +1,27 @@
 # Changelog
 
+## Saqrmisc 0.9.10
+
+### `authors_clean()` redesigned (breaking)
+
+- Returns the data frame itself, `AU` (and `AF`, when present)
+  rewritten, ready for bibliometrix. Only authors merged by Scopus ID
+  change; others keep their spelling exactly. No more `"KIM J (2)"`
+  numbering.
+- The Scopus author IDs are given as `ids` (exports, a folder, or a data
+  frame) and matched by record ID (`record_id`, default `"eid"`).
+  Replaces `scopus`, `author_ids` and `eid`.
+- `level = "confirmed"` (default, Scopus ID only, offline) or
+  `"needs_decision"` (plus ORCID candidates in a `decisions` sheet,
+  applied once marked `merge`). Replaces `openalex` and `review`.
+- `output = "all"` adds `AU_ORIGINAL`, `AU_ID` and `check_authors`; the
+  default adds nothing.
+- The spelling is chosen from `data`, never one with letters lost.
+- Removed: the `saqr_authors` class and its methods,
+  `authors_changes()`, `authors_check()`,
+  [`review_sheet()`](https://pak.dynasite.org/Saqrmisc/reference/review_sheet.md)
+  for authors.
+
 ## Saqrmisc 0.9.9
 
 ### Author and keyword cleaning for bibliometric data
@@ -8,11 +30,9 @@
   [`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md),
   [`keywords_clean()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_clean.md),
   [`institutions_clean()`](https://pak.dynasite.org/Saqrmisc/reference/institutions_clean.md),
-  each with a `_changes()` verb
-  ([`authors_changes()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md),
+  each with a `_changes()` verb (`authors_changes()`,
   [`keywords_changes()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_changes.md),
-  `institutions_changes(source =)`) and
-  [`authors_check()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md).
+  `institutions_changes(source =)`) and `authors_check()`.
   [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) gives
   the cleaned papers.
 
@@ -20,10 +40,8 @@
   reads the Scopus author IDs from `data` when `scopus` is left out and
   `data` has them (column `author_ids`, default `"Author(s) ID"`).
 
-- [`authors_changes()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md)
-  and
-  [`authors_check()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md)
-  give every changed person and the merges to check from an
+- `authors_changes()` and `authors_check()` give every changed person
+  and the merges to check from an
   [`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md)
   result. [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html)
   loses its `check` argument.
@@ -149,7 +167,7 @@
 - [`plot_clustering()`](https://pak.dynasite.org/Saqrmisc/reference/plot_clustering.md)
   takes `type` and passes `...` (e.g. `scale = "standardized"`) to
   latents. Plot descriptions come from
-  [`latents::plot_views()`](https://pak.dynasite.org/latents/reference/latents-plots.html).
+  [`latents::plot_views()`](https://pak.dynasite.org/latents/reference/plot_views.html).
 - **Removed** (use the verbs above): `cluster()`, `cluster_fit()`,
   `get_cluster_assignments()`/`cluster_assignments()` -\>
   [`fitted()`](https://rdrr.io/r/stats/fitted.values.html);

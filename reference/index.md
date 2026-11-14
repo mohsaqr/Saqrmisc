@@ -6,8 +6,6 @@
   : Add Row Totals to Data Frame
 - [`as.data.frame(`*`<mosaic_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.mosaic_analysis.md)
   : Tidy accessor for a mosaic_analysis result
-- [`as.data.frame(`*`<saqr_authors>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_authors.md)
-  : Tables from an authors_clean() result
 - [`as.data.frame(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_institutions.md)
   : Tables from an institutions_clean() result
 - [`as.data.frame(`*`<saqr_keywords>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_keywords.md)
@@ -18,11 +16,8 @@
   : Tables from a keyword review report
 - [`ask_ai()`](https://pak.dynasite.org/Saqrmisc/reference/ask_ai.md) :
   Ask an AI model to judge suggested keyword merges
-- [`authors_changes()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md)
-  [`authors_check()`](https://pak.dynasite.org/Saqrmisc/reference/authors_changes.md)
-  : The changes and the merges to check
 - [`authors_clean()`](https://pak.dynasite.org/Saqrmisc/reference/authors_clean.md)
-  : Clean author names with Scopus author IDs and ORCID
+  : Clean author names by Scopus author ID
 - [`auto_describe()`](https://pak.dynasite.org/Saqrmisc/reference/auto_describe.md)
   : Automatically Generate Descriptive Statistics for All Variables
 - [`categorical_table()`](https://pak.dynasite.org/Saqrmisc/reference/categorical_table.md)
@@ -102,8 +97,6 @@
   : Print method for stratified mosaic_analysis objects
 - [`print(`*`<network_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.network_analysis.md)
   : Print method for network_analysis objects
-- [`print(`*`<saqr_authors>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_authors.md)
-  : Print an authors_clean() result
 - [`print(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_clustering.md)
   : Print a Clustering Result
 - [`print(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_institutions.md)
@@ -130,8 +123,6 @@
   : Report on a checked keyword review sheet
 - [`review_sheet()`](https://pak.dynasite.org/Saqrmisc/reference/review_sheet.md)
   : Write a review sheet
-- [`review_sheet(`*`<saqr_authors>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/review_sheet.saqr_authors.md)
-  : Write the author merges to a review sheet
 - [`saqr_result()`](https://pak.dynasite.org/Saqrmisc/reference/saqr_result.md)
   : Create a saqr_result object
 - [`scale_vars()`](https://pak.dynasite.org/Saqrmisc/reference/scale_vars.md)
@@ -160,8 +151,6 @@
   : Summary method for stratified mosaic_analysis objects
 - [`summary(`*`<network_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.network_analysis.md)
   : Summary method for network_analysis objects
-- [`summary(`*`<saqr_authors>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_authors.md)
-  : Summarise an authors_clean() result
 - [`summary(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_clustering.md)
   : Compare the Candidate Models of a Clustering Result
 - [`summary(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_institutions.md)

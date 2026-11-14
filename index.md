@@ -519,45 +519,55 @@ mosaic_analysis(data, var1, var2, show_percentages = TRUE,
 
 ### `authors_clean()`
 
-Gives each author one spelling and keeps different people apart, by IDs
-only: the Scopus author IDs in the raw Scopus CSV exports, then ORCID.
-All spellings of one Scopus ID become one (accents kept); Scopus IDs
-whose papers carry the same ORCID (from OpenAlex, by DOI) become one
-person; different people who share a spelling become `"KIM J"`,
-`"KIM J (2)"`. Names never merge anyone. A merge whose spellings do not
-look like one name (`ENDRASS B` and `LUGRIN B` under one Scopus ID) is
-kept and flagged `check = TRUE`; lost accents, initials against given
-names and a dropped surname part count as one name.
+Gives each person one spelling in `AU` (and `AF`) by Scopus author ID,
+and returns `M` itself, ready for bibliometrix. bibliometrix drops the
+Scopus author IDs when it builds `M`, so they are supplied as `ids`: the
+raw Scopus CSV exports `M` was built from (a folder of them, the files,
+or a data frame read from them). They are matched to the papers by
+record ID (the EID), then by author position.
 
 ``` r
 
-authors_clean(data, scopus = NULL, author_ids = "Author(s) ID", eid = "eid",
-              authors = "AU", doi = "DI", year = "PY", openalex = TRUE,
-              mailto = NULL, review = NULL)
+authors_clean(data, ids, record_id = "eid", authors = "AU", full_names = "AF",
+              year = "PY", level = c("confirmed", "needs_decision"),
+              decisions = NULL, doi = "DI", mailto = NULL,
+              output = c("minimal", "all"))
 ```
 
-The Scopus author IDs come from the raw Scopus CSV exports (`scopus`),
-or from `data` itself when it has them (`author_ids`). bibliometrix
-drops them, so a bibliometrix data frame needs `scopus`; the exports
-also keep the accents bibliometrix strips.
+| Argument | What it does |
+|----|----|
+| `level = "confirmed"` | Default. Only one Scopus ID = one person; no network, a few seconds |
+| `level = "needs_decision"` | The confirmed merges, plus Scopus IDs sharing an ORCID (OpenAlex) once you accept them in `decisions` |
+| `output = "all"` | Adds `AU_ORIGINAL`, `AU_ID` (Scopus IDs in author order) and `check_authors` (`YES` for a paper with an author whose merged spellings look unlike, e.g. `ENDRASS B` / `LUGRIN B`) |
+
+A person’s spelling is the most frequent in `M`, then the most recent,
+then the longest; a spelling with letters lost (`KAI Z` for `KACIC Z`)
+is never chosen. Authors not merged keep their spelling, and people who
+share a spelling under different IDs are left as they are.
 
 ``` r
 
-authors <- authors_clean(M, scopus = "Dlds")    # M: bibliometrix data; Dlds: Scopus CSVs
-authors                                          # counts, and the merges to check
-authors_check(authors)                           # the merges whose names look unlike
-authors_changes(authors)                         # every person whose name changed
-as.data.frame(authors)                           # the papers, authors rewritten, new AU_ID
-review_sheet(authors, "authors_review.csv")      # every merge, the ones to check first
+M1 <- authors_clean(M, ids = "scopus_exports")    # the folder of raw Scopus CSV exports
 ```
 
-The cleaned papers are a copy of `M`; `M` and your files are left as
-they were.
+That is all most analyses need. A message gives the counts and says why
+any paper was left untouched. To see what changed:
 
-Write `split` in `decision` for a wrong merge, then pass the sheet back
-with `authors_clean(M, scopus = "Dlds", review = "authors_review.csv")`.
-A split person is taken apart into its Scopus IDs when ORCID joined
-several, otherwise into its Scopus spellings.
+``` r
+
+M1 <- authors_clean(M, ids = "scopus_exports", output = "all")
+subset(M1, check_authors == "YES")                # the papers to look at
+```
+
+To add the ORCID merges, run with `level = "needs_decision"`: the first
+run writes the candidates to `decisions` and applies none; write `merge`
+in `decision` for the right ones and run the same call again.
+
+``` r
+
+M2 <- authors_clean(M, ids = "scopus_exports", level = "needs_decision",
+                    decisions = "author_decisions.xlsx")
+```
 
 ### `keywords_clean()`
 
@@ -615,7 +625,7 @@ cleaned papers:
 ``` r
 
 cleaned <- M |>
-  authors_clean(scopus = "Dlds") |>
+  authors_clean(ids = "scopus_exports") |>
   keywords_clean(replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx")) |>
   institutions_clean()
 as.data.frame(cleaned)

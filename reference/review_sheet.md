@@ -1,9 +1,8 @@
 # Write a review sheet
 
 Writes what needs a human look to a file you can check anywhere and pass
-back later. For an \[authors_clean()\] result, see
-\[review_sheet.saqr_authors()\]; the rest of this page is about keyword
-and institution merges.
+back later, for keyword and institution merges. (Author merges are
+decided in the \`decisions\` sheet of \[authors_clean()\].)
 
 Writes the pairs to an Excel file for you to check. \`decision\` is the
 AI's (see \[ask_ai()\]); \`decision_2\` is yours and empty. Where you
@@ -36,7 +35,7 @@ review_sheet(x, file)
 - x:
 
   An \[ask_ai()\] result (a \[suggest_merges()\] result also works; then
-  every pair is \`check\`), or an \[authors_clean()\] result.
+  every pair is \`check\`).
 
 - file:
 
@@ -69,7 +68,7 @@ if (requireNamespace("writexl", quietly = TRUE) &&
   review_sheet(suggest_merges(papers, meaning = FALSE), file)
   review_report(file)
 }
-#> file21ed18c4a865.xlsx: 2 pair(s) to check (0 of them blind), 0 accepted and 0 rejected by the AI. Write yours in decision_2.
-#> file21ed18c4a865.xlsx: 2 pairs, 0 accepted, 0 rejected, 2 still to check
+#> file213a24a5050c.xlsx: 2 pair(s) to check (0 of them blind), 0 accepted and 0 rejected by the AI. Write yours in decision_2.
+#> file213a24a5050c.xlsx: 2 pairs, 0 accepted, 0 rejected, 2 still to check
 #> You decided 0 pair(s) in decision_2, overruling the AI on 0
 ```

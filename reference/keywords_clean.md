@@ -44,7 +44,7 @@ keywords_clean(
 
   A data frame with one row per paper. The result of another
   \`clean\_\*()\` function works too, so the cleaners chain: \`M \|\>
-  authors_clean(scopus = "Dlds") \|\> keywords_clean()\`.
+  authors_clean(ids = "scopus_exports") \|\> keywords_clean()\`.
 
 - columns:
 
