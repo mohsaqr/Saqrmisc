@@ -16,7 +16,7 @@ keywords_clean(
 \arguments{
 \item{data}{A data frame with one row per paper.
 The result of another `clean_*()` function works too, so the cleaners
-chain: `M |> authors_clean(scopus = "Dlds") |> keywords_clean()`.}
+chain: `M |> authors_clean(ids = "scopus_exports") |> keywords_clean()`.}
 
 \item{columns}{Names of the keyword columns, `;`-separated. Default `"DE"`
 (bibliometrix's author keywords); `c("DE", "ID")` adds index keywords.}

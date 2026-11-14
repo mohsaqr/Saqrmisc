@@ -1,141 +1,254 @@
-# Six papers covering: spelling variants of one ID (111), a homonym spelling
-# under two IDs (201, 202), a "Jr." field, an HTML entity, hyphenated initials,
-# a group author that breaks the name/ID alignment, and one ID listed twice.
-make_authors_case <- function() {
-  scopus <- data.frame(
-    Authors = c("Pérez-Marín D., Kim J.", "Perez-Marin D., Kim J.",
-                "Pérez-Marín D., Huff E.W., Jr.", "L&#x00F3;pez A., Cho S.-B.",
-                "Group G., on behalf of the Committee", "Kim J., Kim J."),
-    `Author(s) ID` = c("111;201;", "111;202;", "111;300;", "400;500;", "600;", "201;201;"),
-    DOI = sprintf("10.1/%s", letters[1:6]),
+# Seven papers: Pérez-Marín (111) under three spellings, one with letters lost;
+# two people spelled KIM J (201, 202); an HTML entity whose `;` is no
+# separator; a group author that breaks the count; a record missing from the
+# IDs; one ID (7) under two surnames.
+make_case <- function() {
+  ids <- data.frame(
     EID = sprintf("e%d", 1:6),
+    `Author(s) ID` = c("111;201;", "111;202;", "111;300;", "400;500;", "600;", "7;111;"),
+    Authors = c("Pérez-Marín D., Kim J.", "Perez-Marin D., Kim J.", "Pérez-Marín D., Huff E.W., Jr.",
+                "L&#x00F3;pez A., Cho S.-B.", "Group G., on behalf of the Committee", "Endrass B., Pérez-Marín D."),
     check.names = FALSE
   )
-  path <- tempfile(fileext = ".csv")
-  utils::write.csv(scopus, path, row.names = FALSE, fileEncoding = "UTF-8")
   papers <- data.frame(
-    eid = scopus$EID,
-    AU = c("PREZ-MARN D;KIM J", "PEREZ-MARIN D;KIM J", "PREZ-MARN D;HUFF J",
-           "L&#X00F3;PEZ A;CHO SB", "GROUP G;ON BEHALF OF THE COMMITTEE", "KIM J;KIM J"),
-    DI = scopus$DOI,
-    PY = c(2019, 2020, 2020, 2018, 2021, 2022),
-    TI = sprintf("Paper %d", 1:6)
+    eid = sprintf("e%d", 1:7),
+    AU = c("PREZ-MARN D;KIM J", "PEREZ-MARIN D;KIM J", "PEREZ-MARIN D;HUFF EW",
+           "L&#X00F3;PEZ A;CHO SB", "GROUP G;ON BEHALF OF THE COMMITTEE", "ENDRASS B;PREZ-MARN D", "NOBODY N"),
+    PY = c(2019, 2020, 2021, 2018, 2021, 2010, 2022),
+    TI = sprintf("Paper %d", 1:7)
   )
-  list(papers = papers, path = path)
+  list(papers = papers, ids = ids)
 }
 
-clean_case <- function(case = make_authors_case()) {
-  authors_clean(case$papers, scopus = case$path, openalex = FALSE)
+# A second paper by ID 7 under its later surname.
+make_unlike_case <- function() {
+  case <- make_case()
+  case$ids <- rbind(case$ids, data.frame(EID = "e8", `Author(s) ID` = "7;", Authors = "Lugrin B.",
+                                         check.names = FALSE))
+  case$papers <- rbind(case$papers, data.frame(eid = "e8", AU = "LUGRIN B", PY = 2016, TI = "Paper 8"))
+  case$ids <- rbind(case$ids, data.frame(EID = "e9", `Author(s) ID` = "7;", Authors = "Lugrin B.",
+                                         check.names = FALSE))
+  case$papers <- rbind(case$papers, data.frame(eid = "e9", AU = "LUGRIN B", PY = 2017, TI = "Paper 9"))
+  case
 }
 
-au_of <- function(cleaned, id) {
-  out <- as.data.frame(cleaned)
-  out$AU[out$eid == id]
-}
+quiet_clean <- function(...) suppressMessages(authors_clean(...))
 
-test_that("spelling variants of one Scopus ID become the most frequent spelling", {
-  cleaned <- clean_case()
-  expect_equal(au_of(cleaned, "e2"), "PÉREZ-MARÍN D;KIM J (2)")
-  authors <- as.data.frame(cleaned, what = "authors")
-  expect_equal(unique(authors$name[authors$scopus_id %in% "111"]), "PÉREZ-MARÍN D")
+test_that("one Scopus ID gets one spelling, and the result is the data frame", {
+  case <- make_case()
+  out <- quiet_clean(case$papers, ids = case$ids)
+  expect_s3_class(out, "data.frame")
+  expect_identical(names(out), names(case$papers))
+  expect_identical(nrow(out), nrow(case$papers))
+  # 111 appears as PEREZ-MARIN D twice and PREZ-MARN D twice; the spelling
+  # with letters lost is never picked.
+  expect_identical(out$AU[1:3], c("PEREZ-MARIN D;KIM J", "PEREZ-MARIN D;KIM J", "PEREZ-MARIN D;HUFF EW"))
+  expect_identical(out$AU[6], "ENDRASS B;PEREZ-MARIN D")
+  expect_identical(out$TI, case$papers$TI)
 })
 
-test_that("different IDs that share a spelling stay different people", {
-  authors <- as.data.frame(clean_case(), what = "authors")
-  expect_equal(unique(authors$name[authors$scopus_id %in% "201"]), "KIM J")
-  expect_equal(unique(authors$name[authors$scopus_id %in% "202"]), "KIM J (2)")
-  expect_true(all(authors$homonym[authors$scopus_id %in% c("201", "202")]))
+test_that("different IDs that share a spelling are neither numbered nor split", {
+  out <- quiet_clean(make_case()$papers, ids = make_case()$ids)
+  expect_false(any(grepl("\\(", out$AU)))
+  expect_identical(sub(".*;", "", out$AU[1:2]), c("KIM J", "KIM J"))
 })
 
-test_that("suffixes, HTML entities and hyphenated initials are normalised", {
-  cleaned <- clean_case()
-  expect_equal(au_of(cleaned, "e3"), "PÉREZ-MARÍN D;HUFF EW JR")
-  expect_equal(au_of(cleaned, "e4"), "LÓPEZ A;CHO SB")
+test_that("papers without a merged author keep their text exactly", {
+  case <- make_case()
+  out <- quiet_clean(case$papers, ids = case$ids)
+  # The entity paper, the misaligned group paper and the paper not in ids.
+  expect_identical(out$AU[4:5], case$papers$AU[4:5])
+  expect_identical(out$AU[7], case$papers$AU[7])
 })
 
-test_that("a paper whose names and IDs do not line up is left untouched", {
-  case <- make_authors_case()
-  cleaned <- clean_case(case)
-  out <- as.data.frame(cleaned)
-  expect_equal(out$AU[out$eid == "e5"], case$papers$AU[case$papers$eid == "e5"])
-  expect_true(is.na(out$AU_ID[out$eid == "e5"]))
-  authors <- as.data.frame(cleaned, what = "authors")
-  expect_true(all(authors$source[authors$eid == "e5"] == "none"))
+test_that("an HTML entity's semicolon does not split a name", {
+  expect_identical(.au_split_field("L&#X00F3;PEZ A;CHO SB")[[1]], c("L&#X00F3;PEZ A", "CHO SB"))
+  expect_identical(.au_split_field(NA_character_)[[1]], character())
+  # Entity names are merged and written back as they were spelled.
+  ids <- data.frame(EID = c("a", "b", "c"), `Author(s) ID` = c("9;5;", "9;", "9;"), check.names = FALSE)
+  papers <- data.frame(eid = c("a", "b", "c"), AU = c("L&#X00F3;PEZ A;CHO SB", "L&#X00F3;PEZ A", "LPEZ A"),
+                       PY = c(2020, 2020, 2021))
+  out <- quiet_clean(papers, ids = ids)
+  expect_identical(out$AU, c("L&#X00F3;PEZ A;CHO SB", "L&#X00F3;PEZ A", "L&#X00F3;PEZ A"))
 })
 
-test_that("the cleaned data keeps every row and column, one person once per paper", {
-  case <- make_authors_case()
-  out <- as.data.frame(clean_case(case))
-  expect_equal(nrow(out), nrow(case$papers))
-  expect_equal(out$TI, case$papers$TI)
-  expect_equal(setdiff(names(out), names(case$papers)), "AU_ID")
-  expect_equal(out$AU[out$eid == "e6"], "KIM J")
-  rewritten <- !is.na(out$AU_ID)
-  expect_equal(lengths(strsplit(out$AU[rewritten], ";", fixed = TRUE)),
-               lengths(strsplit(out$AU_ID[rewritten], ";", fixed = TRUE)))
+test_that("ties go to the most recent spelling, then the longest", {
+  expect_identical(.au_pick(c("p", "p"), c("SMITH A", "SMYTH A"), c(2010, 2020)), c(p = "SMYTH A"))
+  expect_identical(.au_pick(c("p", "p"), c("SMITH A", "SMYTHE A"), c(2020, 2020)), c(p = "SMYTHE A"))
+  # Frequency beats recency.
+  expect_identical(.au_pick(rep("p", 3), c("SMITH A", "SMITH A", "SMYTH A"), c(2010, 2011, 2020)),
+                   c(p = "SMITH A"))
+  # A spelling with letters lost loses even when more frequent.
+  expect_identical(.au_pick(rep("p", 3), c("YALN N", "YALN N", "YALCIN ON"), c(2020, 2020, 2019)),
+                   c(p = "YALCIN ON"))
+  expect_identical(.au_is_subsequence(c("KAI Z", "KIM J", "A.B"), c("KACIC Z", "KIM SJ", "AXB")),
+                   c(TRUE, TRUE, FALSE))
 })
 
 test_that("the result does not depend on the order of the papers", {
-  case <- make_authors_case()
-  reversed <- case
-  reversed$papers <- case$papers[rev(seq_len(nrow(case$papers))), ]
-  a <- as.data.frame(clean_case(case))
-  b <- as.data.frame(clean_case(reversed))
-  expect_equal(b$AU[match(a$eid, b$eid)], a$AU)
+  case <- make_unlike_case()
+  shuffled <- do.call(rbind, rev(split(case$papers, case$papers$eid)))
+  a <- quiet_clean(case$papers, ids = case$ids, output = "all")
+  b <- quiet_clean(shuffled, ids = case$ids, output = "all")
+  both <- merge(a, b, by = "eid")
+  expect_identical(nrow(both), nrow(case$papers))
+  expect_identical(both$AU.x, both$AU.y)
+  expect_identical(both$check_authors.x, both$check_authors.y)
 })
 
-test_that("a folder of exports and renamed columns work", {
-  case <- make_authors_case()
+test_that("cleaning twice changes nothing more", {
+  case <- make_unlike_case()
+  once <- quiet_clean(case$papers, ids = case$ids, output = "all")
+  twice <- quiet_clean(once, ids = case$ids, output = "all")
+  expect_identical(twice$AU, once$AU)
+  expect_identical(twice$AU_ORIGINAL, case$papers$AU)
+})
+
+test_that("output = 'all' adds the original, the aligned IDs and check_authors", {
+  case <- make_unlike_case()
+  out <- quiet_clean(case$papers, ids = case$ids, output = "all")
+  expect_identical(setdiff(names(out), names(case$papers)), c("AU_ORIGINAL", "AU_ID", "check_authors"))
+  expect_identical(out$AU_ORIGINAL, case$papers$AU)
+  expect_identical(out$AU_ID[1:2], c("111;201", "111;202"))
+  expect_true(all(is.na(out$AU_ID[c(5, 7)])))
+  expect_identical(lengths(.au_split_ids(out$AU_ID[1:4])), lengths(.au_split_field(out$AU[1:4])))
+  # ID 7 is ENDRASS B once and LUGRIN B twice: one name now, flagged.
+  expect_identical(out$AU[6], "LUGRIN B;PEREZ-MARIN D")
+  expect_identical(out$check_authors, c(rep("NO", 5), "YES", "NO", "YES", "YES"))
+})
+
+test_that("the full-name column is rewritten alongside, where it lines up", {
+  case <- make_case()
+  case$papers$AF <- c("PÉREZ-MARÍN, DIANA;KIM, JI", "PEREZ-MARIN, DIANA;KIM, JIN", "PÉREZ-MARÍN, DIANA;HUFF, EARL",
+                      "LÓPEZ, ANA;CHO, SUNG", "GROUP, G;COMMITTEE", "ENDRASS, B", "NOBODY, N")
+  out <- quiet_clean(case$papers, ids = case$ids, output = "all")
+  expect_identical(out$AF[1:3], c("PÉREZ-MARÍN, DIANA;KIM, JI", "PÉREZ-MARÍN, DIANA;KIM, JIN",
+                                  "PÉREZ-MARÍN, DIANA;HUFF, EARL"))
+  # Paper 6 has one full name for two authors: left alone.
+  expect_identical(out$AF[6], "ENDRASS, B")
+  expect_identical(out$AF_ORIGINAL, case$papers$AF)
+  expect_identical(quiet_clean(case$papers, ids = case$ids, full_names = NULL)$AF, case$papers$AF)
+})
+
+test_that("the message counts the changes and names why papers were left untouched", {
+  case <- make_unlike_case()
+  expect_message(authors_clean(case$papers, ids = case$ids),
+                 "2 people given one spelling \\(0 by decision\\); 2 papers changed; 3 papers to check; 2 papers untouched \\(author and ID counts differ: 1, record not in ids: 1\\)")
+})
+
+test_that("IDs come from a folder of exports, files or a data frame, read as text", {
+  case <- make_case()
   folder <- tempfile()
   dir.create(folder)
-  file.copy(case$path, file.path(folder, "export.csv"))
-  renamed <- case$papers
-  names(renamed) <- c("scopus_eid", "authors", "doi", "year", "title")
-  cleaned <- authors_clean(renamed, scopus = folder, eid = "scopus_eid", authors = "authors",
-                           doi = "doi", year = "year", openalex = FALSE)
-  out <- as.data.frame(cleaned)
-  expect_equal(out$authors[out$scopus_eid == "e4"], "LÓPEZ A;CHO SB")
+  ids <- case$ids
+  # A single long ID without its trailing `;` would read as a rounded number.
+  ids$`Author(s) ID`[5] <- "57200000000000001"
+  utils::write.csv(ids[1:3, ], file.path(folder, "a.csv"), row.names = FALSE, fileEncoding = "UTF-8")
+  utils::write.csv(ids[4:6, ], file.path(folder, "b.csv"), row.names = FALSE, fileEncoding = "UTF-8")
+  from_folder <- quiet_clean(case$papers, ids = folder, output = "all")
+  from_files <- quiet_clean(case$papers, ids = list.files(folder, full.names = TRUE), output = "all")
+  from_frame <- quiet_clean(case$papers, ids = ids, output = "all")
+  expect_identical(from_folder, from_files)
+  expect_identical(from_folder$AU, from_frame$AU)
+  expect_identical(.au_read_ids(folder)$author_ids[5], "57200000000000001")
 })
 
-test_that("the changes table lists merged and homonym people, one row each", {
-  changes <- as.data.frame(clean_case(), what = "changes")
-  expect_s3_class(changes, "data.frame")
-  expect_named(changes, c("person_key", "name", "spellings", "papers", "scopus_ids",
-                          "merged", "check", "homonym", "orcid_conflict", "split"))
-  expect_true(changes$merged[changes$person_key == "scopus:111"])
-  expect_equal(changes$papers[changes$person_key == "scopus:111"], 3L)
-  expect_false(anyDuplicated(changes$person_key) > 0L)
-})
-
-test_that("summary counts add up and print reports them", {
-  cleaned <- clean_case()
-  counts <- summary(cleaned)
-  expect_named(counts, c("measure", "n"))
-  n <- stats::setNames(counts$n, counts$measure)
-  expect_equal(n[["author rows"]], n[["rows identified by Scopus"]] +
-                 n[["rows identified by OpenAlex only"]] + n[["rows unidentified"]])
-  expect_equal(n[["papers rewritten"]], 5)
-  expect_output(print(cleaned), "5 of 6 papers rewritten")
+test_that("renamed columns work", {
+  case <- make_case()
+  papers <- stats::setNames(case$papers, c("EID", "Authors", "Year", "TI"))
+  out <- quiet_clean(papers, ids = case$ids, record_id = "EID", authors = "Authors", year = "Year")
+  expect_identical(out$Authors, quiet_clean(case$papers, ids = case$ids)$AU)
 })
 
 test_that("bad input raises saqrmisc_bad_input", {
-  case <- make_authors_case()
-  expect_error(authors_clean(list(), scopus = case$path, openalex = FALSE),
+  case <- make_case()
+  expect_error(authors_clean(case$papers), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(case$papers, ids = case$ids, record_id = "nope"), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(case$papers, ids = case$ids, full_names = "nope"), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(rbind(case$papers, case$papers), ids = case$ids), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(transform(case$papers, eid = paste0("x", eid)), ids = case$ids),
                class = "saqrmisc_bad_input")
-  expect_error(authors_clean(case$papers[c("eid", "AU")], scopus = case$path, openalex = FALSE),
+  expect_error(authors_clean(case$papers, ids = case$ids["EID"]), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(case$papers, ids = tempfile()), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(case$papers, ids = case$ids, decisions = "d.csv"), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(case$papers, ids = case$ids, level = "needs_decision"), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(transform(case$papers, PY = "soon"), ids = case$ids), class = "saqrmisc_bad_input")
+  expect_error(authors_clean(case$papers[0, ], ids = case$ids), class = "saqrmisc_bad_input")
+})
+
+test_that("decided merges join Scopus IDs, transitively, without asking OpenAlex", {
+  skip_if_not_installed("httr2")
+  ids <- data.frame(EID = c("a", "b", "c", "d"), `Author(s) ID` = c("1;", "2;", "3;", "4;"), check.names = FALSE)
+  papers <- data.frame(eid = c("a", "b", "c", "d"), AU = c("SMITH J", "SMITH JA", "SMITH J", "JONES K"),
+                       PY = c(2020, 2021, 2022, 2020))
+  sheet <- tempfile(fileext = ".csv")
+  .kr_write_csv(data.frame(decision = c("merge", "MERGE ", "no"), scopus_ids = c("1;2", "2;3", "3;4")), sheet)
+  # Any OpenAlex request here would fail the test.
+  out <- expect_message(
+    httr2::with_mocked_responses(\(req) stop("OpenAlex was asked"),
+      authors_clean(papers, ids = ids, level = "needs_decision", decisions = sheet, output = "all")),
+    "1 people given one spelling \\(1 by decision\\)")
+  expect_identical(out$AU, c("SMITH JA", "SMITH JA", "SMITH JA", "JONES K"))
+  expect_identical(out$AU_ID, c("1", "2", "3", "4"))
+  expect_identical(.au_group_of(c("1", "3", "4"), list(c("1", "2", "3"))), c("decided:1", "decided:1", "4"))
+})
+
+test_that("a decisions sheet is validated and decided IDs not in the data warn", {
+  case <- make_case()
+  bad <- tempfile(fileext = ".csv")
+  .kr_write_csv(data.frame(decision = "maybe", scopus_ids = "111;201"), bad)
+  expect_error(quiet_clean(case$papers, ids = case$ids, level = "needs_decision", decisions = bad),
                class = "saqrmisc_bad_input")
-  expect_error(authors_clean(case$papers, scopus = "no-such-file.csv", openalex = FALSE),
+  no_cols <- tempfile(fileext = ".csv")
+  .kr_write_csv(data.frame(decision = "merge"), no_cols)
+  expect_error(quiet_clean(case$papers, ids = case$ids, level = "needs_decision", decisions = no_cols),
                class = "saqrmisc_bad_input")
-  expect_error(authors_clean(rbind(case$papers, case$papers), scopus = case$path, openalex = FALSE),
-               class = "saqrmisc_bad_input")
-  bad_year <- case$papers
-  bad_year$PY <- "recent"
-  expect_error(authors_clean(bad_year, scopus = case$path, openalex = FALSE),
-               class = "saqrmisc_bad_input")
-  broken <- tempfile(fileext = ".csv")
-  utils::write.csv(data.frame(Authors = "A B.", EID = "e1"), broken, row.names = FALSE)
-  expect_error(authors_clean(case$papers, scopus = broken, openalex = FALSE),
-               class = "saqrmisc_bad_input")
+  stranger <- tempfile(fileext = ".csv")
+  .kr_write_csv(data.frame(decision = "merge", scopus_ids = "111;999"), stranger)
+  expect_warning(quiet_clean(case$papers, ids = case$ids, level = "needs_decision", decisions = stranger),
+                 class = "saqrmisc_review_unmatched")
+})
+
+test_that("the first needs_decision run writes Scopus IDs sharing an ORCID and applies none", {
+  skip_if_not_installed("httr2")
+  ids <- data.frame(EID = c("a", "b", "c"), `Author(s) ID` = c("1;5;", "2;", "3;"),
+                    Authors = c("Smith J., Cho S.", "Smith J.A.", "Smith J."), check.names = FALSE)
+  papers <- data.frame(eid = c("a", "b", "c"), AU = c("SMITH J;CHO S", "SMITH JA", "SMITH J"),
+                       DI = c("10.1/a", "10.1/b", "10.1/c"), PY = c(2020, 2021, 2022))
+  work <- \(doi, orcid) sprintf(
+    '{"doi":"https://doi.org/%s","authorships":[{"author":{"id":"https://openalex.org/A%s","orcid":"https://orcid.org/%s"},"raw_author_name":"John Smith"}]}',
+    doi, orcid, orcid)
+  body <- sprintf('{"results":[%s,%s,%s]}', work("10.1/a", "0000-1"), work("10.1/b", "0000-1"), work("10.1/c", "0000-2"))
+  reply <- \(req) httr2::response(status_code = 200L, headers = list(`Content-Type` = "application/json"),
+                                  body = charToRaw(body))
+  sheet <- tempfile(fileext = ".csv")
+  out <- suppressMessages(httr2::with_mocked_responses(reply,
+    authors_clean(papers, ids = ids, level = "needs_decision", decisions = sheet)))
+  expect_identical(out$AU, papers$AU)
+  written <- .kr_read_csv(sheet)
+  expect_identical(nrow(written), 1L)
+  expect_identical(written$scopus_ids, "1;2")
+  expect_identical(written$orcid, "0000-1")
+  expect_true(is.na(written$decision))
+  # Marked merge, the second run applies it.
+  written$decision <- "merge"
+  unlink(sheet)
+  .kr_write_csv(written, sheet)
+  again <- quiet_clean(papers, ids = ids, level = "needs_decision", decisions = sheet)
+  expect_identical(again$AU, c("SMITH JA;CHO S", "SMITH JA", "SMITH J"))
+})
+
+test_that("the cleaners chain", {
+  case <- make_case()
+  papers <- transform(case$papers, DE = "CHATBOTS; CHAT-BOT", C1 = "DEPT X, UNIVERSITY OF TURKU, FINLAND",
+                      DI = sprintf("10.1/%d", 1:7))
+  chained <- papers |>
+    quiet_clean(ids = case$ids) |>
+    keywords_clean() |>
+    institutions_clean(openalex = FALSE)
+  out <- as.data.frame(chained)
+  expect_identical(out$AU, quiet_clean(papers, ids = case$ids)$AU)
+  expect_identical(unique(out$AU_UN), "UNIVERSITY OF TURKU")
 })
 
 test_that("OpenAlex matching needs a whole, unique surname", {
@@ -145,16 +258,6 @@ test_that("OpenAlex matching needs a whole, unique surname", {
   matched <- .au_match_openalex(c("PEREZ-MARIN D", "WILLIAM A", "LI B", "NOBODY X"), authorships)
   expect_equal(matched$openalex_id, c("A1", NA, NA, NA))
   expect_equal(matched$orcid[1], "0000-0001")
-})
-
-test_that("Scopus IDs join only when their papers carry one shared ORCID", {
-  rows <- data.frame(
-    person_key = c("scopus:1", "scopus:2", "scopus:3", "scopus:3", "scopus:4", "scopus:5"),
-    orcid = c("X", "X", "Y", "Z", "Y", NA)
-  )
-  # 1 and 2 share X; 3 shows two ORCIDs, so it is not joined to 4 through Y.
-  expect_equal(.au_unify_by_orcid(rows),
-               c("orcid:X", "orcid:X", "scopus:3", "scopus:3", "scopus:4", "scopus:5"))
 })
 
 test_that("names that look alike pass and names that do not are flagged", {
@@ -171,80 +274,10 @@ test_that("names that look alike pass and names that do not are flagged", {
   expect_identical(.au_similar(character(), character()), logical())
 })
 
-# One Scopus ID (7) under two surnames, and Pérez-Marín (111) with lost accents.
-make_unlike_case <- function() {
-  scopus <- data.frame(
-    Authors = c("Endrass B., Pérez-Marín D.", "Lugrin B., Perez-Marin D.", "Lugrin B."),
-    `Author(s) ID` = c("7;111;", "7;111;", "7;"),
-    DOI = sprintf("10.2/%s", letters[1:3]), EID = sprintf("u%d", 1:3), check.names = FALSE
-  )
-  path <- tempfile(fileext = ".csv")
-  utils::write.csv(scopus, path, row.names = FALSE, fileEncoding = "UTF-8")
-  papers <- data.frame(eid = scopus$EID, AU = c("ENDRASS B;PREZ-MARN D", "LUGRIN B;PEREZ-MARIN D", "LUGRIN B"),
-                       DI = scopus$DOI, PY = c(2010, 2015, 2016))
-  list(papers = papers, path = path)
-}
-
-test_that("a merge of unlike names is kept and flagged for a check", {
-  case <- make_unlike_case()
-  cleaned <- authors_clean(case$papers, scopus = case$path, openalex = FALSE)
-  changes <- as.data.frame(cleaned, what = "changes")
-  expect_true(changes$check[changes$person_key == "scopus:7"])
-  expect_false(changes$check[changes$person_key == "scopus:111"])
-  # The most recent spelling wins the tie between the two of 111.
-  expect_equal(as.data.frame(cleaned)$AU[1], "LUGRIN B;PEREZ-MARIN D")
-  # Flagged rows come first.
-  expect_equal(changes$person_key[1], "scopus:7")
-  expect_equal(summary(cleaned)$n[summary(cleaned)$measure == "merges to check (names unlike)"], 1L)
-})
-
-test_that("review_sheet writes the merges, check first, and refuses to overwrite", {
-  case <- make_unlike_case()
-  cleaned <- authors_clean(case$papers, scopus = case$path, openalex = FALSE)
-  sheet <- tempfile(fileext = ".csv")
-  expect_message(review_sheet(cleaned, sheet), "1 to check")
-  written <- .kr_read_csv(sheet)
-  expect_named(written, c("decision", "check", "name", "spellings", "papers", "scopus_ids",
-                          "orcid_conflict", "merged", "person_key"))
-  expect_equal(written$person_key, c("scopus:7", "scopus:111"))
-  expect_true(all(is.na(written$decision)))
-  expect_error(review_sheet(cleaned, sheet), class = "saqrmisc_bad_input")
-  expect_error(review_sheet(cleaned, tempfile(fileext = ".txt")), class = "saqrmisc_bad_input")
-  expect_error(review_sheet(list(), sheet), class = "saqrmisc_bad_input")
-})
-
-test_that("a reviewed split takes a merge apart, by spelling or by Scopus ID", {
-  case <- make_unlike_case()
-  sheet <- tempfile(fileext = ".csv")
-  review_sheet(authors_clean(case$papers, scopus = case$path, openalex = FALSE), sheet) |>
-    suppressMessages()
-  edited <- .kr_read_csv(sheet)
-  edited$decision <- ifelse(edited$person_key == "scopus:7", " Split", "keep")
-  # Saved back as Excel does in many locales, with `;`.
-  utils::write.table(edited, sheet, sep = ";", row.names = FALSE, na = "", fileEncoding = "UTF-8")
-  undone <- authors_clean(case$papers, scopus = case$path, openalex = FALSE, review = sheet)
-  expect_equal(as.data.frame(undone)$AU, c("ENDRASS B;PEREZ-MARIN D", "LUGRIN B;PEREZ-MARIN D", "LUGRIN B"))
-  changes <- as.data.frame(undone, what = "changes")
-  expect_setequal(changes$person_key[changes$split], c("scopus:7|ENDRASS B", "scopus:7|LUGRIN B"))
-  expect_output(print(undone), "1 merges split by your review")
-
-  # A person ORCID joined from two Scopus IDs splits back into those IDs.
-  rows <- data.frame(person_key = c("orcid:X", "orcid:X", "scopus:9"), scopus_id = c("1", "2", "9"),
-                     name_scopus = c("A B", "C B", "D E"))
-  expect_equal(.au_split(rows, "orcid:X")$person_key, c("scopus:1", "scopus:2", "scopus:9"))
-  expect_equal(.au_split(rows, "orcid:X")$split_from, c("orcid:X", "orcid:X", NA))
-})
-
-test_that("a review is validated and unmatched people warn", {
-  case <- make_unlike_case()
-  run <- \(review) authors_clean(case$papers, scopus = case$path, openalex = FALSE, review = review)
-  expect_error(run(data.frame(person_key = "scopus:7", decision = "maybe")), class = "saqrmisc_bad_input")
-  expect_error(run(data.frame(key = "scopus:7")), class = "saqrmisc_bad_input")
-  expect_error(run("no-such-review.csv"), class = "saqrmisc_bad_input")
-  expect_warning(run(data.frame(person_key = "scopus:0", decision = "split")),
-                 class = "saqrmisc_review_unmatched")
-  kept <- run(data.frame(person_key = "scopus:7", decision = NA))
-  expect_equal(as.data.frame(kept)$AU, as.data.frame(run(NULL))$AU)
+test_that("a shared given name is no shared surname", {
+  expect_false(.au_similar("KIM JOHN", "PARK JOHN"))
+  expect_false(.au_similar("MOORE ROBERT L", "SMITH ROBERT L"))
+  expect_true(.au_similar("LOPEZ SS", "SAFFON LOPEZ S"))
 })
 
 test_that("a live OpenAlex lookup returns ORCIDs for a known paper", {
@@ -254,67 +287,6 @@ test_that("a live OpenAlex lookup returns ORCIDs for a known paper", {
   works <- .au_fetch_openalex(c("10.1016/j.pec.2013.05.011", "10.9999/not-a-real-doi"), mailto = NULL)
   expect_named(works, "10.1016/j.pec.2013.05.011")
   expect_equal(.au_match_openalex("BICKMORE TW", works[[1]])$orcid, "0000-0002-2676-9788")
-})
-
-test_that("authors_changes and authors_check give the changes and the merges to check", {
-  case <- make_unlike_case()
-  cleaned <- authors_clean(case$papers, scopus = case$path, openalex = FALSE)
-    expect_identical(authors_changes(cleaned), as.data.frame(cleaned, what = "changes"))
-  flagged <- authors_check(cleaned)
-  expect_equal(flagged$person_key, "scopus:7")
-  expect_true(all(flagged$check))
-  expect_equal(nrow(flagged), sum(authors_changes(cleaned)$check))
-  expect_identical(rownames(flagged), as.character(seq_len(nrow(flagged))))
-  expect_true("AU_ID" %in% names(as.data.frame(cleaned)))
-  expect_equal(nrow(as.data.frame(cleaned)), nrow(case$papers))
-  expect_error(authors_changes(case$papers), class = "saqrmisc_bad_input")
-  expect_error(authors_changes(NULL), class = "saqrmisc_bad_input")
-  expect_error(authors_check(list()), class = "saqrmisc_bad_input")
-})
-
-test_that("missing EIDs, missing review keys and NA names are handled, not guessed", {
-  case <- make_authors_case()
-  no_eid <- case$papers
-  no_eid$eid[1] <- NA
-  expect_error(authors_clean(no_eid, scopus = case$path, openalex = FALSE), class = "saqrmisc_bad_input")
-  expect_error(authors_clean(case$papers[0, ], scopus = case$path, openalex = FALSE), class = "saqrmisc_bad_input")
-  # A blank or missing key marked split splits nobody, unidentified authors included.
-  plain <- as.data.frame(clean_case(case))
-  kept <- authors_clean(case$papers, scopus = case$path, openalex = FALSE,
-                        review = data.frame(person_key = c(NA, " "), decision = "split"))
-  expect_identical(as.data.frame(kept)$AU, plain$AU)
-  expect_identical(as.data.frame(kept)$AU_ID, plain$AU_ID)
-  expect_true(is.na(.au_decode_entities(NA_character_)))
-  expect_identical(.au_decode_entities(c(NA, "L&#x00F3;pez")), c(NA, "López"))
-})
-
-test_that("a shared given name is no shared surname", {
-  expect_false(.au_similar("KIM JOHN", "PARK JOHN"))
-  expect_false(.au_similar("MOORE ROBERT L", "SMITH ROBERT L"))
-  expect_true(.au_similar("LOPEZ SS", "SAFFON LOPEZ S"))
-})
-
-test_that("papers with no identified author are left untouched", {
-  case <- make_authors_case()
-  only_group <- case$papers[case$papers$eid == "e5", ]
-  out <- as.data.frame(authors_clean(only_group, scopus = case$path, openalex = FALSE))
-  expect_identical(out$AU, only_group$AU)
-  expect_true(is.na(out$AU_ID))
-})
-
-test_that("the cleaners chain: each takes the result of the one before", {
-  case <- make_authors_case()
-  papers <- transform(case$papers, DE = "CHATBOTS; CHAT-BOT", C1 = "DEPT X, UNIVERSITY OF TURKU, FINLAND")
-  chained <- papers |>
-    authors_clean(scopus = case$path, openalex = FALSE) |>
-    keywords_clean() |>
-    institutions_clean(openalex = FALSE)
-  out <- as.data.frame(chained)
-  expect_identical(out$AU, as.data.frame(clean_case(case))$AU)
-  expect_identical(out$DE, as.data.frame(keywords_clean(papers))$DE)
-  expect_identical(unique(lengths(strsplit(out$DE, ";"))), 1L)
-  expect_identical(unique(out$AU_UN), "UNIVERSITY OF TURKU")
-  expect_true("AU_ID" %in% names(out))
 })
 
 test_that("a spent OpenAlex budget fails at once instead of sleeping until it resets", {
@@ -351,37 +323,3 @@ test_that("with every OpenAlex request failing, institutions_clean falls back to
   expect_s3_class(institutions, "saqr_institutions")
 })
 
-test_that("without scopus, the author IDs are read from data and give the same people", {
-  scopus_file <- tempfile(fileext = ".csv")
-  utils::write.csv(data.frame(
-    Authors = c("Kim J., Lee A.", "Kim J., Lee A., Ruiz M."),
-    `Author(s) ID` = c("201;300;", "202;300;400;"),
-    DOI = c("10.1/a", "10.1/b"), EID = c("2-s2.0-1", "2-s2.0-2"),
-    check.names = FALSE), scopus_file, row.names = FALSE, fileEncoding = "UTF-8")
-  papers <- data.frame(eid = c("2-s2.0-1", "2-s2.0-2"), AU = c("KIM J;LEE A", "KIM J;LEE AB;RUIZ M"),
-                       DI = c("10.1/a", "10.1/b"), PY = c(2019, 2020))
-  from_files <- authors_clean(papers, scopus = scopus_file, openalex = FALSE)
-  with_ids <- transform(papers, `Author(s) ID` = c("201;300;", "202;300;400;"), check.names = FALSE)
-  from_data <- authors_clean(with_ids, openalex = FALSE)
-  expect_identical(as.data.frame(from_data)$AU_ID, as.data.frame(from_files)$AU_ID)
-  expect_identical(as.data.frame(from_data)$AU, c("KIM J;LEE AB", "KIM J (2);LEE AB;RUIZ M"))
-  expect_identical(authors_changes(from_data)$person_key, authors_changes(from_files)$person_key)
-  # a renamed column is named with `author_ids`
-  renamed <- transform(papers, ids = c("201;300;", "202;300;400;"))
-  expect_identical(as.data.frame(authors_clean(renamed, author_ids = "ids", openalex = FALSE))$AU_ID,
-                   as.data.frame(from_files)$AU_ID)
-})
-
-test_that("without scopus or an ID column, authors_clean says to pass scopus", {
-  papers <- data.frame(eid = "2-s2.0-1", AU = "KIM J", DI = "10.1/a", PY = 2019)
-  expect_error(authors_clean(papers, openalex = FALSE), class = "saqrmisc_bad_input")
-  expect_error(authors_clean(papers, author_ids = c("a", "b"), openalex = FALSE), class = "saqrmisc_bad_input")
-})
-
-test_that("IDs read from data line up with names holding HTML entities", {
-  papers <- data.frame(eid = "2-s2.0-1", AU = "L&#X00F3;PEZ A;CARMONA J", DI = "10.1/a", PY = 2019,
-                       `Author(s) ID` = "11;12;", check.names = FALSE)
-  cleaned <- authors_clean(papers, openalex = FALSE)
-  expect_identical(as.data.frame(cleaned)$AU_ID, "scopus:11;scopus:12")
-  expect_identical(as.data.frame(cleaned)$AU, "LÓPEZ A;CARMONA J")
-})

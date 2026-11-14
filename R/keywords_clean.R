@@ -32,7 +32,7 @@
 #'
 #' @param data A data frame with one row per paper.
 #'   The result of another `clean_*()` function works too, so the cleaners
-#'   chain: `M |> authors_clean(scopus = "Dlds") |> keywords_clean()`.
+#'   chain: `M |> authors_clean(ids = "scopus_exports") |> keywords_clean()`.
 #' @param columns Names of the keyword columns, `;`-separated. Default `"DE"`
 #'   (bibliometrix's author keywords); `c("DE", "ID")` adds index keywords.
 #' @param replace Your replacement table: a data frame with columns `OLD` and
@@ -211,7 +211,7 @@ print.saqr_keywords <- function(x, ...) {
 # The papers a cleaner works on: a data frame, or the cleaned data of an
 # earlier clean_*() result, so that the cleaners chain with |>.
 .papers_of <- function(data) {
-  if (inherits(data, c("saqr_authors", "saqr_keywords", "saqr_institutions"))) data$data else data
+  if (inherits(data, c("saqr_keywords", "saqr_institutions"))) data$data else data
 }
 
 .kw_check_columns <- function(data, columns) {

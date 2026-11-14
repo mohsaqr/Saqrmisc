@@ -1,3 +1,22 @@
+# Saqrmisc 0.9.10
+
+## `authors_clean()` redesigned (breaking)
+
+* Returns the data frame itself, `AU` (and `AF`, when present) rewritten, ready
+  for bibliometrix. Only authors merged by Scopus ID change; others keep their
+  spelling exactly. No more `"KIM J (2)"` numbering.
+* The Scopus author IDs are given as `ids` (exports, a folder, or a data
+  frame) and matched by record ID (`record_id`, default `"eid"`). Replaces
+  `scopus`, `author_ids` and `eid`.
+* `level = "confirmed"` (default, Scopus ID only, offline) or
+  `"needs_decision"` (plus ORCID candidates in a `decisions` sheet, applied
+  once marked `merge`). Replaces `openalex` and `review`.
+* `output = "all"` adds `AU_ORIGINAL`, `AU_ID` and `check_authors`; the
+  default adds nothing.
+* The spelling is chosen from `data`, never one with letters lost.
+* Removed: the `saqr_authors` class and its methods, `authors_changes()`,
+  `authors_check()`, `review_sheet()` for authors.
+
 # Saqrmisc 0.9.9
 
 ## Author and keyword cleaning for bibliometric data

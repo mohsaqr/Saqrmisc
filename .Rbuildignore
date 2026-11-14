@@ -14,3 +14,4 @@
 ^LICENSE\.md$ Rplots.pdf
 USAGE.md
 install.R
+^\.mini-ci$

@@ -8,7 +8,7 @@ review_sheet(x, file)
 }
 \arguments{
 \item{x}{An [ask_ai()] result (a [suggest_merges()] result also works;
-then every pair is `check`), or an [authors_clean()] result.}
+then every pair is `check`).}
 
 \item{file}{The file to write: `.xlsx` (two sheets, `review` and `ai`) or
 `.csv` (two files). An existing file is never replaced, since it may hold
@@ -19,9 +19,8 @@ The file path, invisibly.
 }
 \description{
 Writes what needs a human look to a file you can check anywhere and pass
-back later. For an [authors_clean()] result, see
-[review_sheet.saqr_authors()]; the rest of this page is about keyword and
-institution merges.
+back later, for keyword and institution merges. (Author merges are decided
+in the `decisions` sheet of [authors_clean()].)
 
 Writes the pairs to an Excel file for you to check. `decision` is the
 AI's (see [ask_ai()]); `decision_2` is yours and empty. Where you fill in

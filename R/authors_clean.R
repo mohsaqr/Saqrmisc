@@ -1,388 +1,174 @@
-# Author disambiguation for bibliometric data by Scopus author ID, then ORCID.
-# A Scopus author ID is one person; Scopus IDs whose papers carry one ORCID are
-# one person. Names never merge anyone: they only flag a merge for a check.
+# Author disambiguation for bibliometric data by Scopus author ID. One Scopus
+# ID is one person, so its spellings become one. Nothing else merges unless a
+# person decides it: names never merge or split anyone.
 
-#' Clean author names with Scopus author IDs and ORCID
+#' Clean author names by Scopus author ID
 #'
 #' @description
-#' Rewrites the author field of a bibliometric data frame so that each person
-#' has one spelling and different people never share one. Identity comes from
-#' IDs only, never from names:
+#' Gives each person one spelling in the author column of a bibliometrix data
+#' frame, and returns the data frame ready for bibliometrix.
 #'
-#' * all spellings of one Scopus ID become one spelling (the most frequent,
-#'   then the most recent, then the longest), with the accents kept;
-#' * with `openalex = TRUE`, OpenAlex is asked by DOI for each author's ORCID,
-#'   and Scopus IDs whose papers carry the same ORCID are joined into one
-#'   person. An author without a usable Scopus ID takes its OpenAlex author ID;
-#' * different people who share a spelling stay apart, labelled `"KIM J"`,
-#'   `"KIM J (2)"`, ... by number of papers;
-#' * an author identified by neither source keeps its spelling, and a paper
-#'   with no identified author is left untouched.
+#' * `level = "confirmed"` (default): all spellings of one Scopus author ID
+#'   become one. Nothing else is used, and no network is needed.
+#' * `level = "needs_decision"`: the confirmed merges, plus the merges you
+#'   accepted in a decisions sheet. The first run asks OpenAlex, by DOI, for
+#'   each author's ORCID and writes the Scopus IDs that share one ORCID to
+#'   `decisions`; nothing from it is applied yet. Write `merge` in its
+#'   `decision` column for the right ones and run again: the sheet is then
+#'   read, without asking OpenAlex.
 #'
-#' A merge whose spellings do not look like one name ("ENDRASS B" and
-#' "LUGRIN B" under one Scopus ID) is kept but flagged `check = TRUE`. Lost
-#' accents ("KRMER N"), initials against given names ("MOORE RL", "MOORE
-#' ROBERT L") and a surname part dropped ("LOPEZ SS", "SAFFON LOPEZ S") count
-#' as one name. Write the merges to a file with [review_sheet()], mark the
-#' ones that are wrong `split`, and pass the file back as `review`.
+#' A person's spelling is the one used most often in `data`, then the most
+#' recent, then the longest. Authors who were not merged keep their spelling,
+#' and a paper with no merged author is left as it was. Different Scopus IDs
+#' that share a spelling stay as they are: they are not numbered or split.
 #'
-#' Scopus writes a generational suffix as its own name ("Huff E.W., Jr."), and
-#' names may hold HTML entities (`L&#x00F3;pez`); both are repaired.
+#' The Scopus author IDs are matched to the papers by record ID (the Scopus
+#' EID), then by position: the *i*-th author of a paper takes its *i*-th ID. A
+#' paper whose record is not in `ids`, or whose number of authors and of IDs
+#' differ, is left untouched; the message names the reasons.
 #'
-#' @param data A data frame with one row per paper, such as a bibliometrix
-#'   data frame.
-#'   The result of another `clean_*()` function works too, so the cleaners
-#'   chain: `M |> authors_clean(scopus = "Dlds") |> keywords_clean()`.
-#' @param scopus Paths to the raw Scopus CSV exports, or a folder holding them.
-#'   They need the columns `Authors`, `Author(s) ID`, `DOI` and `EID`. Leave
-#'   it out when `data` itself holds the Scopus author IDs (column
-#'   `author_ids`): bibliometrix drops them, so a bibliometrix data frame
-#'   needs `scopus`. Given both, `scopus` is used, since its names keep their
-#'   accents.
-#' @param author_ids Name of the column in `data` holding the Scopus author
-#'   IDs (`;`-separated, in the order of the authors), read when `scopus` is
-#'   left out. Default `"Author(s) ID"`, Scopus's own name.
-#' @param eid Name of the column in `data` holding the Scopus EID
-#'   (`"2-s2.0-..."`), which links each paper to its Scopus row.
-#' @param authors,doi,year Names of the author (`;`-separated), DOI and
-#'   publication-year columns in `data`. The defaults are bibliometrix's.
-#' @param openalex Logical. Consult OpenAlex for the gaps described above?
-#'   Needs the httr2 package and an internet connection. Default `TRUE`.
+#' @param data A bibliometrix data frame, one row per paper. The result of
+#'   another cleaner works too: `M |> authors_clean(ids = "scopus_exports") |>
+#'   keywords_clean()`.
+#' @param ids The Scopus author IDs: paths to raw Scopus CSV exports, a folder
+#'   holding them, or a data frame. Each needs the columns `EID` and
+#'   `Author(s) ID`; `Authors` is used, when present, to match names on
+#'   OpenAlex. bibliometrix drops the IDs, so they must be given here.
+#' @param record_id Name of the column in `data` holding the Scopus EID
+#'   (`"2-s2.0-..."`). Default `"eid"`.
+#' @param authors Name of the author column (`;`-separated). Default `"AU"`.
+#' @param full_names Name of the full-name column, rewritten alongside
+#'   `authors` on papers where it has as many names. Default `"AF"`, skipped
+#'   when `data` has no such column; `NULL` leaves it alone.
+#' @param year Name of the publication-year column, used to break ties between
+#'   spellings. Default `"PY"`, skipped when absent.
+#' @param level `"confirmed"` (default) or `"needs_decision"`; see above.
+#' @param decisions With `level = "needs_decision"`: the decisions sheet, a
+#'   path ending in `.csv` or `.xlsx`. Written when it does not exist, read
+#'   when it does.
+#' @param doi Name of the DOI column, used to ask OpenAlex. Default `"DI"`.
 #' @param mailto Optional e-mail address sent to OpenAlex to use its polite
 #'   pool. Default `NULL` sends none.
-#' @param review Optional reviewed merges: the `.csv` or `.xlsx` file from
-#'   [review_sheet()], or a data frame with its columns `person_key` and
-#'   `decision`. A person marked `split` is taken apart again: into its Scopus
-#'   IDs when ORCID joined several, otherwise into its Scopus spellings. An
-#'   empty `decision` or `keep` keeps the merge. Default `NULL`.
+#' @param output `"minimal"` (default) returns `data` with `authors` and
+#'   `full_names` rewritten and nothing added. `"all"` also adds
+#'   `AU_ORIGINAL` (and `AF_ORIGINAL`), the columns as they came in (kept, not
+#'   replaced, when `data` already has them); `AU_ID`, the Scopus IDs in the
+#'   order of the authors (`NA` for an untouched paper); and `check_authors`,
+#'   `"YES"` for a paper with an author whose merged spellings do not look like
+#'   one name (`"ENDRASS B"` and `"LUGRIN B"` under one Scopus ID), else `"NO"`.
 #'
-#' @return A `saqr_authors` object:
-#' \itemize{
-#'   \item `as.data.frame(x)`: `data` with the author column rewritten and a
-#'     new `AU_ID` column holding the matching person keys in the same order
-#'     (`-` for an unidentified author; `NA` for an untouched paper).
-#'   \item [authors_changes()]: one row per person whose
-#'     spelling changed, who was joined across Scopus IDs, or who shares a
-#'     spelling, most papers first: `person_key`, `name`, `spellings`,
-#'     `papers`, `scopus_ids`, `merged` (one Scopus ID, several spellings),
-#'     `check` (a merged or joined person whose spellings do not look like
-#'     one name), `homonym`, `orcid_conflict` (the person's papers show more
-#'     than one ORCID; flagged, not split) and `split` (a part of a person
-#'     `review` took apart; a part split by spelling has the key
-#'     `<key>|<spelling>`). [authors_check()] gives its rows with
-#'     `check = TRUE`.
-#'   \item `as.data.frame(x, what = "authors")`: one row per author per paper
-#'     (for tracing a single decision):
-#'     `eid`, `doi`, `year`, `position`, `name_before`, `name_scopus`,
-#'     `scopus_id`, `openalex_id`, `orcid`, `person_key` (`scopus:<id>`,
-#'     `orcid:<id>`, `openalex:<id>`, or `NA`), `split_from` (the key `review`
-#'     split, else `NA`), `source` and `name`.
-#' }
-#' `summary()` returns the counts as a data frame.
+#' @return `data`, same class, rows and columns, with the author column (and
+#'   the full-name column) rewritten; with `output = "all"`, plus the columns
+#'   described under `output`. A message reports the counts, and why any
+#'   paper was left untouched.
 #'
 #' @section Errors:
-#' Raises `saqrmisc_bad_input` when `data` lacks a named column, has repeated
-#' EIDs, `scopus` names no readable Scopus export, or `review` is not a review
-#' sheet or holds a decision other than `keep` or `split`;
-#' `saqrmisc_missing_package` when `openalex = TRUE` without httr2, or for an
-#' `.xlsx` `review` without readxl. A `saqrmisc_review_unmatched` warning
-#' names reviewed people this run does not have. A
-#' `saqrmisc_openalex_failed` warning reports OpenAlex requests that failed;
-#' the authors involved keep their Scopus identity.
+#' Raises `saqrmisc_bad_input` when `data` lacks a named column or repeats a
+#' record ID, `ids` names no readable export or lacks `EID` / `Author(s) ID`,
+#' no record of `data` is in `ids`, `decisions` is given with
+#' `level = "confirmed"` or missing with `"needs_decision"`, or the decisions
+#' sheet lacks `scopus_ids` / `decision` or holds a decision other than empty,
+#' `merge` or `no`; `saqrmisc_missing_package` when OpenAlex is needed without
+#' httr2, or for an `.xlsx` sheet without writexl / readxl. Warns
+#' `saqrmisc_review_unmatched` for decided Scopus IDs not in `data`, and
+#' `saqrmisc_openalex_failed` for failed OpenAlex requests.
 #'
 #' @references
-#' Priem, J., Piwowar, H., & Orr, R. (2022). OpenAlex: A fully-open index of
-#' scholarly works, authors, venues, institutions, and concepts.
-#' arXiv:2205.01833.
-#'
 #' Baas, J., Schotten, M., Plume, A., Côté, G., & Karimi, R. (2020). Scopus as
 #' a curated, high-quality bibliometric data source for academic research in
 #' quantitative science studies. *Quantitative Science Studies*, 1(1), 377-386.
 #' \doi{10.1162/qss_a_00019}
 #'
-#' @examples
-#' scopus_file <- tempfile(fileext = ".csv")
-#' utils::write.csv(data.frame(
-#'   Authors = c("Pérez-Marín D., Kim J.", "Perez-Marin D., Kim J."),
-#'   `Author(s) ID` = c("111;201;", "111;202;"),
-#'   DOI = c("10.1/a", "10.1/b"),
-#'   EID = c("2-s2.0-1", "2-s2.0-2"),
-#'   check.names = FALSE
-#' ), scopus_file, row.names = FALSE, fileEncoding = "UTF-8")
-#' papers <- data.frame(
-#'   eid = c("2-s2.0-1", "2-s2.0-2"),
-#'   AU = c("PREZ-MARN D;KIM J", "PEREZ-MARIN D;KIM J"),
-#'   DI = c("10.1/a", "10.1/b"),
-#'   PY = c(2019, 2020)
-#' )
-#' cleaned <- authors_clean(papers, scopus = scopus_file, openalex = FALSE)
-#' cleaned
-#' as.data.frame(cleaned)
-#' authors_changes(cleaned)
+#' Priem, J., Piwowar, H., & Orr, R. (2022). OpenAlex: A fully-open index of
+#' scholarly works, authors, venues, institutions, and concepts.
+#' arXiv:2205.01833.
 #'
-#' # Merges to check go to a file; mark a wrong one `split` and pass it back.
-#' sheet <- tempfile(fileext = ".csv")
-#' review_sheet(cleaned, sheet)
-#' undone <- authors_clean(papers, scopus = scopus_file, openalex = FALSE,
-#'                         review = data.frame(person_key = "scopus:111", decision = "split"))
-#' as.data.frame(undone)
+#' @examples
+#' scopus <- data.frame(
+#'   EID = c("2-s2.0-1", "2-s2.0-2", "2-s2.0-3"),
+#'   `Author(s) ID` = c("111;201;", "111;202;", "111;"),
+#'   check.names = FALSE
+#' )
+#' M <- data.frame(
+#'   eid = c("2-s2.0-1", "2-s2.0-2", "2-s2.0-3"),
+#'   AU = c("PREZ-MARN D;KIM J", "PEREZ-MARIN D;KIM J", "PEREZ-MARIN D"),
+#'   PY = c(2019, 2020, 2021)
+#' )
+#' authors_clean(M, ids = scopus)
+#' authors_clean(M, ids = scopus, output = "all")
 #'
 #' @export
 authors_clean <- function(data,
-                          scopus = NULL,
-                          author_ids = "Author(s) ID",
-                          eid = "eid",
+                          ids,
+                          record_id = "eid",
                           authors = "AU",
-                          doi = "DI",
+                          full_names = "AF",
                           year = "PY",
-                          openalex = TRUE,
+                          level = c("confirmed", "needs_decision"),
+                          decisions = NULL,
+                          doi = "DI",
                           mailto = NULL,
-                          review = NULL) {
+                          output = c("minimal", "all")) {
   data <- .papers_of(data)
+  level <- match.arg(level)
+  output <- match.arg(output)
   if (!is.data.frame(data)) .bad_input("`data` must be a data frame")
-  columns <- c(eid = eid, authors = authors, doi = doi, year = year)
-  if (!all(vapply(columns, \(x) is.character(x) && length(x) == 1L, logical(1)))) {
-    .bad_input("`eid`, `authors`, `doi` and `year` must each be one column name")
-  }
-  absent <- setdiff(columns, names(data))
-  if (length(absent) > 0L) {
-    .bad_input(sprintf("`data` has no column(s) %s", paste(absent, collapse = ", ")))
-  }
   if (nrow(data) == 0L) .bad_input("`data` has no papers")
-  if (anyNA(data[[eid]]) || !all(nzchar(trimws(data[[eid]])))) {
-    .bad_input(sprintf("`data$%s` has a missing EID; every paper needs its Scopus EID", eid))
+  if (missing(ids)) .bad_input("`ids` is needed: the Scopus CSV exports (or a data frame) holding `EID` and `Author(s) ID`")
+  .au_need_column(data, record_id, "record_id")
+  .au_need_column(data, authors, "authors")
+  full_names <- .au_optional_column(data, full_names, "full_names", missing(full_names))
+  year <- .au_optional_column(data, year, "year", missing(year))
+  record <- trimws(as.character(data[[record_id]]))
+  if (anyNA(record) || !all(nzchar(record))) .bad_input(sprintf("`data$%s` has a missing record ID", record_id))
+  if (anyDuplicated(record) > 0L) .bad_input(sprintf("`data$%s` repeats a record ID; each paper must appear once", record_id))
+  years <- rep(NA_integer_, nrow(data))
+  if (!is.null(year)) {
+    year_text <- trimws(as.character(data[[year]]))
+    if (!all(is.na(year_text) | grepl("^[0-9]{1,4}$", year_text))) .bad_input(sprintf("`data$%s` must hold years", year))
+    years <- as.integer(year_text)
   }
-  if (anyDuplicated(data[[eid]]) > 0L) {
-    .bad_input(sprintf("`data$%s` repeats an EID; each paper must appear once", eid))
+  if (level == "confirmed" && !is.null(decisions)) {
+    .bad_input("`decisions` is read only with `level = \"needs_decision\"`")
   }
-  if (!all(is.na(data[[year]]) | grepl("^\\s*[0-9]{1,4}\\s*$", as.character(data[[year]])))) {
-    .bad_input(sprintf("`data$%s` must hold years", year))
-  }
-  if (!(isTRUE(openalex) || isFALSE(openalex))) .bad_input("`openalex` must be TRUE or FALSE")
-  if (!is.null(mailto) && !(is.character(mailto) && length(mailto) == 1L)) {
-    .bad_input("`mailto` must be NULL or one e-mail address")
-  }
-  if (openalex && !requireNamespace("httr2", quietly = TRUE)) {
-    stop(errorCondition(
-      "`openalex = TRUE` needs the httr2 package: install.packages(\"httr2\"), or pass `openalex = FALSE`",
-      class = "saqrmisc_missing_package", call = NULL))
+  if (level == "needs_decision" && !(is.character(decisions) && length(decisions) == 1L &&
+                                     grepl("\\.(csv|xlsx)$", decisions, ignore.case = TRUE))) {
+    .bad_input("`level = \"needs_decision\"` needs `decisions`, a path ending in .csv or .xlsx")
   }
 
-  if (is.null(scopus)) {
-    if (!(is.character(author_ids) && length(author_ids) == 1L)) {
-      .bad_input("`author_ids` must be one column name")
-    }
-    if (!author_ids %in% names(data)) {
-      .bad_input(sprintf(paste0("`data` has no column `%s` with the Scopus author IDs ",
-                                "(bibliometrix drops it); pass the Scopus CSV exports as `scopus`"), author_ids))
-    }
+  id_table <- .au_read_ids(ids)
+  matched <- .au_match_papers(data, record, authors, full_names, years, id_table)
+  if (!any(matched$status != "record not in ids")) {
+    .bad_input(sprintf("no record of `data$%s` is in `ids`; is `record_id` the Scopus EID?", record_id))
   }
-  split_keys <- .au_review_splits(review)
+  entries <- matched$entries
 
-  papers <- data.frame(eid = as.character(data[[eid]]), AU = as.character(data[[authors]]),
-                       DI = as.character(data[[doi]]), PY = data[[year]])
-  raw <- if (is.null(scopus)) {
-    .au_scopus_from_data(papers, data[[author_ids]])
-  } else {
-    .au_read_scopus(.au_scopus_files(scopus))
-  }
-  rows <- .au_identify(papers, raw, openalex, mailto, split_keys)
+  ask_openalex <- level == "needs_decision" && !file.exists(decisions)
+  groups <- if (level == "needs_decision" && !ask_openalex) .au_read_decisions(decisions, entries$scopus_id) else list()
+  entries$person <- .au_group_of(entries$scopus_id, groups)
+  entries$basis <- ifelse(startsWith(entries$person, "decided:"), "decided", "scopus")
+
+  entries$new_name <- unname(.au_pick(entries$person, entries$name, entries$year)[entries$person])
+  picked_full <- .au_pick(entries$person, entries$full, entries$year)
+  entries$new_full <- ifelse(is.na(entries$full), NA_character_, unname(picked_full[entries$person]))
+  flagged <- .au_unlike_people(entries)
+  entries$check <- entries$person %in% flagged
 
   cleaned <- data
-  rewritten <- .au_rewrite(papers, rows)
-  cleaned[[authors]] <- rewritten$AU
-  cleaned$AU_ID <- rewritten$AU_ID
+  au_changed <- entries$new_name != entries$name
+  af_changed <- !is.na(entries$full) & entries$new_full != entries$full
+  cleaned[[authors]] <- .au_rewrite(data[[authors]], entries, au_changed, "new_name")
+  if (!is.null(full_names)) cleaned[[full_names]] <- .au_rewrite(data[[full_names]], entries, af_changed, "new_full")
+  check_paper <- seq_len(nrow(data)) %in% entries$paper[entries$check]
 
-  structure(
-    list(data = cleaned, authors = rows, changes = .au_changes(rows),
-         openalex = openalex, author_column = authors),
-    class = "saqr_authors"
-  )
-}
-
-#' Tables from an authors_clean() result
-#'
-#' @param x An [authors_clean()] result.
-#' @param row.names,optional Ignored; present for the generic.
-#' @param what Which table: `"data"` (the cleaned papers, default),
-#'   `"changes"` (as [authors_changes()]) or `"authors"`
-#'   (one row per author per paper). See [authors_clean()] for their columns.
-#' @param ... Ignored.
-#' @return A data frame.
-#' @export
-as.data.frame.saqr_authors <- function(x, row.names = NULL, optional = FALSE,
-                                       what = c("data", "changes", "authors"), ...) {
-  what <- match.arg(what)
-  switch(what, data = x$data, changes = x$changes, authors = x$authors)
-}
-
-#' The changes and the merges to check
-#'
-#' Two verbs on an [authors_clean()] result. `authors_changes()` gives one
-#' row per person whose spelling changed, who was joined across Scopus IDs,
-#' or who shares a spelling. `authors_check()` gives the rows of those whose
-#' spellings do not look like one name, to be checked by hand. The cleaned
-#' papers are `as.data.frame()` of the result.
-#'
-#' @param x An [authors_clean()] result.
-#' @return A data frame with one row per person, with the columns listed
-#'   under Value in [authors_clean()].
-#' @section Errors:
-#' Raises `saqrmisc_bad_input` when `x` is not an [authors_clean()] result.
-#' @examples
-#' scopus_file <- tempfile(fileext = ".csv")
-#' utils::write.csv(data.frame(
-#'   Authors = c("Lugrin B., Kim J.", "Leclere B., Kim J."),
-#'   `Author(s) ID` = c("111;201;", "111;202;"),
-#'   DOI = c("10.1/a", "10.1/b"),
-#'   EID = c("2-s2.0-1", "2-s2.0-2"),
-#'   check.names = FALSE
-#' ), scopus_file, row.names = FALSE, fileEncoding = "UTF-8")
-#' papers <- data.frame(
-#'   eid = c("2-s2.0-1", "2-s2.0-2"),
-#'   AU = c("LUGRIN B;KIM J", "LECLERE B;KIM J"),
-#'   DI = c("10.1/a", "10.1/b"),
-#'   PY = c(2019, 2020)
-#' )
-#' authors <- authors_clean(papers, scopus = scopus_file, openalex = FALSE)
-#' authors_changes(authors)
-#' authors_check(authors)
-#' @name authors_changes
-NULL
-
-#' @rdname authors_changes
-#' @export
-authors_changes <- function(x) {
-  .au_need_result(x)
-  x$changes
-}
-
-#' @rdname authors_changes
-#' @export
-authors_check <- function(x) {
-  .au_need_result(x)
-  flagged <- x$changes[x$changes$check, ]
-  rownames(flagged) <- NULL
-  flagged
-}
-
-.au_need_result <- function(x) {
-  if (!inherits(x, "saqr_authors")) .bad_input("`x` must be an authors_clean() result")
-}
-
-#' Summarise an authors_clean() result
-#'
-#' @param object An [authors_clean()] result.
-#' @param ... Ignored.
-#' @return A data frame with one row per count: `measure` and `n`.
-#' @export
-summary.saqr_authors <- function(object, ...) {
-  rows <- object$authors
-  changes <- object$changes
-  rewritten <- !is.na(object$data$AU_ID)
-  data.frame(
-    measure = c("papers", "papers rewritten", "author rows", "rows identified by Scopus",
-                "rows identified by OpenAlex only", "rows unidentified", "people",
-                "Scopus IDs with several spellings", "people joined across Scopus IDs by ORCID",
-                "merges to check (names unlike)", "people split by review",
-                "people sharing a spelling (numbered)", "people with an ORCID conflict (flagged)"),
-    n = c(nrow(object$data), sum(rewritten), nrow(rows), sum(rows$source == "scopus"),
-          sum(rows$source == "openalex"), sum(rows$source == "none"),
-          length(unique(stats::na.omit(rows$person_key))), sum(changes$merged & changes$scopus_ids <= 1L),
-          sum(changes$scopus_ids > 1L), sum(changes$check),
-          length(unique(stats::na.omit(rows$split_from))),
-          sum(changes$homonym), sum(changes$orcid_conflict))
-  )
-}
-
-#' Print an authors_clean() result
-#'
-#' @param x An [authors_clean()] result.
-#' @param n How many merges to check to list. Default 10.
-#' @param ... Ignored.
-#' @return `x`, invisibly.
-#' @export
-print.saqr_authors <- function(x, n = 10, ...) {
-  shown <- utils::head(x$changes[x$changes$check, c("name", "spellings", "papers")], n)
-  counts <- summary(x)
-  n_check <- sum(x$changes$check)
-  n <- stats::setNames(counts$n, counts$measure)
-  cat(sprintf("Author cleaning by Scopus ID%s\n", if (x$openalex) ", then ORCID" else ""))
-  cat(sprintf("  %d of %d papers rewritten; %d people\n",
-              n[["papers rewritten"]], n[["papers"]], n[["people"]]))
-  cat(sprintf("  %d Scopus IDs had several spellings, now one; %d people joined across Scopus IDs by ORCID\n",
-              n[["Scopus IDs with several spellings"]],
-              n[["people joined across Scopus IDs by ORCID"]]))
-  cat(sprintf("  %d of these merges to check: their spellings do not look like one name\n",
-              n[["merges to check (names unlike)"]]))
-  if (n[["people split by review"]] > 0L) {
-    cat(sprintf("  %d merges split by your review\n", n[["people split by review"]]))
+  if (ask_openalex) {
+    .au_write_candidates(entries, data, doi, matched$match_names, mailto, decisions)
   }
-  cat(sprintf("  %d share a spelling and are numbered; %d ORCID conflicts flagged\n",
-              n[["people sharing a spelling (numbered)"]],
-              n[["people with an ORCID conflict (flagged)"]]))
-  cat(sprintf("  %d author rows unidentified, kept as they were\n", n[["rows unidentified"]]))
-  if (nrow(shown) > 0L) {
-    cat(sprintf("\nMerges to check (%d of %d):\n", nrow(shown), n_check))
-    width <- max(20L, getOption("width") - max(nchar(shown$name)) - 12L)
-    shown$spellings <- ifelse(nchar(shown$spellings) > width,
-                              paste0(substr(shown$spellings, 1L, width - 3L), "..."), shown$spellings)
-    print(shown, row.names = FALSE, right = FALSE)
+  if (output == "all") {
+    cleaned <- .au_add_extras(cleaned, data, authors, full_names, matched, check_paper)
   }
-  cat("\nas.data.frame(x) gives the cleaned papers; review_sheet(x, file) writes every merge for you to check.\n")
-  invisible(x)
-}
-
-#' Write the author merges to a review sheet
-#'
-#' @description
-#' Writes every merge [authors_clean()] made (one Scopus ID with several
-#' spellings, Scopus IDs joined by ORCID, people with two ORCIDs) to a file,
-#' the ones whose names do not look alike (`check = TRUE`) first. Write
-#' `split` in `decision` for a merge that is wrong; leave it empty (or write
-#' `keep`) for one that is right. Then pass the file back:
-#' `authors_clean(..., review = file)`.
-#'
-#' @param x An [authors_clean()] result.
-#' @param file The file to write, `.csv` (UTF-8) or `.xlsx`. An existing
-#'   file is never replaced, since it may hold your decisions.
-#'
-#' @return The file path, invisibly. The sheet has one row per merged person:
-#'   `decision` (empty), `check`, `name`, `spellings`, `papers`,
-#'   `scopus_ids`, `orcid_conflict`, `merged` and `person_key`.
-#'
-#' @section Errors:
-#' Raises `saqrmisc_bad_input` when `file` is not `.csv` or `.xlsx` or
-#' already exists; `saqrmisc_missing_package` for `.xlsx` without writexl.
-#'
-#' @examples
-#' scopus_file <- tempfile(fileext = ".csv")
-#' utils::write.csv(data.frame(
-#'   Authors = c("Endrass B.", "Lugrin B."), `Author(s) ID` = c("7;", "7;"),
-#'   DOI = c("10.1/a", "10.1/b"), EID = c("2-s2.0-1", "2-s2.0-2"),
-#'   check.names = FALSE
-#' ), scopus_file, row.names = FALSE, fileEncoding = "UTF-8")
-#' papers <- data.frame(eid = c("2-s2.0-1", "2-s2.0-2"), AU = c("ENDRASS B", "LUGRIN B"),
-#'                      DI = c("10.1/a", "10.1/b"), PY = c(2012, 2016))
-#' sheet <- tempfile(fileext = ".csv")
-#' review_sheet(authors_clean(papers, scopus = scopus_file, openalex = FALSE), sheet)
-#' utils::read.csv(sheet)
-#' @seealso [authors_clean()]
-#' @export
-review_sheet.saqr_authors <- function(x, file) {
-  csv <- .kr_sheet_file(file)
-  changes <- x$changes
-  merges <- changes[changes$merged | changes$scopus_ids > 1L | changes$orcid_conflict, ]
-  sheet <- data.frame(
-    decision = rep(NA_character_, nrow(merges)), check = merges$check, name = merges$name,
-    spellings = merges$spellings, papers = merges$papers, scopus_ids = merges$scopus_ids,
-    orcid_conflict = merges$orcid_conflict, merged = merges$merged, person_key = merges$person_key,
-    stringsAsFactors = FALSE
-  )
-  if (csv) .kr_write_csv(sheet, file) else writexl::write_xlsx(list(review = sheet), file)
-  message(sprintf("%s: %d merge(s), %d to check. Write split in decision for a wrong one, then authors_clean(review = \"%s\").",
-                  basename(file), nrow(sheet), sum(sheet$check), basename(file)))
-  invisible(file)
+  .au_report(entries, au_changed, af_changed, matched$status, check_paper, full_names)
+  cleaned
 }
 
 # ---- helpers ----------------------------------------------------------------
@@ -391,53 +177,278 @@ review_sheet.saqr_authors <- function(x, file) {
 .au_batch_size <- 50L
 .au_timeout <- 60
 
-.au_or_na <- function(x, y) ifelse(is.na(x), y, x)
+.au_need_column <- function(data, column, argument) {
+  if (!(is.character(column) && length(column) == 1L && !is.na(column))) {
+    .bad_input(sprintf("`%s` must be one column name", argument))
+  }
+  if (!column %in% names(data)) .bad_input(sprintf("`data` has no column `%s` (`%s`)", column, argument))
+}
 
-.au_scopus_files <- function(scopus) {
-  if (!is.character(scopus) || length(scopus) == 0L) {
-    .bad_input("`scopus` must be paths to Scopus CSV exports or a folder holding them")
-  }
-  files <- if (length(scopus) == 1L && dir.exists(scopus)) {
-    list.files(scopus, pattern = "\\.csv$", full.names = TRUE, ignore.case = TRUE)
+# A column that may be absent: NULL leaves it out, the default is skipped when
+# `data` lacks it, a name the user gave must be there.
+.au_optional_column <- function(data, column, argument, is_default) {
+  if (is.null(column)) return(NULL)
+  if (is_default && !column %in% names(data)) return(NULL)
+  .au_need_column(data, column, argument)
+  column
+}
+
+.au_scopus_files <- function(ids) {
+  files <- if (length(ids) == 1L && dir.exists(ids)) {
+    list.files(ids, pattern = "\\.csv$", full.names = TRUE, ignore.case = TRUE)
   } else {
-    scopus
+    ids
   }
-  if (length(files) == 0L || !all(file.exists(files))) {
-    .bad_input("`scopus` names no existing Scopus CSV export")
-  }
+  if (length(files) == 0L || !all(file.exists(files))) .bad_input("`ids` names no existing Scopus CSV export")
   files
 }
 
-.au_read_scopus <- function(files) {
-  needed <- c("Authors", "Author(s) ID", "DOI", "EID")
-  tables <- lapply(files, \(f) {
-    x <- utils::read.csv(f, check.names = FALSE, fileEncoding = "UTF-8-BOM",
-                         stringsAsFactors = FALSE)
+# The ID table: one row per record, `EID`, `author_ids` and `Authors` (NA when
+# the export has no names). Read as text: an ID is too long for a double.
+.au_read_ids <- function(ids) {
+  needed <- c("EID", "Author(s) ID")
+  tables <- if (is.data.frame(ids)) {
+    list(ids)
+  } else if (is.character(ids) && length(ids) > 0L && !anyNA(ids)) {
+    lapply(.au_scopus_files(ids), \(f) utils::read.csv(f, check.names = FALSE, fileEncoding = "UTF-8-BOM",
+                                                       colClasses = "character", na.strings = ""))
+  } else {
+    .bad_input("`ids` must be paths to Scopus CSV exports, a folder holding them, or a data frame")
+  }
+  tables <- lapply(tables, \(x) {
     absent <- setdiff(needed, names(x))
-    if (length(absent) > 0L) {
-      .bad_input(sprintf("`%s` is not a Scopus export: no column(s) %s",
-                         basename(f), paste(absent, collapse = ", ")))
-    }
-    x[needed]
+    if (length(absent) > 0L) .bad_input(sprintf("`ids` has no column(s) %s", paste(absent, collapse = ", ")))
+    data.frame(EID = trimws(as.character(x[["EID"]])),
+               author_ids = as.character(x[["Author(s) ID"]]),
+               Authors = if ("Authors" %in% names(x)) as.character(x[["Authors"]]) else NA_character_,
+               stringsAsFactors = FALSE)
   })
-  raw <- do.call(rbind, tables)
-  raw[!duplicated(raw$EID), ]
+  out <- do.call(rbind, tables)
+  out[!is.na(out$EID) & !duplicated(out$EID), ]
 }
 
-# The Scopus table read from `data` itself: its own names, in Scopus's
-# comma-separated form, beside its own author IDs. Entities go first, since
-# the `;` of L&#X00F3;PEZ is not an author separator.
-.au_scopus_from_data <- function(papers, ids) {
-  names_list <- strsplit(.au_decode_entities(as.character(papers$AU)), ";", fixed = TRUE)
-  names_list[is.na(papers$AU)] <- list(character())
-  data.frame(
-    Authors = vapply(names_list, \(n) paste(trimws(n), collapse = ", "), character(1)),
-    `Author(s) ID` = as.character(ids),
-    DOI = papers$DI,
-    EID = papers$eid,
-    check.names = FALSE, stringsAsFactors = FALSE
-  )
+# Splits a `;`-separated name field. The `;` that ends an HTML entity
+# (L&#X00F3;PEZ) is not a separator, so entities are protected first.
+.au_split_field <- function(x) {
+  protected <- gsub("(&#[xX]?[0-9A-Fa-f]+);", "\\1\001", as.character(x))
+  parts <- strsplit(protected, ";", fixed = TRUE)
+  parts[is.na(x)] <- list(character())
+  lapply(parts, \(p) trimws(gsub("\001", ";", p, fixed = TRUE)))
 }
+
+.au_split_ids <- function(ids) {
+  out <- lapply(strsplit(sub(";\\s*$", "", ids), ";", fixed = TRUE), trimws)
+  out[is.na(ids)] <- list(character())
+  out
+}
+
+# Links each paper to its Scopus record and its authors to their IDs. Returns
+# the status of each paper, one row per author of the papers that line up
+# (`entries`), and the names used to match those authors on OpenAlex.
+.au_match_papers <- function(data, record, authors, full_names, years, id_table) {
+  hit <- match(record, id_table$EID)
+  au_list <- .au_split_field(data[[authors]])
+  id_list <- .au_split_ids(id_table$author_ids[hit])
+  numeric_ids <- vapply(id_list, \(i) all(grepl("^[0-9]+$", i)), logical(1))
+  status <- ifelse(is.na(hit), "record not in ids",
+            ifelse(lengths(au_list) != lengths(id_list), "author and ID counts differ",
+            ifelse(!numeric_ids, "an author ID is not numeric", "ok")))
+
+  ok <- which(status == "ok")
+  n <- lengths(au_list[ok])
+  af_list <- if (is.null(full_names)) lapply(n, \(k) rep(NA_character_, k)) else .au_split_field(data[[full_names]])[ok]
+  af_aligned <- lengths(af_list) == n
+  af_list[!af_aligned] <- lapply(n[!af_aligned], \(k) rep(NA_character_, k))
+
+  # OpenAlex matching reads the export's own names (with their accents) when
+  # they line up with the IDs, else the names in `data`.
+  scopus_names <- lapply(.au_split_names(as.character(ifelse(is.na(id_table$Authors[hit[ok]]), "", id_table$Authors[hit[ok]]))),
+                         .au_normalise)
+  match_names <- Map(\(s, a) if (length(s) == length(a)) s else a, scopus_names, au_list[ok])
+
+  entries <- data.frame(
+    paper = rep(ok, n),
+    position = sequence(n),
+    name = unlist(au_list[ok]) %||% character(),
+    full = unlist(af_list) %||% character(),
+    scopus_id = unlist(id_list[ok]) %||% character(),
+    year = rep(years[ok], n),
+    stringsAsFactors = FALSE
+  )
+  list(status = status, entries = entries, id_list = id_list,
+       match_names = unlist(match_names) %||% character())
+}
+
+# The person of each entry: its decided group when it has one, else its ID.
+.au_group_of <- function(scopus_id, groups) {
+  if (length(groups) == 0L) return(scopus_id)
+  member <- rep(seq_along(groups), lengths(groups))
+  at <- match(scopus_id, unlist(groups))
+  ifelse(is.na(at), scopus_id, paste0("decided:", vapply(groups, `[[`, character(1), 1L)[member[at]]))
+}
+
+# For each person, the value used most often, then the most recent, then the
+# longest, then the first alphabetically; named by person.
+.au_pick <- function(person, value, year) {
+  keep <- !is.na(value) & nzchar(value)
+  if (!any(keep)) return(stats::setNames(character(), character()))
+  picks <- data.frame(person = person[keep], value = value[keep],
+                      year = ifelse(is.na(year[keep]), -Inf, year[keep]), stringsAsFactors = FALSE)
+  pair <- paste(picks$person, picks$value, sep = "\r")
+  picks$n <- stats::ave(picks$year, pair, FUN = length)
+  picks$latest <- stats::ave(picks$year, pair, FUN = max)
+  picks$lost <- .au_letters_lost(picks$person, picks$value)
+  picks <- picks[order(picks$person, picks$lost, -picks$n, -picks$latest, -nchar(picks$value), picks$value), ]
+  picks <- picks[!duplicated(picks$person), ]
+  stats::setNames(picks$value, picks$person)
+}
+
+# TRUE for a spelling that is another spelling of the same person with letters
+# deleted, as bibliometrix deletes accented ones (YALN N for YALCIN ON, KAI Z
+# for KACIC Z), or with an initial dropped (ZHIGALOV A for ZHIGALOV AY).
+.au_letters_lost <- function(person, value) {
+  spelled <- unique(data.frame(person = person, value = value, stringsAsFactors = FALSE))
+  several <- spelled[spelled$person %in% spelled$person[duplicated(spelled$person)], ]
+  if (nrow(several) == 0L) return(rep(FALSE, length(value)))
+  pairs <- merge(several, several, by = "person", suffixes = c("", "_other"))
+  pairs <- pairs[nchar(pairs$value) < nchar(pairs$value_other), ]
+  lost <- pairs[.au_is_subsequence(pairs$value, pairs$value_other), c("person", "value")]
+  paste(person, value, sep = "\r") %in% paste(lost$person, lost$value, sep = "\r")
+}
+
+# Are the characters of `short` found in `long`, in order?
+.au_is_subsequence <- function(short, long) {
+  patterns <- vapply(strsplit(short, ""), \(chars) paste0("\\Q", chars, "\\E", collapse = ".*"), character(1))
+  as.logical(mapply(grepl, patterns, long, MoreArgs = list(perl = TRUE), USE.NAMES = FALSE))
+}
+
+# People one of whose spellings does not look like the spelling they now get.
+.au_unlike_people <- function(entries) {
+  pairs <- unique(entries[entries$name != entries$new_name, c("person", "name", "new_name")])
+  if (nrow(pairs) == 0L) return(character())
+  # A spelling with letters deleted (KAI Z for KACIC Z) is the same name.
+  alike <- .au_is_subsequence(pairs$name, pairs$new_name) | .au_similar(pairs$name, pairs$new_name)
+  unique(pairs$person[!alike])
+}
+
+# The field with the changed papers rebuilt from their entries; other papers
+# keep their text exactly.
+.au_rewrite <- function(field, entries, changed, column) {
+  papers <- unique(entries$paper[changed])
+  if (length(papers) == 0L) return(field)
+  rebuilt <- entries[entries$paper %in% papers, ]
+  rebuilt <- rebuilt[order(rebuilt$paper, rebuilt$position), ]
+  text <- vapply(split(rebuilt[[column]], rebuilt$paper), paste, character(1), collapse = ";")
+  field <- as.character(field)
+  field[as.integer(names(text))] <- unname(text)
+  field
+}
+
+.au_add_extras <- function(cleaned, data, authors, full_names, matched, check_paper) {
+  if (!"AU_ORIGINAL" %in% names(cleaned)) cleaned$AU_ORIGINAL <- data[[authors]]
+  if (!is.null(full_names) && !"AF_ORIGINAL" %in% names(cleaned)) cleaned$AF_ORIGINAL <- data[[full_names]]
+  au_id <- vapply(matched$id_list, paste, character(1), collapse = ";")
+  cleaned$AU_ID <- ifelse(matched$status == "ok", au_id, NA_character_)
+  cleaned$check_authors <- ifelse(check_paper, "YES", "NO")
+  cleaned
+}
+
+.au_report <- function(entries, au_changed, af_changed, status, check_paper, full_names) {
+  merged <- length(unique(entries$person[au_changed | af_changed]))
+  decided <- length(unique(entries$person[entries$basis == "decided"]))
+  skipped <- table(status[status != "ok"])
+  message(sprintf(
+    "authors_clean: %d people given one spelling (%d by decision); %d papers changed%s; %d papers to check; %d papers untouched%s",
+    merged, decided, length(unique(entries$paper[au_changed])),
+    if (is.null(full_names)) "" else sprintf(" (%d in %s)", length(unique(entries$paper[af_changed])), full_names),
+    sum(check_paper), sum(skipped),
+    if (length(skipped) > 0L) sprintf(" (%s)", paste(sprintf("%s: %d", names(skipped), skipped), collapse = ", ")) else ""))
+}
+
+# ---- decisions --------------------------------------------------------------
+
+# The merged groups of a decisions sheet: the Scopus IDs of each row marked
+# `merge`, rows that share an ID joined into one group.
+.au_read_decisions <- function(path, known_ids) {
+  sheet <- if (grepl("\\.xlsx$", path, ignore.case = TRUE)) {
+    .kr_need("readxl")
+    as.data.frame(readxl::read_excel(path, sheet = 1L, col_types = "text"))
+  } else {
+    .kr_read_csv(path)
+  }
+  if (!all(c("scopus_ids", "decision") %in% names(sheet))) {
+    .bad_input("the decisions sheet needs the columns scopus_ids and decision, as authors_clean() writes them")
+  }
+  decision <- tolower(trimws(as.character(sheet$decision)))
+  decision[is.na(decision)] <- ""
+  odd <- setdiff(decision, c("", "merge", "no"))
+  if (length(odd) > 0L) {
+    .bad_input(sprintf("`decision` must be empty, merge or no, not %s", paste(sprintf("\"%s\"", odd), collapse = ", ")))
+  }
+  groups <- Filter(\(g) length(g) > 1L, lapply(.au_split_ids(as.character(sheet$scopus_ids)[decision == "merge"]), unique))
+  absent <- setdiff(unlist(groups), known_ids)
+  if (length(absent) > 0L) {
+    warning(warningCondition(
+      sprintf("%d decided Scopus ID(s) are not in this data: %s", length(absent),
+              paste(utils::head(absent, 5L), collapse = ", ")),
+      class = "saqrmisc_review_unmatched", call = NULL))
+  }
+  # Rows that share an ID are one person: fold each row into the groups it touches.
+  merged <- Reduce(\(sets, g) {
+    touches <- vapply(sets, \(s) any(g %in% s), logical(1))
+    c(sets[!touches], list(unique(c(unlist(sets[touches]), g))))
+  }, groups, list())
+  lapply(merged, sort)
+}
+
+# Asks OpenAlex for each author's ORCID and writes the Scopus IDs that share
+# one ORCID to the decisions sheet, `decision` left empty.
+.au_write_candidates <- function(entries, data, doi, match_names, mailto, path) {
+  csv <- .kr_sheet_file(path)
+  .kr_need("httr2")
+  .au_need_column(data, doi, "doi")
+  entries$doi <- tolower(trimws(as.character(data[[doi]])))[entries$paper]
+  entries$orcid <- .au_orcids(entries, match_names, mailto)
+  claims <- unique(entries[!is.na(entries$orcid), c("scopus_id", "orcid")])
+  single <- claims[!claims$scopus_id %in% claims$scopus_id[duplicated(claims$scopus_id)], ]
+  shared <- single[single$orcid %in% single$orcid[duplicated(single$orcid)], ]
+  by_orcid <- split(shared$scopus_id, shared$orcid)
+  rows <- lapply(names(by_orcid), \(orcid) {
+    ids <- sort(unique(by_orcid[[orcid]]))
+    own <- entries[entries$scopus_id %in% ids, ]
+    names_seen <- sort(unique(own$name))
+    best <- .au_pick(rep("x", nrow(own)), own$name, own$year)[["x"]]
+    data.frame(decision = NA_character_, orcid = orcid, scopus_ids = paste(ids, collapse = ";"),
+               names = paste(names_seen, collapse = " | "), papers = length(unique(own$paper)),
+               names_alike = if (all(.au_similar(names_seen, rep(best, length(names_seen))))) "YES" else "NO",
+               stringsAsFactors = FALSE)
+  })
+  sheet <- do.call(rbind, rows) %||%
+    data.frame(decision = character(), orcid = character(), scopus_ids = character(), names = character(),
+               papers = integer(), names_alike = character())
+  sheet <- sheet[order(sheet$names_alike, -sheet$papers, sheet$orcid), ]
+  if (csv) .kr_write_csv(sheet, path) else writexl::write_xlsx(list(decisions = sheet), path)
+  message(sprintf("%s: %d Scopus ID group(s) share an ORCID. Write merge in decision for the right ones, then run again with the same `decisions`.",
+                  basename(path), nrow(sheet)))
+}
+
+# The ORCID of each entry, from OpenAlex by DOI; NA where it has none.
+.au_orcids <- function(entries, match_names, mailto) {
+  orcid <- rep(NA_character_, nrow(entries))
+  asked <- which(!is.na(entries$doi) & nzchar(entries$doi))
+  if (length(asked) == 0L) return(orcid)
+  by_paper <- split(asked, entries$paper[asked])
+  paper_doi <- vapply(by_paper, \(idx) entries$doi[idx[1L]], character(1))
+  works <- .au_fetch_openalex(unique(paper_doi), mailto)
+  found <- paper_doi %in% names(works)
+  message(sprintf("OpenAlex: %d of %d paper(s) found", sum(found), length(found)))
+  matched <- do.call(rbind, Map(\(idx, d) cbind(row = idx, .au_match_openalex(match_names[idx], works[[d]])),
+                                by_paper[found], paper_doi[found]))
+  if (!is.null(matched)) orcid[matched$row] <- matched$orcid
+  orcid
+}
+
+# ---- names --------------------------------------------------------------------
 
 # Scopus and bibliometrix both leave HTML entities (L&#x00F3;pez) in names.
 .au_decode_entities <- function(x) {
@@ -474,47 +485,17 @@ review_sheet.saqr_authors <- function(x, file) {
   lapply(strsplit(toupper(gsub("['`^~\"]", "", ascii)), "[^A-Z]+"), \(w) w[nzchar(w)])
 }
 
-# A generational suffix is its own comma field in Scopus; glue it back on.
+# Scopus's comma-separated names; a generational suffix is its own comma
+# field in Scopus, so it is glued back on.
 .au_split_names <- function(authors) {
-  lapply(strsplit(authors, ", ", fixed = TRUE), \(parts) {
+  lapply(strsplit(.au_decode_entities(authors), ", ", fixed = TRUE), \(parts) {
+    if (length(parts) == 0L) return(character())
     is_suffix <- .au_normalise(parts) %in% .au_suffixes
     unname(vapply(split(parts, cumsum(!is_suffix)), paste, character(1), collapse = " "))
   })
 }
 
-.au_split_ids <- function(ids) {
-  lapply(strsplit(sub(";\\s*$", "", ids), ";", fixed = TRUE), trimws)
-}
-
-# One row per author per paper, with the Scopus ID where names and IDs line up.
-.au_scopus_rows <- function(papers, raw) {
-  hit <- raw[match(papers$eid, raw$EID), ]
-  in_scopus <- !is.na(hit$EID)
-  # read.csv reads a column of empty fields as logical NA; keep the text typed.
-  as_text <- \(v) { v <- as.character(v); v[is.na(v) | !in_scopus] <- ""; v }
-  names_list <- .au_split_names(as_text(hit$Authors))
-  names_list[!in_scopus] <- strsplit(.au_decode_entities(as.character(papers$AU[!in_scopus])), ";", fixed = TRUE)
-  ids_list <- .au_split_ids(as_text(hit[["Author(s) ID"]]))
-  aligned <- in_scopus & lengths(names_list) == lengths(ids_list)
-  ids_list[!aligned] <- lapply(names_list[!aligned], \(n) rep(NA_character_, length(n)))
-
-  before <- strsplit(papers$AU, ";", fixed = TRUE)
-  same_count <- lengths(before) == lengths(names_list)
-  before[!same_count] <- lapply(names_list[!same_count], \(n) rep(NA_character_, length(n)))
-
-  n <- lengths(names_list)
-  scopus_id <- unlist(ids_list)
-  data.frame(
-    eid = rep(papers$eid, n),
-    doi = tolower(trimws(rep(papers$DI, n))),
-    year = rep(as.integer(trimws(papers$PY)), n),
-    position = unlist(lapply(n, seq_len)),
-    name_before = trimws(unlist(before)),
-    name_scopus = .au_normalise(unlist(names_list)),
-    scopus_id = ifelse(grepl("^[0-9]+$", scopus_id), scopus_id, NA_character_),
-    stringsAsFactors = FALSE
-  )
-}
+# ---- OpenAlex -----------------------------------------------------------------
 
 .au_authorship_table <- function(authorships) {
   people <- Filter(\(a) !is.null(a$author$id), authorships)
@@ -613,179 +594,7 @@ review_sheet.saqr_authors <- function(x, file) {
              stringsAsFactors = FALSE)
 }
 
-# Fills openalex_id and orcid for the rows at `look_up`.
-.au_fill_openalex <- function(rows, look_up, mailto) {
-  look_up <- look_up[!is.na(rows$doi[look_up]) & nzchar(rows$doi[look_up])]
-  if (length(look_up) == 0L) return(rows)
-  by_paper <- split(look_up, rows$eid[look_up])
-  paper_doi <- vapply(by_paper, \(idx) rows$doi[idx[1L]], character(1))
-  works <- .au_fetch_openalex(unique(paper_doi), mailto)
-  found <- paper_doi %in% names(works)
-  message(sprintf("OpenAlex: %d of %d paper(s) found", sum(found), length(found)))
-  matched <- do.call(rbind, Map(
-    \(idx, d) cbind(row = idx, .au_match_openalex(rows$name_scopus[idx], works[[d]])),
-    by_paper[found], paper_doi[found]))
-  if (!is.null(matched)) {
-    rows$openalex_id[matched$row] <- matched$openalex_id
-    rows$orcid[matched$row] <- matched$orcid
-  }
-  rows
-}
-
-# Keys whose papers carry one and the same ORCID become one person,
-# "orcid:<ORCID>". A key showing two ORCIDs is left alone.
-.au_unify_by_orcid <- function(rows) {
-  claims <- unique(rows[!is.na(rows$person_key) & !is.na(rows$orcid), c("person_key", "orcid")])
-  single <- claims[!claims$person_key %in% claims$person_key[duplicated(claims$person_key)], ]
-  shared <- single[single$orcid %in% single$orcid[duplicated(single$orcid)], ]
-  at <- match(rows$person_key, shared$person_key)
-  ifelse(is.na(at), rows$person_key, paste0("orcid:", shared$orcid[at]))
-}
-
-# The spelling a person is known by: the most frequent, then the most recent,
-# then the longest, then the first alphabetically. Different people under one
-# spelling are then numbered by their number of papers.
-.au_canonical <- function(rows) {
-  keyed <- rows[!is.na(rows$person_key), c("person_key", "name_scopus", "year")]
-  pair <- paste(keyed$person_key, keyed$name_scopus, sep = "\r")
-  year <- ifelse(is.na(keyed$year), -Inf, keyed$year)
-  keyed$n <- stats::ave(year, pair, FUN = length)
-  keyed$latest <- stats::ave(year, pair, FUN = max)
-  keyed$papers <- stats::ave(year, keyed$person_key, FUN = length)
-  keyed <- keyed[order(keyed$person_key, -keyed$n, -keyed$latest,
-                       -nchar(keyed$name_scopus), keyed$name_scopus), ]
-  best <- keyed[!duplicated(keyed$person_key), c("person_key", "name_scopus", "papers")]
-
-  best <- best[order(best$name_scopus, -best$papers, best$person_key), ]
-  rank <- stats::ave(seq_along(best$name_scopus), best$name_scopus, FUN = seq_along)
-  best$label <- ifelse(rank == 1L, best$name_scopus, sprintf("%s (%d)", best$name_scopus, rank))
-  best$homonym <- stats::ave(rank, best$name_scopus, FUN = length) > 1L
-  best
-}
-
-.au_identify <- function(papers, raw, openalex, mailto, split_keys = character()) {
-  rows <- .au_scopus_rows(papers, raw)
-  rows$openalex_id <- rep(NA_character_, nrow(rows))
-  rows$orcid <- rep(NA_character_, nrow(rows))
-  rows$person_key <- ifelse(is.na(rows$scopus_id), NA_character_, paste0("scopus:", rows$scopus_id))
-
-  if (openalex) {
-    # Every author is asked for: an ORCID can join Scopus IDs of any spelling.
-    rows <- .au_fill_openalex(rows, seq_len(nrow(rows)), mailto)
-    rows$person_key <- .au_or_na(
-      rows$person_key,
-      ifelse(is.na(rows$openalex_id), NA_character_, paste0("openalex:", rows$openalex_id)))
-    rows$person_key <- .au_unify_by_orcid(rows)
-  }
-  rows <- .au_split(rows, split_keys)
-  rows$source <- ifelse(!is.na(rows$scopus_id), "scopus",
-                 ifelse(!is.na(rows$openalex_id), "openalex", "none"))
-
-  best <- .au_canonical(rows)
-  at <- match(rows$person_key, best$person_key)
-  rows$name <- ifelse(is.na(at), .au_or_na(rows$name_before, rows$name_scopus), best$label[at])
-  rows$homonym <- !is.na(at) & best$homonym[at]
-  rownames(rows) <- NULL
-  rows
-}
-
-# The new author field and its aligned person keys, one person once per paper.
-.au_rewrite <- function(papers, rows) {
-  person <- .au_or_na(rows$person_key, paste0("name:", rows$name))
-  kept <- rows[!duplicated(data.frame(rows$eid, person)), ]
-  by_paper <- split(kept, factor(kept$eid, levels = papers$eid))
-  identified <- vapply(by_paper, \(p) any(!is.na(p$person_key)), logical(1))
-  new_au <- vapply(by_paper, \(p) paste(p$name, collapse = ";"), character(1))
-  new_id <- vapply(by_paper, \(p) paste(.au_or_na(p$person_key, "-"), collapse = ";"), character(1))
-  list(AU = unname(ifelse(identified, new_au, papers$AU)),
-       AU_ID = unname(ifelse(identified, new_id, NA_character_)))
-}
-
-.au_changes <- function(rows) {
-  keyed <- rows[!is.na(rows$person_key), ]
-  seen <- .au_or_na(keyed$name_before, keyed$name_scopus)
-  n_unique <- \(x) length(unique(x[!is.na(x)]))
-  spellings <- tapply(seen, keyed$person_key, \(s) paste(sort(unique(s)), collapse = " | "))
-  n_spellings <- tapply(seen, keyed$person_key, n_unique)
-  papers <- tapply(keyed$eid, keyed$person_key, n_unique)
-  scopus_ids <- tapply(keyed$scopus_id, keyed$person_key, n_unique)
-  orcids <- tapply(keyed$orcid, keyed$person_key, n_unique)
-  first <- keyed[!duplicated(keyed$person_key), c("person_key", "name", "homonym", "split_from")]
-
-  # A merge is checked when one of its spellings does not look like its name.
-  spelled <- unique(data.frame(person_key = keyed$person_key, seen = seen,
-                               name = sub(" \\([0-9]+\\)$", "", keyed$name)))
-  spelled <- spelled[!is.na(spelled$seen) & spelled$seen != spelled$name, ]
-  unlike <- unique(spelled$person_key[!.au_similar(spelled$seen, spelled$name)])
-
-  out <- data.frame(
-    person_key = first$person_key,
-    name = first$name,
-    spellings = as.character(spellings[first$person_key]),
-    papers = as.integer(papers[first$person_key]),
-    scopus_ids = as.integer(scopus_ids[first$person_key]),
-    merged = as.integer(n_spellings[first$person_key]) > 1L,
-    check = rep(FALSE, nrow(first)),
-    homonym = first$homonym,
-    orcid_conflict = as.integer(orcids[first$person_key]) > 1L,
-    split = !is.na(first$split_from)
-  )
-  out$check <- (out$merged | out$scopus_ids > 1L) & out$person_key %in% unlike
-  out <- out[out$merged | out$homonym | out$scopus_ids > 1L | out$orcid_conflict |
-               out$split | out$spellings != out$name, ]
-  out <- out[order(-out$check, -out$papers, out$name, out$person_key), ]
-  rownames(out) <- NULL
-  out
-}
-
-# Takes the people in `split_keys` apart again: a person ORCID joined from
-# several Scopus IDs into those IDs, any other person into its spellings.
-.au_split <- function(rows, split_keys) {
-  unmatched <- setdiff(split_keys, rows$person_key)
-  if (length(unmatched) > 0L) {
-    warning(warningCondition(
-      sprintf("%d reviewed person(s) marked split are not in this data: %s",
-              length(unmatched), paste(utils::head(unmatched, 5L), collapse = ", ")),
-      class = "saqrmisc_review_unmatched", call = NULL))
-  }
-  hit <- !is.na(rows$person_key) & rows$person_key %in% split_keys
-  rows$split_from <- ifelse(hit, rows$person_key, NA_character_)
-  if (!any(hit)) return(rows)
-  ids <- tapply(rows$scopus_id[hit], rows$person_key[hit], \(s) length(unique(s[!is.na(s)])))
-  by_id <- rows$person_key %in% names(ids)[ids > 1L] & !is.na(rows$scopus_id)
-  rows$person_key <- ifelse(by_id, paste0("scopus:", rows$scopus_id),
-                     ifelse(hit, paste0(rows$person_key, "|", rows$name_scopus), rows$person_key))
-  rows
-}
-
-# The `split` keys of a review: a review_sheet() file or a data frame with
-# `person_key` and `decision` (empty, keep or split).
-.au_review_splits <- function(review) {
-  if (is.null(review)) return(character())
-  if (is.character(review) && length(review) == 1L) {
-    if (!file.exists(review)) .bad_input(sprintf("`review` file %s does not exist", review))
-    review <- if (grepl("\\.xlsx$", review, ignore.case = TRUE)) {
-      .kr_need("readxl")
-      as.data.frame(readxl::read_excel(review, sheet = 1L))
-    } else if (grepl("\\.csv$", review, ignore.case = TRUE)) {
-      .kr_read_csv(review)
-    } else {
-      .bad_input("`review` must be a .csv or .xlsx file from review_sheet(), or a data frame")
-    }
-  }
-  if (!is.data.frame(review) || !all(c("person_key", "decision") %in% names(review))) {
-    .bad_input("`review` needs the columns person_key and decision, as review_sheet() writes them")
-  }
-  decision <- tolower(trimws(as.character(review$decision)))
-  decision[is.na(decision)] <- ""
-  odd <- setdiff(decision, c("", "keep", "split"))
-  if (length(odd) > 0L) {
-    .bad_input(sprintf("`review$decision` must be empty, keep or split, not %s",
-                       paste(sprintf("\"%s\"", odd), collapse = ", ")))
-  }
-  keys <- trimws(as.character(review$person_key))
-  unique(keys[decision == "split" & !is.na(keys) & nzchar(keys)])
-}
+# ---- name likeness -----------------------------------------------------------
 
 # Do two spellings look like one name? Lost accents ("KRMER N" for KRÄMER),
 # transliteration (YAROVII, YAROVYI), initials against given names ("MOORE RL",

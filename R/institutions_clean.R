@@ -29,7 +29,7 @@
 #'
 #' @param data Your papers, one row each (a bibliometrix data frame).
 #'   The result of another `clean_*()` function works too, so the cleaners
-#'   chain: `M |> authors_clean(scopus = "Dlds") |> keywords_clean()`.
+#'   chain: `M |> authors_clean(ids = "scopus_exports") |> keywords_clean()`.
 #' @param affiliations The column of author addresses, `;`-separated.
 #'   Default `"C1"`.
 #' @param doi The DOI column. Default `"DI"`.
