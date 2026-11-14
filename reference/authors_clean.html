@@ -14,7 +14,8 @@ recent, then the longest. Authors who were not merged keep their spelling,
 and a paper with no merged author is left as it was. Different Scopus IDs
 that share a spelling stay as they are: they are not numbered or split.
 The Scopus author IDs are matched to the papers by record ID (the Scopus
-EID), then by position: the *i*-th author of a paper takes its *i*-th ID. A
+EID, ignoring case: bibliometrix writes `2-S2.0-...`, Scopus `2-s2.0-...`),
+then by position: the *i*-th author of a paper takes its *i*-th ID. A
 paper whose record is not in `ids`, or whose number of authors and of IDs
 differ, is left untouched; the message names the reasons."><meta property="og:description" content="Gives each person one spelling in the author column of a bibliometrix data
 frame, and returns the data frame ready for bibliometrix.
@@ -31,7 +32,8 @@ recent, then the longest. Authors who were not merged keep their spelling,
 and a paper with no merged author is left as it was. Different Scopus IDs
 that share a spelling stay as they are: they are not numbered or split.
 The Scopus author IDs are matched to the papers by record ID (the Scopus
-EID), then by position: the *i*-th author of a paper takes its *i*-th ID. A
+EID, ignoring case: bibliometrix writes `2-S2.0-...`, Scopus `2-s2.0-...`),
+then by position: the *i*-th author of a paper takes its *i*-th ID. A
 paper whose record is not in `ids`, or whose number of authors and of IDs
 differ, is left untouched; the message names the reasons."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -41,7 +43,7 @@ differ, is left untouched; the message names the reasons."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.13</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -89,7 +91,8 @@ recent, then the longest. Authors who were not merged keep their spelling,
 and a paper with no merged author is left as it was. Different Scopus IDs
 that share a spelling stay as they are: they are not numbered or split.</p>
 <p>The Scopus author IDs are matched to the papers by record ID (the Scopus
-EID), then by position: the *i*-th author of a paper takes its *i*-th ID. A
+EID, ignoring case: bibliometrix writes `2-S2.0-...`, Scopus `2-s2.0-...`),
+then by position: the *i*-th author of a paper takes its *i*-th ID. A
 paper whose record is not in `ids`, or whose number of authors and of IDs
 differ, is left untouched; the message names the reasons.</p>
     </div>

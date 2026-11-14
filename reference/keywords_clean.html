@@ -4,10 +4,11 @@
 whose keywords change are rewritten; the others keep their text exactly.
 Nothing is ever deleted.
 The confirmed steps, applied with no review:
-1. **Cleanup**: HTML entities decoded, dashes and quotes unified, `&amp;amp;`
-   written `AND`, a leading `#` and trailing punctuation dropped, spacing
-   squeezed, upper case. A keyword cleanup would leave empty (`.`) keeps
-   its written form.
+1. **Cleanup**: HTML entities decoded, invisible characters (zero-width
+   spaces and joiners, soft hyphens) removed, dashes and quotes unified,
+   quotes around the whole keyword dropped, `&amp;amp;` written `AND`, a leading
+   `#` and trailing punctuation (also `*`) dropped, spacing squeezed, upper
+   case. A keyword cleanup would leave empty (`.`) keeps its written form.
 2. **Brackets**: a plural marker goes (`VOICE ASSISTANT(S)`); an acronym in
    brackets goes (`NATURAL LANGUAGE PROCESSING (NLP)`, also
    `B-RNN (BI-DIRECTIONAL ...)`); other brackets lose only the brackets.
@@ -21,27 +22,35 @@ The confirmed steps, applied with no review:
    them, else the form in most papers.
 5. Each keyword once per paper.
 `level = &quot;all&quot;` merges nothing: it returns `data` unchanged and writes
-every merge to the `decisions` sheet, for a person, a model or a tool such
-as OpenRefine to check outside R, with a short prompt for a model beside
-it. The sheet has one group per `name`: the `name` row, its `confirmed`
-merges (the steps above) and its `needs_revision` candidates. A candidate is a keyword spelled
-like the name (character trigrams, Jaccard 0.7 or more, found by MinHash,
-never by comparing all pairs) or an acronym whose long form is written in
-brackets elsewhere in the data. Spelled alike is not the same concept
-(`JUSTICE` / `INJUSTICE`), which is why candidates wait for a `yes`. Only
-keywords in at least `min_papers` papers go to the sheet, each of them,
-grouped or alone (`single`), so a tool such as OpenRefine can also cluster
-the whole list itself. Bring the checked sheet back with [keywords_merge()]:
-by its `merge` answers, or by the edits of `keyword` against the untouched
-`keyword_backup`."><meta property="og:description" content="Gives each concept one spelling in the author keywords (bibliometrix's
+the `decisions` sheet, for a person, a model or a tool such as OpenRefine
+to check outside R, with a short prompt for a model beside it. It has
+three tables:
+* `decisions`: one question per row, should `keyword` be merged into
+  `merge_into`? A candidate is a keyword spelled like another (character
+  trigrams, Jaccard 0.7 or more, found by MinHash, never by comparing all
+  pairs) or an acronym whose long form is written in brackets elsewhere in
+  the data. Spelled alike is not the same concept, so a pair whose first
+  letters differ (`DEPRESSION` / `REPRESSION`) or with a word that is
+  another plus a prefix (`ADOLESCENTS` / `PREADOLESCENTS`, `SOCIAL
+  JUSTICE` / `SOCIAL INJUSTICE`) is never proposed, and the rest wait for
+  a `yes`.
+* `confirmed`: each keyword with the spellings the confirmed steps merge
+  into it, in one cell (`DEPRESSIONS (6); DÉPRESSION (9)`), with `yes` in
+  `merge`; change it to `no` to keep them apart.
+* `all_keywords`: every keyword, for a tool such as OpenRefine to cluster
+  the whole list itself.
+Only keywords in at least `min_papers` papers are in the sheet. Bring it
+back with [keywords_merge()]: by its `merge` answers, or by the edits of
+`keyword` against the untouched `keyword_backup`."><meta property="og:description" content="Gives each concept one spelling in the author keywords (bibliometrix's
 `DE`) and returns the data frame, ready for bibliometrix. Only papers
 whose keywords change are rewritten; the others keep their text exactly.
 Nothing is ever deleted.
 The confirmed steps, applied with no review:
-1. **Cleanup**: HTML entities decoded, dashes and quotes unified, `&amp;amp;`
-   written `AND`, a leading `#` and trailing punctuation dropped, spacing
-   squeezed, upper case. A keyword cleanup would leave empty (`.`) keeps
-   its written form.
+1. **Cleanup**: HTML entities decoded, invisible characters (zero-width
+   spaces and joiners, soft hyphens) removed, dashes and quotes unified,
+   quotes around the whole keyword dropped, `&amp;amp;` written `AND`, a leading
+   `#` and trailing punctuation (also `*`) dropped, spacing squeezed, upper
+   case. A keyword cleanup would leave empty (`.`) keeps its written form.
 2. **Brackets**: a plural marker goes (`VOICE ASSISTANT(S)`); an acronym in
    brackets goes (`NATURAL LANGUAGE PROCESSING (NLP)`, also
    `B-RNN (BI-DIRECTIONAL ...)`); other brackets lose only the brackets.
@@ -55,19 +64,26 @@ The confirmed steps, applied with no review:
    them, else the form in most papers.
 5. Each keyword once per paper.
 `level = &quot;all&quot;` merges nothing: it returns `data` unchanged and writes
-every merge to the `decisions` sheet, for a person, a model or a tool such
-as OpenRefine to check outside R, with a short prompt for a model beside
-it. The sheet has one group per `name`: the `name` row, its `confirmed`
-merges (the steps above) and its `needs_revision` candidates. A candidate is a keyword spelled
-like the name (character trigrams, Jaccard 0.7 or more, found by MinHash,
-never by comparing all pairs) or an acronym whose long form is written in
-brackets elsewhere in the data. Spelled alike is not the same concept
-(`JUSTICE` / `INJUSTICE`), which is why candidates wait for a `yes`. Only
-keywords in at least `min_papers` papers go to the sheet, each of them,
-grouped or alone (`single`), so a tool such as OpenRefine can also cluster
-the whole list itself. Bring the checked sheet back with [keywords_merge()]:
-by its `merge` answers, or by the edits of `keyword` against the untouched
-`keyword_backup`."></head><body>
+the `decisions` sheet, for a person, a model or a tool such as OpenRefine
+to check outside R, with a short prompt for a model beside it. It has
+three tables:
+* `decisions`: one question per row, should `keyword` be merged into
+  `merge_into`? A candidate is a keyword spelled like another (character
+  trigrams, Jaccard 0.7 or more, found by MinHash, never by comparing all
+  pairs) or an acronym whose long form is written in brackets elsewhere in
+  the data. Spelled alike is not the same concept, so a pair whose first
+  letters differ (`DEPRESSION` / `REPRESSION`) or with a word that is
+  another plus a prefix (`ADOLESCENTS` / `PREADOLESCENTS`, `SOCIAL
+  JUSTICE` / `SOCIAL INJUSTICE`) is never proposed, and the rest wait for
+  a `yes`.
+* `confirmed`: each keyword with the spellings the confirmed steps merge
+  into it, in one cell (`DEPRESSIONS (6); DÉPRESSION (9)`), with `yes` in
+  `merge`; change it to `no` to keep them apart.
+* `all_keywords`: every keyword, for a tool such as OpenRefine to cluster
+  the whole list itself.
+Only keywords in at least `min_papers` papers are in the sheet. Bring it
+back with [keywords_merge()]: by its `merge` answers, or by the edits of
+`keyword` against the untouched `keyword_backup`."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -75,7 +91,7 @@ by its `merge` answers, or by the edits of `keyword` against the untouched
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.13</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -113,10 +129,11 @@ by its `merge` answers, or by the edits of `keyword` against the untouched
 whose keywords change are rewritten; the others keep their text exactly.
 Nothing is ever deleted.</p>
 <p>The confirmed steps, applied with no review:
-1. **Cleanup**: HTML entities decoded, dashes and quotes unified, `&amp;`
-   written `AND`, a leading `#` and trailing punctuation dropped, spacing
-   squeezed, upper case. A keyword cleanup would leave empty (`.`) keeps
-   its written form.
+1. **Cleanup**: HTML entities decoded, invisible characters (zero-width
+   spaces and joiners, soft hyphens) removed, dashes and quotes unified,
+   quotes around the whole keyword dropped, `&amp;` written `AND`, a leading
+   `#` and trailing punctuation (also `*`) dropped, spacing squeezed, upper
+   case. A keyword cleanup would leave empty (`.`) keeps its written form.
 2. **Brackets**: a plural marker goes (`VOICE ASSISTANT(S)`); an acronym in
    brackets goes (`NATURAL LANGUAGE PROCESSING (NLP)`, also
    `B-RNN (BI-DIRECTIONAL ...)`); other brackets lose only the brackets.
@@ -130,19 +147,26 @@ Nothing is ever deleted.</p>
    them, else the form in most papers.
 5. Each keyword once per paper.</p>
 <p>`level = "all"` merges nothing: it returns `data` unchanged and writes
-every merge to the `decisions` sheet, for a person, a model or a tool such
-as OpenRefine to check outside R, with a short prompt for a model beside
-it. The sheet has one group per `name`: the `name` row, its `confirmed`
-merges (the steps above) and its `needs_revision` candidates. A candidate is a keyword spelled
-like the name (character trigrams, Jaccard 0.7 or more, found by MinHash,
-never by comparing all pairs) or an acronym whose long form is written in
-brackets elsewhere in the data. Spelled alike is not the same concept
-(`JUSTICE` / `INJUSTICE`), which is why candidates wait for a `yes`. Only
-keywords in at least `min_papers` papers go to the sheet, each of them,
-grouped or alone (`single`), so a tool such as OpenRefine can also cluster
-the whole list itself. Bring the checked sheet back with [keywords_merge()]:
-by its `merge` answers, or by the edits of `keyword` against the untouched
-`keyword_backup`.</p>
+the `decisions` sheet, for a person, a model or a tool such as OpenRefine
+to check outside R, with a short prompt for a model beside it. It has
+three tables:
+* `decisions`: one question per row, should `keyword` be merged into
+  `merge_into`? A candidate is a keyword spelled like another (character
+  trigrams, Jaccard 0.7 or more, found by MinHash, never by comparing all
+  pairs) or an acronym whose long form is written in brackets elsewhere in
+  the data. Spelled alike is not the same concept, so a pair whose first
+  letters differ (`DEPRESSION` / `REPRESSION`) or with a word that is
+  another plus a prefix (`ADOLESCENTS` / `PREADOLESCENTS`, `SOCIAL
+  JUSTICE` / `SOCIAL INJUSTICE`) is never proposed, and the rest wait for
+  a `yes`.
+* `confirmed`: each keyword with the spellings the confirmed steps merge
+  into it, in one cell (`DEPRESSIONS (6); DÉPRESSION (9)`), with `yes` in
+  `merge`; change it to `no` to keep them apart.
+* `all_keywords`: every keyword, for a tool such as OpenRefine to cluster
+  the whole list itself.</p>
+<p>Only keywords in at least `min_papers` papers are in the sheet. Bring it
+back with [keywords_merge()]: by its `merge` answers, or by the edits of
+`keyword` against the untouched `keyword_backup`.</p>
     </div>
 
     <div class="section level2">
@@ -180,15 +204,18 @@ data frame. The cleaners chain: `M |&gt; authors_clean(ids = "scopus_exports")
 
 <dt id="arg-decisions">decisions<a class="anchor" aria-label="anchor" href="#arg-decisions"></a></dt>
 <dd><p>With `level = "all"`: the sheet to write, a new path
-ending in `.xlsx` or `.csv` (an existing file is never replaced). Its
-columns: `group`, `name`, `keyword`, `keyword_backup` (a copy of
-`keyword` that [keywords_merge()] matches on, so an edit of `keyword`
-does no harm), `status` (`name`, `single` for a keyword in no group,
-`confirmed` or `needs_revision`),
-`merge` (empty, for `yes` or `no`), `papers`, `source` (`same spelling`,
-`your table`, `spelling`, `acronym`) and `example` (the title of a paper
-using the keyword). The prompt goes to `&lt;sheet&gt;_prompt.txt` and, in an
-`.xlsx`, to a second tab `prompt`.</p></dd>
+ending in `.xlsx` or `.csv` (an existing file is never replaced). An
+`.xlsx` has the tabs `decisions`, `confirmed`, `all_keywords` and
+`prompt`; a `.csv` is the decisions table, with
+`&lt;sheet&gt;_confirmed.csv` and `&lt;sheet&gt;_all_keywords.csv` beside it. The
+prompt also goes to `&lt;sheet&gt;_prompt.txt`. Columns of `decisions`:
+`keyword`, `keyword_backup` (a copy that [keywords_merge()] matches on,
+so an edit of `keyword` does no harm), `merge_into`, `merge` (empty, for
+`yes` or `no`), `papers`, `merge_into_papers`, `source` (`spelling`,
+`acronym`) and `example` (the title of a paper using the keyword). Of
+`confirmed`: `keyword`, `papers`, `also_written_as`, `source` (`same
+spelling`, `your table`) and `merge`. Of `all_keywords`: `keyword`,
+`keyword_backup`, `papers` and `example`.</p></dd>
 
 
 <dt id="arg-min-papers">min_papers<a class="anchor" aria-label="anchor" href="#arg-min-papers"></a></dt>
@@ -279,38 +306,12 @@ Datasets* (3rd ed.), chapter 3. Cambridge University Press.</p>
 <span class="r-in"><span><span class="co"># Every merge to a sheet, for a person or a model to check.</span></span></span>
 <span class="r-in"><span><span class="va">sheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="fu">keywords_clean</span><span class="op">(</span><span class="va">papers</span>, level <span class="op">=</span> <span class="st">"all"</span>, decisions <span class="op">=</span> <span class="va">sheet</span>, min_papers <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> file1eac3c33d62e.csv: 6 groups and single keywords, 2 confirmed merges and 1 to check, keywords in 1 or more papers. Nothing is merged yet: fill in `merge` (yes or no), then keywords_merge(data, decisions = "file1eac3c33d62e.csv"). A prompt for a model is in file1eac3c33d62e_prompt.txt.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> file1ec95e689b8e.csv: 1 merges to decide, 1 keywords with confirmed spellings, 7 keywords in 1 or more papers. Nothing is merged yet: write yes or no in `merge`, then keywords_merge(data, decisions = "file1ec95e689b8e.csv"). A prompt for a model is in file1ec95e689b8e_prompt.txt.</span>
 <span class="r-in"><span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">sheet</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   group                        name                     keyword</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1     1                     CHATBOT                     CHATBOT</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2     1                     CHATBOT                   CHAT-BOTS</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3     1                     CHATBOT                    CHATBOTS</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4     2                          AI                          AI</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5     3     ARTIFICIAL INTELLIGENCE     ARTIFICIAL INTELLIGENCE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6     4                  E-LEARNING                  E-LEARNING</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7     5 NATURAL LANGUAGE PROCESSING NATURAL LANGUAGE PROCESSING</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8     5 NATURAL LANGUAGE PROCESSING                         NLP</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9     6                      SURVEY                      SURVEY</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                keyword_backup         status merge papers        source</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                     CHATBOT           name    NA      3              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                   CHAT-BOTS      confirmed    NA      1 same spelling</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                    CHATBOTS      confirmed    NA      1 same spelling</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                          AI         single    NA      1              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5     ARTIFICIAL INTELLIGENCE         single    NA      1              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                  E-LEARNING         single    NA      1              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7 NATURAL LANGUAGE PROCESSING           name    NA      1              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8                         NLP needs_revision    NA      1       acronym</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9                      SURVEY         single    NA      1              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       example</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1   Paper one</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4   Paper one</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5   Paper two</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 Paper three</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7   Paper one</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8   Paper two</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9 Paper three</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   keyword keyword_backup                  merge_into merge papers</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     NLP            NLP NATURAL LANGUAGE PROCESSING    NA      1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   merge_into_papers  source   example</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                 1 acronym Paper two</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

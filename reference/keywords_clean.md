@@ -6,8 +6,10 @@ whose keywords change are rewritten; the others keep their text exactly.
 Nothing is ever deleted.
 
 The confirmed steps, applied with no review: 1. \*\*Cleanup\*\*: HTML
-entities decoded, dashes and quotes unified, \`&\` written \`AND\`, a
-leading \`#\` and trailing punctuation dropped, spacing squeezed, upper
+entities decoded, invisible characters (zero-width spaces and joiners,
+soft hyphens) removed, dashes and quotes unified, quotes around the
+whole keyword dropped, \`&\` written \`AND\`, a leading \`#\` and
+trailing punctuation (also \`\*\`) dropped, spacing squeezed, upper
 case. A keyword cleanup would leave empty (\`.\`) keeps its written
 form. 2. \*\*Brackets\*\*: a plural marker goes (\`VOICE
 ASSISTANT(S)\`); an acronym in brackets goes (\`NATURAL LANGUAGE
@@ -23,20 +25,26 @@ SPEECH\` and \`SPEECH TO TEXT\` stay apart): a \`NEW\` term of
 keyword once per paper.
 
 \`level = "all"\` merges nothing: it returns \`data\` unchanged and
-writes every merge to the \`decisions\` sheet, for a person, a model or
-a tool such as OpenRefine to check outside R, with a short prompt for a
-model beside it. The sheet has one group per \`name\`: the \`name\` row,
-its \`confirmed\` merges (the steps above) and its \`needs_revision\`
-candidates. A candidate is a keyword spelled like the name (character
-trigrams, Jaccard 0.7 or more, found by MinHash, never by comparing all
-pairs) or an acronym whose long form is written in brackets elsewhere in
-the data. Spelled alike is not the same concept (\`JUSTICE\` /
-\`INJUSTICE\`), which is why candidates wait for a \`yes\`. Only
-keywords in at least \`min_papers\` papers go to the sheet, each of
-them, grouped or alone (\`single\`), so a tool such as OpenRefine can
-also cluster the whole list itself. Bring the checked sheet back with
-\[keywords_merge()\]: by its \`merge\` answers, or by the edits of
-\`keyword\` against the untouched \`keyword_backup\`.
+writes the \`decisions\` sheet, for a person, a model or a tool such as
+OpenRefine to check outside R, with a short prompt for a model beside
+it. It has three tables: \* \`decisions\`: one question per row, should
+\`keyword\` be merged into \`merge_into\`? A candidate is a keyword
+spelled like another (character trigrams, Jaccard 0.7 or more, found by
+MinHash, never by comparing all pairs) or an acronym whose long form is
+written in brackets elsewhere in the data. Spelled alike is not the same
+concept, so a pair whose first letters differ (\`DEPRESSION\` /
+\`REPRESSION\`) or with a word that is another plus a prefix
+(\`ADOLESCENTS\` / \`PREADOLESCENTS\`, \`SOCIAL JUSTICE\` / \`SOCIAL
+INJUSTICE\`) is never proposed, and the rest wait for a \`yes\`. \*
+\`confirmed\`: each keyword with the spellings the confirmed steps merge
+into it, in one cell (\`DEPRESSIONS (6); DÉPRESSION (9)\`), with \`yes\`
+in \`merge\`; change it to \`no\` to keep them apart. \*
+\`all_keywords\`: every keyword, for a tool such as OpenRefine to
+cluster the whole list itself.
+
+Only keywords in at least \`min_papers\` papers are in the sheet. Bring
+it back with \[keywords_merge()\]: by its \`merge\` answers, or by the
+edits of \`keyword\` against the untouched \`keyword_backup\`.
 
 ## Usage
 
@@ -73,16 +81,20 @@ keywords_clean(
 - decisions:
 
   With \`level = "all"\`: the sheet to write, a new path ending in
-  \`.xlsx\` or \`.csv\` (an existing file is never replaced). Its
-  columns: \`group\`, \`name\`, \`keyword\`, \`keyword_backup\` (a copy
-  of \`keyword\` that \[keywords_merge()\] matches on, so an edit of
-  \`keyword\` does no harm), \`status\` (\`name\`, \`single\` for a
-  keyword in no group, \`confirmed\` or \`needs_revision\`), \`merge\`
-  (empty, for \`yes\` or \`no\`), \`papers\`, \`source\` (\`same
-  spelling\`, \`your table\`, \`spelling\`, \`acronym\`) and \`example\`
-  (the title of a paper using the keyword). The prompt goes to
-  \`\<sheet\>\_prompt.txt\` and, in an \`.xlsx\`, to a second tab
-  \`prompt\`.
+  \`.xlsx\` or \`.csv\` (an existing file is never replaced). An
+  \`.xlsx\` has the tabs \`decisions\`, \`confirmed\`, \`all_keywords\`
+  and \`prompt\`; a \`.csv\` is the decisions table, with
+  \`\<sheet\>\_confirmed.csv\` and \`\<sheet\>\_all_keywords.csv\`
+  beside it. The prompt also goes to \`\<sheet\>\_prompt.txt\`. Columns
+  of \`decisions\`: \`keyword\`, \`keyword_backup\` (a copy that
+  \[keywords_merge()\] matches on, so an edit of \`keyword\` does no
+  harm), \`merge_into\`, \`merge\` (empty, for \`yes\` or \`no\`),
+  \`papers\`, \`merge_into_papers\`, \`source\` (\`spelling\`,
+  \`acronym\`) and \`example\` (the title of a paper using the keyword).
+  Of \`confirmed\`: \`keyword\`, \`papers\`, \`also_written_as\`,
+  \`source\` (\`same spelling\`, \`your table\`) and \`merge\`. Of
+  \`all_keywords\`: \`keyword\`, \`keyword_backup\`, \`papers\` and
+  \`example\`.
 
 - min_papers:
 
@@ -174,36 +186,10 @@ keywords_clean(papers, replace = data.frame(OLD = "AI", NEW = "ARTIFICIAL INTELL
 # Every merge to a sheet, for a person or a model to check.
 sheet <- tempfile(fileext = ".csv")
 cleaned <- keywords_clean(papers, level = "all", decisions = sheet, min_papers = 1)
-#> file1eac3c33d62e.csv: 6 groups and single keywords, 2 confirmed merges and 1 to check, keywords in 1 or more papers. Nothing is merged yet: fill in `merge` (yes or no), then keywords_merge(data, decisions = "file1eac3c33d62e.csv"). A prompt for a model is in file1eac3c33d62e_prompt.txt.
+#> file1ec95e689b8e.csv: 1 merges to decide, 1 keywords with confirmed spellings, 7 keywords in 1 or more papers. Nothing is merged yet: write yes or no in `merge`, then keywords_merge(data, decisions = "file1ec95e689b8e.csv"). A prompt for a model is in file1ec95e689b8e_prompt.txt.
 utils::read.csv(sheet)
-#>   group                        name                     keyword
-#> 1     1                     CHATBOT                     CHATBOT
-#> 2     1                     CHATBOT                   CHAT-BOTS
-#> 3     1                     CHATBOT                    CHATBOTS
-#> 4     2                          AI                          AI
-#> 5     3     ARTIFICIAL INTELLIGENCE     ARTIFICIAL INTELLIGENCE
-#> 6     4                  E-LEARNING                  E-LEARNING
-#> 7     5 NATURAL LANGUAGE PROCESSING NATURAL LANGUAGE PROCESSING
-#> 8     5 NATURAL LANGUAGE PROCESSING                         NLP
-#> 9     6                      SURVEY                      SURVEY
-#>                keyword_backup         status merge papers        source
-#> 1                     CHATBOT           name    NA      3              
-#> 2                   CHAT-BOTS      confirmed    NA      1 same spelling
-#> 3                    CHATBOTS      confirmed    NA      1 same spelling
-#> 4                          AI         single    NA      1              
-#> 5     ARTIFICIAL INTELLIGENCE         single    NA      1              
-#> 6                  E-LEARNING         single    NA      1              
-#> 7 NATURAL LANGUAGE PROCESSING           name    NA      1              
-#> 8                         NLP needs_revision    NA      1       acronym
-#> 9                      SURVEY         single    NA      1              
-#>       example
-#> 1   Paper one
-#> 2            
-#> 3            
-#> 4   Paper one
-#> 5   Paper two
-#> 6 Paper three
-#> 7   Paper one
-#> 8   Paper two
-#> 9 Paper three
+#>   keyword keyword_backup                  merge_into merge papers
+#> 1     NLP            NLP NATURAL LANGUAGE PROCESSING    NA      1
+#>   merge_into_papers  source   example
+#> 1                 1 acronym Paper two
 ```

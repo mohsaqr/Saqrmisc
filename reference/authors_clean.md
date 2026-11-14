@@ -19,9 +19,10 @@ Scopus IDs that share a spelling stay as they are: they are not numbered
 or split.
 
 The Scopus author IDs are matched to the papers by record ID (the Scopus
-EID), then by position: the \*i\*-th author of a paper takes its
-\*i\*-th ID. A paper whose record is not in \`ids\`, or whose number of
-authors and of IDs differ, is left untouched; the message names the
+EID, ignoring case: bibliometrix writes \`2-S2.0-...\`, Scopus
+\`2-s2.0-...\`), then by position: the \*i\*-th author of a paper takes
+its \*i\*-th ID. A paper whose record is not in \`ids\`, or whose number
+of authors and of IDs differ, is left untouched; the message names the
 reasons.
 
 ## Usage

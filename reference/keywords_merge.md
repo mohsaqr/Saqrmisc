@@ -6,23 +6,23 @@ confirmed steps of \[keywords_clean()\] are applied again, then the
 sheet, read one of two ways:
 
 \* \`by = "merge"\` (default), for a person or a model that answers
-\`yes\` or \`no\` in \`merge\`: \* a \`needs_revision\` row with \`yes\`
-becomes its \`name\`; \* a \`confirmed\` row is merged unless \`merge\`
-says \`no\`; with \`no\` it keeps its own spelling; \* an edited
-\`name\` renames its whole group; \* an empty \`merge\` keeps what the
-row's \`status\` says. \* \`by = "edit"\`, for a tool that rewrites the
-keywords themselves, such as OpenRefine clustering the \`keyword\`
-column: every keyword whose \`keyword\` no longer equals its untouched
-\`keyword_backup\` becomes the new text. An edited \`confirmed\` row
-moves only that spelling; any other edited keyword moves with all its
-spellings. \`merge\` and \`name\` are ignored, and an edit of case or
-spacing alone changes nothing.
+\`yes\` or \`no\` in \`merge\` (or in the column \`answers\` names): a
+\`decisions\` row with \`yes\` merges its keyword, with all its
+spellings, into \`merge_into\` (edit \`merge_into\` to send it
+elsewhere); a row left empty is not merged and is counted in the
+message. The \`confirmed\` table is written with \`yes\` in every row; a
+\`no\` there keeps the keyword's other spellings apart. \* \`by =
+"edit"\`, for a tool that rewrites the keywords themselves, such as
+OpenRefine clustering the \`keyword\` column of \`all_keywords\` (or of
+\`decisions\`): every keyword whose \`keyword\` no longer equals its
+untouched \`keyword_backup\` becomes the new text, with all its
+spellings. \`merge\` is ignored, and an edit of case or spacing alone
+changes nothing.
 
-Rows are matched on \`keyword_backup\` (on \`keyword\` when a sheet has
-no backup column with \`by = "merge"\`). Pass the same \`columns\` and
-\`replace\` as to \[keywords_clean()\], and the data as it was before
-cleaning: a confirmed merge marked \`no\` can only be undone from there
-(on cleaned data everything else gives the same result).
+Pass the same \`columns\` and \`replace\` as to \[keywords_clean()\],
+and the data as it was before cleaning: a confirmed merge marked \`no\`
+can only be undone from there (on cleaned data everything else gives the
+same result).
 
 ## Usage
 
@@ -31,6 +31,7 @@ keywords_merge(
   data,
   decisions,
   by = c("merge", "edit"),
+  answers = "merge",
   columns = "DE",
   replace = NULL,
   output = c("minimal", "all")
@@ -45,12 +46,19 @@ keywords_merge(
 
 - decisions:
 
-  The checked sheet, \`.xlsx\` or \`.csv\`.
+  The checked sheet, \`.xlsx\` or \`.csv\` (the decisions table; the
+  other tables are read from beside it when they are there).
 
 - by:
 
   \`"merge"\` (default) reads the \`merge\` column; \`"edit"\` reads the
   edits of \`keyword\` against \`keyword_backup\`. See above.
+
+- answers:
+
+  With \`by = "merge"\`: the column of the decisions table holding the
+  yes / no answers. Default \`"merge"\`; name another when an
+  application writes its answers to a column of its own.
 
 - columns, replace, output:
 
@@ -66,10 +74,11 @@ rows applied from the sheet.
 ## Errors
 
 Raises \`saqrmisc_bad_input\` for a missing sheet; with \`by =
-"merge"\`, one without \`name\`, \`status\`, \`merge\` and
-\`keyword_backup\` (or \`keyword\`), or a \`merge\` other than empty,
-\`yes\` or \`no\`; with \`by = "edit"\`, one without \`keyword\` and
-\`keyword_backup\`; and the errors of \[keywords_clean()\].
+"merge"\`, a decisions table without \`merge_into\`, the \`answers\`
+column and \`keyword_backup\` (or \`keyword\`), or an answer other than
+empty, \`yes\` or \`no\`; with \`by = "edit"\`, no table with
+\`keyword\` and \`keyword_backup\`; and the errors of
+\[keywords_clean()\].
 
 ## See also
 
@@ -85,16 +94,16 @@ papers <- data.frame(
 )
 sheet <- tempfile(fileext = ".csv")
 cleaned <- keywords_clean(papers, level = "all", decisions = sheet, min_papers = 1)
-#> file1eac4267cd5.csv: 3 groups and single keywords, 1 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: fill in `merge` (yes or no), then keywords_merge(data, decisions = "file1eac4267cd5.csv"). A prompt for a model is in file1eac4267cd5_prompt.txt.
+#> file1ec9729856a8.csv: 1 merges to decide, 1 keywords with confirmed spellings, 5 keywords in 1 or more papers. Nothing is merged yet: write yes or no in `merge`, then keywords_merge(data, decisions = "file1ec9729856a8.csv"). A prompt for a model is in file1ec9729856a8_prompt.txt.
 checked <- utils::read.csv(sheet)
 checked$merge <- ifelse(checked$keyword == "NLP", "yes", "no")
 utils::write.csv(checked, sheet, row.names = FALSE)
 keywords_merge(papers, decisions = sheet)
-#> keywords: DE: 6 written forms became 5 keywords; 3 papers changed
-#> keywords_merge: from file1eac4267cd5.csv, 1 merge(s) and renames applied, 1 confirmed merge(s) undone
+#> keywords: DE: 6 written forms became 4 keywords; 3 papers changed
+#> keywords_merge: from file1ec9729856a8.csv, 1 merge(s) applied, 0 confirmed keyword(s) kept apart, 0 row(s) unanswered (not merged)
 #>                  TI                                                   DE
 #> 1 Chatbots in class                 CHATBOT; NATURAL LANGUAGE PROCESSING
-#> 2    Bots that talk               CHAT-BOTS; NATURAL LANGUAGE PROCESSING
+#> 2    Bots that talk                 CHATBOT; NATURAL LANGUAGE PROCESSING
 #> 3  Fairness at work                                INTERPERSONAL JUSTICE
 #> 4     Unfair bosses INTERPERSONAL INJUSTICE; NATURAL LANGUAGE PROCESSING
 
@@ -105,7 +114,7 @@ edited$keyword[edited$keyword == "NLP"] <- "NATURAL LANGUAGE PROCESSING"
 utils::write.csv(edited, sheet, row.names = FALSE)
 keywords_merge(papers, decisions = sheet, by = "edit")
 #> keywords: DE: 6 written forms became 4 keywords; 3 papers changed
-#> keywords_merge: from file1eac4267cd5.csv, 1 edited keyword(s) applied, 0 to a spelling not in the data
+#> keywords_merge: from file1ec9729856a8.csv, 1 edited keyword(s) applied, 0 to a spelling not in the data
 #>                  TI                                                   DE
 #> 1 Chatbots in class                 CHATBOT; NATURAL LANGUAGE PROCESSING
 #> 2    Bots that talk                 CHATBOT; NATURAL LANGUAGE PROCESSING
