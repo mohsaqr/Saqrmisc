@@ -6,8 +6,6 @@
   : Add Row Totals to Data Frame
 - [`as.data.frame(`*`<mosaic_analysis>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.mosaic_analysis.md)
   : Tidy accessor for a mosaic_analysis result
-- [`as.data.frame(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_institutions.md)
-  : Tables from an institutions_clean() result
 - [`as.data.frame(`*`<saqr_proposals>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_proposals.md)
   : Tables of suggested keyword merges
 - [`as.data.frame(`*`<saqr_review>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_review.md)
@@ -53,10 +51,10 @@
   : Input Data with Profile Assignments
 - [`head(`*`<saqr_proposals>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/head.saqr_proposals.md)
   : The first suggested merges
-- [`institutions_changes()`](https://pak.dynasite.org/Saqrmisc/reference/institutions_changes.md)
-  : What each address became
 - [`institutions_clean()`](https://pak.dynasite.org/Saqrmisc/reference/institutions_clean.md)
-  : Clean institution names by OpenAlex institution ID
+  : Clean institution names
+- [`institutions_merge()`](https://pak.dynasite.org/Saqrmisc/reference/institutions_merge.md)
+  : Bring a checked institution sheet back into the data
 - [`is_outlier()`](https://pak.dynasite.org/Saqrmisc/reference/is_outlier.md)
   : Check if Value is Outlier (vectorized for mutate/across)
 - [`keywords_clean()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_clean.md)
@@ -97,8 +95,6 @@
   : Print method for network_analysis objects
 - [`print(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_clustering.md)
   : Print a Clustering Result
-- [`print(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_institutions.md)
-  : Print an institutions_clean() result
 - [`print(`*`<saqr_plots>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_plots.md)
   : Print Several Clustering Plots
 - [`print(`*`<saqr_proposals>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_proposals.md)
@@ -149,8 +145,6 @@
   : Summary method for network_analysis objects
 - [`summary(`*`<saqr_clustering>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_clustering.md)
   : Compare the Candidate Models of a Clustering Result
-- [`summary(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_institutions.md)
-  : Summarise an institutions_clean() result
 - [`summary(`*`<saqr_proposals>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_proposals.md)
   : Count suggested keyword merges
 - [`summary(`*`<saqr_review>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_review.md)

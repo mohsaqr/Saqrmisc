@@ -41,7 +41,7 @@ plain, markdown, latex, kable).
 - [Bibliometric Data](#bibliometric-data)
   - [authors_clean()](#authors_clean)
   - [keywords_clean()](#keywords_clean)
-  - [institutions_clean()](#institutions_clean)
+  - [institutions_clean()](#institutions_clean-and-institutions_merge)
   - [Reviewing keyword merges](#reviewing-keyword-merges)
 - [AI Interpretation](#ai-interpretation)
   - [pass()](#pass)
@@ -622,23 +622,34 @@ on the untouched `keyword_backup`.
 M2 <- keywords_merge(M, decisions = "keyword_decisions.xlsx", by = "edit")
 ``` The prompt (`keyword_decisions_prompt.txt`, and a `prompt` tab in the `.xlsx`) tells a model what `yes` and `no` mean, with examples. A small local model is a first pass, not a judge: `qwen3-vl-4b` agreed with a person on 17 of 20 test pairs and merged a narrower term (`SMART CHATBOT` into `CHATBOT`).
 
-### `institutions_clean()`
+### `institutions_clean()` and `institutions_merge()`
 
-Gives each institution one name by its OpenAlex institution ID (with its ROR ID where OpenAlex has one), the way `authors_clean()` uses Scopus author IDs. Papers OpenAlex does not cover are resolved from their addresses: first through the addresses OpenAlex linked on other papers, then by the institution part of the address (a university before a college, before an institute or company). What is left keeps its written name and goes to the review below. Two institutions that share a name get their country code (`NORTHEASTERN UNIVERSITY, US` / `, CN`).
+Gives each institution one name in `AU_UN` and returns `M`, the way `authors_clean()` uses Scopus author IDs. The confirmed steps: the institutions OpenAlex links to each paper's authors (by OpenAlex institution ID); for papers OpenAlex does not cover, an address OpenAlex linked on another paper, then the institution part of the address (a university before a college, before an institute or company) if it is the name of one institution OpenAlex knows; what is left keeps its written name, with names written differently (case, punctuation, accents, spaces) made one. Two institutions OpenAlex keeps apart are never merged; two that share a name get their country code (`NORTHEASTERN UNIVERSITY, US` / `, CN`).
 
 ```r
-institutions <- institutions_clean(M)          # AU_UN and AU_UN_ID by OpenAlex ID
-institutions
-institutions_changes(institutions)             # every address and what it became
+M1 <- institutions_clean(M)                                      # confirmed only
+M1 <- institutions_clean(M, output = "all")                      # also AU_UN_ID (OpenAlex IDs)
+
+institutions_clean(M, level = "all", decisions = "institution_decisions.xlsx")   # the sheet only
+# ... a person or a model adds `merge` (yes / no) ...
+M2 <- institutions_merge(M, decisions = "institution_decisions.xlsx")
 ```
+
+OpenAlex is asked 100 DOIs per request, ten requests at a time and at
+most ten a second, and its answers are kept in a cache folder (`cache`,
+by default under `tools::R_user_dir("Saqrmisc")`), so a second run, or a
+run that stopped, asks only for the papers not asked yet. The sheet is
+the keyword sheet for institutions: `group`, `name`, `institution`,
+`institution_backup`, `status` (`confirmed`, `needs_revision`,
+`single`), `papers`, `openalex_id`, `source`, `example` (an address).
+Candidates come from the same sources as keywords; an identified
+institution is always the `name` of its group.
+`institutions_merge(by = "edit")` reads names edited in OpenRefine
+against `institution_backup`.
 
 ### All three at once
 
-Each cleaner takes the result of the one before, so the whole cleaning
-is one pipe;
-[`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) gives the
-papers after
-[`institutions_clean()`](https://pak.dynasite.org/Saqrmisc/reference/institutions_clean.md):
+Each cleaner returns `M`, so the whole cleaning is one pipe:
 
 ``` r
 
@@ -646,16 +657,14 @@ cleaned <- M |>
   authors_clean(ids = "scopus_exports") |>
   keywords_clean() |>
   institutions_clean()
-as.data.frame(cleaned)
 ```
 
 ### Reviewing merges with an AI in R
 
-For a small corpus, keyword variants and institution names no ID covers
-can also be reviewed with an AI from R, in four steps. It compares
-candidate pairs exhaustively, so for a large corpus use
-`keywords_clean(level = "needs_decision")` above. Nothing is merged
-until it is accepted.
+For a small corpus, keyword variants can also be reviewed with an AI
+from R, in four steps. It compares candidate pairs exhaustively, so for
+a large corpus use `keywords_clean(level = "needs_decision")` above.
+Nothing is merged until it is accepted.
 
 ``` r
 
@@ -666,10 +675,6 @@ review_report("keyword_review.xlsx")                #    what was decided, AI ag
 keywords <- keywords_clean(M, replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx",
                                           "keyword_review.xlsx"))   # 4. apply, after your own tables
 ```
-
-For institutions: `suggest_merges(institutions)`, then the same steps,
-and `institutions_clean(M, replace = "institution_review.xlsx")`. Two
-identified institutions are never suggested as one.
 
 | Function | Arguments |
 |----|----|

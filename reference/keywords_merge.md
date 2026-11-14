@@ -85,13 +85,13 @@ papers <- data.frame(
 )
 sheet <- tempfile(fileext = ".csv")
 cleaned <- keywords_clean(papers, level = "all", decisions = sheet, min_papers = 1)
-#> file1e5154feead0.csv: 3 groups and single keywords, 1 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1e5154feead0.csv"). A prompt for a model is in file1e5154feead0_prompt.txt.
+#> file1ef0260ebdd3.csv: 3 groups and single keywords, 1 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1ef0260ebdd3.csv"). A prompt for a model is in file1ef0260ebdd3_prompt.txt.
 checked <- utils::read.csv(sheet)
 checked$merge <- ifelse(checked$keyword == "NLP", "yes", "no")
 utils::write.csv(checked, sheet, row.names = FALSE)
 keywords_merge(papers, decisions = sheet)
 #> keywords: DE: 6 written forms became 5 keywords; 3 papers changed
-#> keywords_merge: from file1e5154feead0.csv, 1 merge(s) and renames applied, 1 confirmed merge(s) undone
+#> keywords_merge: from file1ef0260ebdd3.csv, 1 merge(s) and renames applied, 1 confirmed merge(s) undone
 #>                  TI                                                   DE
 #> 1 Chatbots in class                 CHATBOT; NATURAL LANGUAGE PROCESSING
 #> 2    Bots that talk               CHAT-BOTS; NATURAL LANGUAGE PROCESSING
@@ -105,7 +105,7 @@ edited$keyword[edited$keyword == "NLP"] <- "NATURAL LANGUAGE PROCESSING"
 utils::write.csv(edited, sheet, row.names = FALSE)
 keywords_merge(papers, decisions = sheet, by = "edit")
 #> keywords: DE: 6 written forms became 4 keywords; 3 papers changed
-#> keywords_merge: from file1e5154feead0.csv, 1 edited keyword(s) applied, 0 to a spelling not in the data
+#> keywords_merge: from file1ef0260ebdd3.csv, 1 edited keyword(s) applied, 0 to a spelling not in the data
 #>                  TI                                                   DE
 #> 1 Chatbots in class                 CHATBOT; NATURAL LANGUAGE PROCESSING
 #> 2    Bots that talk                 CHATBOT; NATURAL LANGUAGE PROCESSING

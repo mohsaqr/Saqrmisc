@@ -123,9 +123,9 @@ keywords_clean(
 With \`level = "confirmed"\`: \`data\`, same class, rows and columns,
 with the keyword columns rewritten where they change (\`";
 "\`-separated); with \`output = "all"\`, plus the \`\_ORIGINAL\`
-columns. With \`level = "all"\`: \`data\` unchanged (the sheet is the
-result). A message reports, per column, the written forms that became
-one keyword and the papers changed.
+columns. With \`level = "all"\`: \`data\` unchanged, invisibly (the
+sheet is the result). A message reports, per column, the written forms
+that became one keyword and the papers changed.
 
 ## Errors
 
@@ -184,7 +184,7 @@ keywords_clean(papers, replace = data.frame(OLD = "AI", NEW = "ARTIFICIAL INTELL
 # Every merge to a sheet, for a person or a model to check.
 sheet <- tempfile(fileext = ".csv")
 cleaned <- keywords_clean(papers, level = "all", decisions = sheet, min_papers = 1)
-#> file1e5139b2d1e7.csv: 5 groups and single keywords, 2 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1e5139b2d1e7.csv"). A prompt for a model is in file1e5139b2d1e7_prompt.txt.
+#> file1ef01daa3435.csv: 5 groups and single keywords, 2 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1ef01daa3435.csv"). A prompt for a model is in file1ef01daa3435_prompt.txt.
 utils::read.csv(sheet)
 #>   group                        name    keyword keyword_backup         status
 #> 1     1                     CHATBOT  CHAT-BOTS      CHAT-BOTS      confirmed

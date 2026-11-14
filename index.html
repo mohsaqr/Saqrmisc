@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.17</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.18</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -139,7 +139,7 @@
 <ul>
 <li><a href="#authors_clean">authors_clean()</a></li>
 <li><a href="#keywords_clean">keywords_clean()</a></li>
-<li><a href="#institutions_clean">institutions_clean()</a></li>
+<li><a href="#institutions_clean-and-institutions_merge">institutions_clean()</a></li>
 <li><a href="#reviewing-keyword-merges">Reviewing keyword merges</a></li>
 </ul>
 </li>
@@ -938,30 +938,33 @@
 <div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a>M2 <span class="ot">&lt;-</span> <span class="fu">keywords_merge</span>(M, <span class="at">decisions =</span> <span class="st">"keyword_decisions.xlsx"</span>, <span class="at">by =</span> <span class="st">"edit"</span>)</span>
 <span id="cb37-2"><a href="#cb37-2" tabindex="-1"></a><span class="st">```</span><span class="at"> The prompt (</span><span class="st">`</span>keyword_decisions_prompt.txt<span class="st">`</span><span class="at">, and a </span><span class="st">`</span>prompt<span class="st">`</span><span class="at"> tab in the </span><span class="st">`</span>.xlsx<span class="st">`</span><span class="at">) tells a model what </span><span class="st">`</span>yes<span class="st">`</span><span class="at"> and </span><span class="st">`</span>no<span class="st">`</span><span class="at"> mean, with examples. A small local model is a first pass, not a judge: </span><span class="st">`</span>qwen3<span class="sc">-</span>vl<span class="dv">-4</span>b<span class="st">`</span><span class="at"> agreed with a person on 17 of 20 test pairs and merged a narrower term (</span><span class="st">`</span>SMART CHATBOT<span class="st">`</span><span class="at"> into </span><span class="st">`</span>CHATBOT<span class="st">`</span><span class="at">).</span></span>
 <span id="cb37-3"><a href="#cb37-3" tabindex="-1"></a></span>
-<span id="cb37-4"><a href="#cb37-4" tabindex="-1"></a><span class="at">### </span><span class="st">`</span><span class="fu">institutions_clean</span>()<span class="st">`</span></span>
+<span id="cb37-4"><a href="#cb37-4" tabindex="-1"></a><span class="at">### </span><span class="st">`</span><span class="fu">institutions_clean</span>()<span class="st">`</span><span class="at"> and </span><span class="st">`</span><span class="fu">institutions_merge</span>()<span class="st">`</span></span>
 <span id="cb37-5"><a href="#cb37-5" tabindex="-1"></a></span>
-<span id="cb37-6"><a href="#cb37-6" tabindex="-1"></a><span class="at">Gives each institution one name by its OpenAlex institution ID (with its ROR ID where OpenAlex has one), the way </span><span class="st">`</span><span class="fu">authors_clean</span>()<span class="st">`</span><span class="at"> uses Scopus author IDs. Papers OpenAlex does not cover are resolved from their addresses: first through the addresses OpenAlex linked on other papers, then by the institution part of the address (a university before a college, before an institute or company). What is left keeps its written name and goes to the review below. Two institutions that share a name get their country code (</span><span class="st">`</span>NORTHEASTERN UNIVERSITY, US<span class="st">`</span><span class="at"> / </span><span class="st">`</span>, CN<span class="st">`</span><span class="at">).</span></span>
+<span id="cb37-6"><a href="#cb37-6" tabindex="-1"></a><span class="at">Gives each institution one name in </span><span class="st">`</span>AU_UN<span class="st">`</span><span class="at"> and returns </span><span class="st">`</span>M<span class="st">`</span><span class="at">, the way </span><span class="st">`</span><span class="fu">authors_clean</span>()<span class="st">`</span><span class="at"> uses Scopus author IDs. The confirmed steps: the institutions OpenAlex links to each paper's authors (by OpenAlex institution ID); for papers OpenAlex does not cover, an address OpenAlex linked on another paper, then the institution part of the address (a university before a college, before an institute or company) if it is the name of one institution OpenAlex knows; what is left keeps its written name, with names written differently (case, punctuation, accents, spaces) made one. Two institutions OpenAlex keeps apart are never merged; two that share a name get their country code (</span><span class="st">`</span>NORTHEASTERN UNIVERSITY, US<span class="st">`</span><span class="at"> / </span><span class="st">`</span>, CN<span class="st">`</span><span class="at">).</span></span>
 <span id="cb37-7"><a href="#cb37-7" tabindex="-1"></a></span>
 <span id="cb37-8"><a href="#cb37-8" tabindex="-1"></a><span class="st">```</span>r</span>
-<span id="cb37-9"><a href="#cb37-9" tabindex="-1"></a>institutions <span class="ot">&lt;-</span> <span class="fu">institutions_clean</span>(M)          <span class="co"># AU_UN and AU_UN_ID by OpenAlex ID</span></span>
-<span id="cb37-10"><a href="#cb37-10" tabindex="-1"></a>institutions</span>
-<span id="cb37-11"><a href="#cb37-11" tabindex="-1"></a><span class="fu">institutions_changes</span>(institutions)             <span class="co"># every address and what it became</span></span></code></pre></div>
+<span id="cb37-9"><a href="#cb37-9" tabindex="-1"></a>M1 <span class="ot">&lt;-</span> <span class="fu">institutions_clean</span>(M)                                      <span class="co"># confirmed only</span></span>
+<span id="cb37-10"><a href="#cb37-10" tabindex="-1"></a>M1 <span class="ot">&lt;-</span> <span class="fu">institutions_clean</span>(M, <span class="at">output =</span> <span class="st">"all"</span>)                      <span class="co"># also AU_UN_ID (OpenAlex IDs)</span></span>
+<span id="cb37-11"><a href="#cb37-11" tabindex="-1"></a></span>
+<span id="cb37-12"><a href="#cb37-12" tabindex="-1"></a><span class="fu">institutions_clean</span>(M, <span class="at">level =</span> <span class="st">"all"</span>, <span class="at">decisions =</span> <span class="st">"institution_decisions.xlsx"</span>)   <span class="co"># the sheet only</span></span>
+<span id="cb37-13"><a href="#cb37-13" tabindex="-1"></a><span class="co"># ... a person or a model adds `merge` (yes / no) ...</span></span>
+<span id="cb37-14"><a href="#cb37-14" tabindex="-1"></a>M2 <span class="ot">&lt;-</span> <span class="fu">institutions_merge</span>(M, <span class="at">decisions =</span> <span class="st">"institution_decisions.xlsx"</span>)</span></code></pre></div>
+<p>OpenAlex is asked 100 DOIs per request, ten requests at a time and at most ten a second, and its answers are kept in a cache folder (<code>cache</code>, by default under <code>tools::R_user_dir("Saqrmisc")</code>), so a second run, or a run that stopped, asks only for the papers not asked yet. The sheet is the keyword sheet for institutions: <code>group</code>, <code>name</code>, <code>institution</code>, <code>institution_backup</code>, <code>status</code> (<code>confirmed</code>, <code>needs_revision</code>, <code>single</code>), <code>papers</code>, <code>openalex_id</code>, <code>source</code>, <code>example</code> (an address). Candidates come from the same sources as keywords; an identified institution is always the <code>name</code> of its group. <code>institutions_merge(by = "edit")</code> reads names edited in OpenRefine against <code>institution_backup</code>.</p>
 </div>
 <div class="section level3">
 <h3 id="all-three-at-once">All three at once<a class="anchor" aria-label="anchor" href="#all-three-at-once"></a>
 </h3>
-<p>Each cleaner takes the result of the one before, so the whole cleaning is one pipe; <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the papers after <code><a href="reference/institutions_clean.html">institutions_clean()</a></code>:</p>
+<p>Each cleaner returns <code>M</code>, so the whole cleaning is one pipe:</p>
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="va">M</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="st">"scopus_exports"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/institutions_clean.html">institutions_clean</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">cleaned</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="reference/institutions_clean.html">institutions_clean</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="reviewing-merges-with-an-ai-in-r">Reviewing merges with an AI in R<a class="anchor" aria-label="anchor" href="#reviewing-merges-with-an-ai-in-r"></a>
 </h3>
-<p>For a small corpus, keyword variants and institution names no ID covers can also be reviewed with an AI from R, in four steps. It compares candidate pairs exhaustively, so for a large corpus use <code>keywords_clean(level = "needs_decision")</code> above. Nothing is merged until it is accepted.</p>
+<p>For a small corpus, keyword variants can also be reviewed with an AI from R, in four steps. It compares candidate pairs exhaustively, so for a large corpus use <code>keywords_clean(level = "needs_decision")</code> above. Nothing is merged until it is accepted.</p>
 <div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/suggest_merges.html">suggest_merges</a></span><span class="op">(</span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span><span class="op">)</span><span class="op">)</span>        <span class="co"># 1. find possible merges</span></span>
 <span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ask_ai.html">ask_ai</a></span><span class="op">(</span><span class="va">merges</span>, model <span class="op">=</span> <span class="st">"gpt-5-mini"</span><span class="op">)</span>      <span class="co"># 2. the AI fills `decision`</span></span>
@@ -969,7 +972,6 @@
 <span><span class="fu"><a href="reference/review_report.html">review_report</a></span><span class="op">(</span><span class="st">"keyword_review.xlsx"</span><span class="op">)</span>                <span class="co">#    what was decided, AI agreement</span></span>
 <span><span class="va">keywords</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span>,</span>
 <span>                                          <span class="st">"keyword_review.xlsx"</span><span class="op">)</span><span class="op">)</span>   <span class="co"># 4. apply, after your own tables</span></span></code></pre></div>
-<p>For institutions: <code>suggest_merges(institutions)</code>, then the same steps, and <code>institutions_clean(M, replace = "institution_review.xlsx")</code>. Two identified institutions are never suggested as one.</p>
 <table class="table">
 <colgroup>
 <col width="47%">

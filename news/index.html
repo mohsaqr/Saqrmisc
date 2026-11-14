@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.17</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.18</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,24 @@
       <small>Source: <a href="https://github.com/mohsaqr/Saqrmisc/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.18" id="saqrmisc-0918">Saqrmisc 0.9.18<a class="anchor" aria-label="anchor" href="#saqrmisc-0918"></a></h2>
+<div class="section level3">
+<h3 id="institutions_clean-redesigned-breaking-new-institutions_merge-0-9-18">
+<code>institutions_clean()</code> redesigned (breaking), new <code>institutions_merge()</code>
+<a class="anchor" aria-label="anchor" href="#institutions_clean-redesigned-breaking-new-institutions_merge-0-9-18"></a></h3>
+<ul><li>
+<code><a href="../reference/institutions_clean.html">institutions_clean()</a></code> returns the data frame with <code>AU_UN</code> written, ready for bibliometrix, like <code><a href="../reference/authors_clean.html">authors_clean()</a></code> and <code><a href="../reference/keywords_clean.html">keywords_clean()</a></code>; the <code>saqr_institutions</code> object, its methods and <code>institutions_changes()</code> are gone. <code>output = "all"</code> adds <code>AU_UN_ID</code> (OpenAlex IDs).</li>
+<li>
+<code>level = "confirmed"</code> (default) applies only what OpenAlex settles, plus names from address text written differently made one; <code>level = "all"</code> merges nothing and writes a sheet like the keyword sheet; <code><a href="../reference/institutions_merge.html">institutions_merge()</a></code> brings it back (<code>by = "merge"</code> or <code>"edit"</code>).</li>
+<li>OpenAlex is asked 100 DOIs per request, ten requests at a time at most ten a second, and its answers are cached on disk (<code>cache</code>), one file per round of requests, so a stopped run resumes.</li>
+<li>Web of Science author lists before an address (<code>[KIM, J; LEE, A] UNIV OULU</code>) are dropped before the addresses are split.</li>
+<li>
+<code><a href="../reference/suggest_merges.html">suggest_merges()</a></code> no longer takes institutions.</li>
+<li>
+<code>keywords_clean(level = "all")</code> returns the data invisibly.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.17" id="saqrmisc-0917">Saqrmisc 0.9.17<a class="anchor" aria-label="anchor" href="#saqrmisc-0917"></a></h2>
 <ul><li>
