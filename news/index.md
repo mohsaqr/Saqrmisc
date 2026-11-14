@@ -1,31 +1,17 @@
 # Changelog
 
-## Saqrmisc 0.9.15
+## Saqrmisc 0.9.16
 
-- The `keywords_clean(level = "all")` sheet is one question per row:
-  should `keyword` be merged into `merge_into`? There are no more
-  `name`, `group` or `status` columns. The confirmed spellings move to
-  their own `confirmed` table, one row per keyword with its spellings in
-  `also_written_as`; every keyword is in an `all_keywords` table for
-  OpenRefine. An `.xlsx` has one tab per table; a `.csv` gets
-  `_confirmed.csv` and `_all_keywords.csv` beside it.
-- Cleanup removes invisible characters (zero-width joiners and spaces,
-  soft hyphens), quotes around a whole keyword and a trailing `*`, so
-  `DEPRESSION` followed by a zero-width joiner is no longer listed as a
-  separate spelling.
-- Spelling candidates whose first letters differ (`DEPRESSION` /
-  `REPRESSION`) or with a word that is another plus a prefix
-  (`ADOLESCENTS` / `PREADOLESCENTS`, `SOCIAL JUSTICE` /
-  `SOCIAL INJUSTICE`) are not proposed.
-- No empty cell means “merge”: the `confirmed` table is written with
-  `yes` in every row, a decisions row left empty is not merged, and the
-  message counts the unanswered rows. `keywords_merge(answers = )` names
-  the column holding the answers, for an application that writes its own
-  (`Tomerge`).
-- [`keywords_merge()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_merge.md):
-  `by = "merge"` reads `merge_into` (edit it to send a keyword
-  elsewhere) and the `no` answers of the confirmed table; `by = "edit"`
-  reads the edits in the decisions and all_keywords tables.
+- The keyword sheet of 0.9.15 is withdrawn; the sheet is the one of
+  0.9.13, with two changes:
+  - no `name` rows: each row’s `name` column says which keyword its
+    group becomes;
+  - cleanup removes invisible characters (zero-width joiners and spaces,
+    soft hyphens) and turns no-break and other odd spaces into plain
+    spaces, so a keyword that looks identical to another is one keyword,
+    not a `confirmed` row.
+- The sheet has no `merge` column: the person or model checking it adds
+  one, with yes or no on every row. The prompt is shorter and says so.
 
 ## Saqrmisc 0.9.14
 

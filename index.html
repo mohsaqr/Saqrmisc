@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.15</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.16</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -934,43 +934,7 @@
 <span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, level <span class="op">=</span> <span class="st">"all"</span>, decisions <span class="op">=</span> <span class="st">"keyword_decisions.xlsx"</span><span class="op">)</span>         <span class="co"># the sheet only; merges nothing</span></span>
 <span><span class="co"># ... a person or a model fills in `merge` (yes / no) ...</span></span>
 <span><span class="va">M2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_merge.html">keywords_merge</a></span><span class="op">(</span><span class="va">M</span>, decisions <span class="op">=</span> <span class="st">"keyword_decisions.xlsx"</span><span class="op">)</span></span></code></pre></div>
-<p>The sheet has three tabs, and nothing is merged until <code><a href="reference/keywords_merge.html">keywords_merge()</a></code>:</p>
-<table class="table">
-<colgroup>
-<col width="18%">
-<col width="48%">
-<col width="33%">
-</colgroup>
-<thead><tr>
-<th>Tab</th>
-<th>One row per</th>
-<th>Columns</th>
-</tr></thead>
-<tbody>
-<tr>
-<td><code>decisions</code></td>
-<td>question: should <code>keyword</code> be merged into <code>merge_into</code>?</td>
-<td>
-<code>keyword</code>, <code>keyword_backup</code>, <code>merge_into</code>, <code>merge</code>, <code>papers</code>, <code>merge_into_papers</code>, <code>source</code>, <code>example</code>
-</td>
-</tr>
-<tr>
-<td><code>confirmed</code></td>
-<td>keyword, with the spellings the confirmed steps merge into it in one cell</td>
-<td>
-<code>keyword</code>, <code>papers</code>, <code>also_written_as</code> (<code>DEPRESSIONS (6); DÉPRESSION (9)</code>), <code>source</code>, <code>merge</code>
-</td>
-</tr>
-<tr>
-<td><code>all_keywords</code></td>
-<td>keyword, for OpenRefine to cluster the whole list</td>
-<td>
-<code>keyword</code>, <code>keyword_backup</code>, <code>papers</code>, <code>example</code>
-</td>
-</tr>
-</tbody>
-</table>
-<p>A <code>decisions</code> row is a keyword spelled like another (MinHash on character trigrams, without comparing all pairs) or an acronym with its long form from brackets in the data. Pairs whose first letters differ (<code>DEPRESSION</code> / <code>REPRESSION</code>) or with a word that is another plus a prefix (<code>ADOLESCENTS</code> / <code>PREADOLESCENTS</code>) are not proposed. With a <code>.csv</code>, the other tables go beside it (<code>keyword_decisions_confirmed.csv</code>, <code>keyword_decisions_all_keywords.csv</code>). <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> reads the sheet one of two ways. <code>by = "merge"</code> (default): a <code>decisions</code> row marked <code>yes</code> is merged into its <code>merge_into</code>; a <code>confirmed</code> row (written with <code>yes</code>) changed to <code>no</code> keeps its spellings apart; an empty row is never merged, and the message counts them. <code>answers = "Tomerge"</code> reads the answers from a column an application added. <code>by = "edit"</code>: each keyword whose <code>keyword</code> was rewritten (by OpenRefine clustering, say) becomes the new text, matched on the untouched <code>keyword_backup</code>.</p>
+<p>The sheet has one group per <code>name</code> (the keyword the group becomes): its <code>confirmed</code> merges and its <code>needs_revision</code> candidates; nothing is merged until <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> (keywords spelled alike, found by MinHash on character trigrams without comparing all pairs, and acronyms with their long forms from brackets in the data). Columns: <code>group</code>, <code>name</code>, <code>keyword</code>, <code>keyword_backup</code> (the copy <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> matches on), <code>status</code>, <code>merge</code>, <code>papers</code>, <code>source</code>, <code>example</code> (a title using the keyword). Every keyword in <code>min_papers</code> or more papers is in the sheet, in a group or alone (<code>single</code>), so OpenRefine can also cluster the whole list. <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> reads the sheet one of two ways. <code>by = "merge"</code> (default): a <code>needs_revision</code> row marked <code>yes</code> is merged, a <code>confirmed</code> row marked <code>no</code> is kept apart. <code>by = "edit"</code>: each keyword whose <code>keyword</code> was rewritten (by OpenRefine clustering, say) becomes the new text, matched on the untouched <code>keyword_backup</code>.</p>
 <div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a>M2 <span class="ot">&lt;-</span> <span class="fu">keywords_merge</span>(M, <span class="at">decisions =</span> <span class="st">"keyword_decisions.xlsx"</span>, <span class="at">by =</span> <span class="st">"edit"</span>)</span>
 <span id="cb37-2"><a href="#cb37-2" tabindex="-1"></a><span class="st">```</span><span class="at"> The prompt (</span><span class="st">`</span>keyword_decisions_prompt.txt<span class="st">`</span><span class="at">, and a </span><span class="st">`</span>prompt<span class="st">`</span><span class="at"> tab in the </span><span class="st">`</span>.xlsx<span class="st">`</span><span class="at">) tells a model what </span><span class="st">`</span>yes<span class="st">`</span><span class="at"> and </span><span class="st">`</span>no<span class="st">`</span><span class="at"> mean, with examples. A small local model is a first pass, not a judge: </span><span class="st">`</span>qwen3<span class="sc">-</span>vl<span class="dv">-4</span>b<span class="st">`</span><span class="at"> agreed with a person on 17 of 20 test pairs and merged a narrower term (</span><span class="st">`</span>SMART CHATBOT<span class="st">`</span><span class="at"> into </span><span class="st">`</span>CHATBOT<span class="st">`</span><span class="at">).</span></span>
 <span id="cb37-3"><a href="#cb37-3" tabindex="-1"></a></span>

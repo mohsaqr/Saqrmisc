@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.15</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.16</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,13 +39,12 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.9.15" id="saqrmisc-0915">Saqrmisc 0.9.15<a class="anchor" aria-label="anchor" href="#saqrmisc-0915"></a></h2>
-<ul><li>The <code>keywords_clean(level = "all")</code> sheet is one question per row: should <code>keyword</code> be merged into <code>merge_into</code>? There are no more <code>name</code>, <code>group</code> or <code>status</code> columns. The confirmed spellings move to their own <code>confirmed</code> table, one row per keyword with its spellings in <code>also_written_as</code>; every keyword is in an <code>all_keywords</code> table for OpenRefine. An <code>.xlsx</code> has one tab per table; a <code>.csv</code> gets <code>_confirmed.csv</code> and <code>_all_keywords.csv</code> beside it.</li>
-<li>Cleanup removes invisible characters (zero-width joiners and spaces, soft hyphens), quotes around a whole keyword and a trailing <code>*</code>, so <code>DEPRESSION</code> followed by a zero-width joiner is no longer listed as a separate spelling.</li>
-<li>Spelling candidates whose first letters differ (<code>DEPRESSION</code> / <code>REPRESSION</code>) or with a word that is another plus a prefix (<code>ADOLESCENTS</code> / <code>PREADOLESCENTS</code>, <code>SOCIAL JUSTICE</code> / <code>SOCIAL INJUSTICE</code>) are not proposed.</li>
-<li>No empty cell means “merge”: the <code>confirmed</code> table is written with <code>yes</code> in every row, a decisions row left empty is not merged, and the message counts the unanswered rows. <code>keywords_merge(answers = )</code> names the column holding the answers, for an application that writes its own (<code>Tomerge</code>).</li>
-<li>
-<code><a href="../reference/keywords_merge.html">keywords_merge()</a></code>: <code>by = "merge"</code> reads <code>merge_into</code> (edit it to send a keyword elsewhere) and the <code>no</code> answers of the confirmed table; <code>by = "edit"</code> reads the edits in the decisions and all_keywords tables.</li>
+<h2 class="pkg-version" data-toc-text="0.9.16" id="saqrmisc-0916">Saqrmisc 0.9.16<a class="anchor" aria-label="anchor" href="#saqrmisc-0916"></a></h2>
+<ul><li>The keyword sheet of 0.9.15 is withdrawn; the sheet is the one of 0.9.13, with two changes:
+<ul><li>no <code>name</code> rows: each row’s <code>name</code> column says which keyword its group becomes;</li>
+<li>cleanup removes invisible characters (zero-width joiners and spaces, soft hyphens) and turns no-break and other odd spaces into plain spaces, so a keyword that looks identical to another is one keyword, not a <code>confirmed</code> row.</li>
+</ul></li>
+<li>The sheet has no <code>merge</code> column: the person or model checking it adds one, with yes or no on every row. The prompt is shorter and says so.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.14" id="saqrmisc-0914">Saqrmisc 0.9.14<a class="anchor" aria-label="anchor" href="#saqrmisc-0914"></a></h2>
