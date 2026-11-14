@@ -7,6 +7,7 @@
 keywords_merge(
   data,
   decisions,
+  by = c("merge", "edit"),
   columns = "DE",
   replace = NULL,
   output = c("minimal", "all")
@@ -16,6 +17,9 @@ keywords_merge(
 \item{data}{A data frame with one row per paper.}
 
 \item{decisions}{The checked sheet, `.xlsx` or `.csv`.}
+
+\item{by}{`"merge"` (default) reads the `merge` column; `"edit"` reads the
+edits of `keyword` against `keyword_backup`. See above.}
 
 \item{columns, replace, output}{As in [keywords_clean()].}
 }
@@ -27,26 +31,35 @@ keywords_merge(
 }
 \description{
 Applies the sheet that [keywords_clean()] wrote with `level = "all"`, after
-a person or a model has filled in its `merge` column, and returns the data
-frame. The confirmed steps of [keywords_clean()] are applied again, then
-the sheet:
-* a `needs_revision` row with `merge` `yes` becomes its `name`;
-* a `confirmed` row is merged unless `merge` says `no`; with `no` it keeps
-  its own spelling;
-* an edited `name` renames its whole group;
-* an empty `merge` keeps what the row's `status` says.
+it was checked outside R, and returns the data frame. The confirmed steps of
+[keywords_clean()] are applied again, then the sheet, read one of two ways:
+
+* `by = "merge"` (default), for a person or a model that answers `yes` or
+  `no` in `merge`:
+  * a `needs_revision` row with `yes` becomes its `name`;
+  * a `confirmed` row is merged unless `merge` says `no`; with `no` it keeps
+    its own spelling;
+  * an edited `name` renames its whole group;
+  * an empty `merge` keeps what the row's `status` says.
+* `by = "edit"`, for a tool that rewrites the keywords themselves, such as
+  OpenRefine clustering the `keyword` column: every keyword whose `keyword`
+  no longer equals its untouched `keyword_backup` becomes the new text.
+  An edited `confirmed` row moves only that spelling; any other edited
+  keyword moves with all its spellings. `merge` and `name` are ignored, and
+  an edit of case or spacing alone changes nothing.
 
 Rows are matched on `keyword_backup` (on `keyword` when a sheet has no
-backup column). Pass the same `columns` and `replace` as to
+backup column with `by = "merge"`). Pass the same `columns` and `replace` as to
 [keywords_clean()], and the data as it was before cleaning: a confirmed
 merge marked `no` can only be undone from there (on cleaned data everything
 else gives the same result).
 }
 \section{Errors}{
 
-Raises `saqrmisc_bad_input` for a missing sheet, one without `name`,
-`status`, `merge` and `keyword_backup` (or `keyword`), or a `merge` other
-than empty, `yes` or `no`; and the errors of [keywords_clean()].
+Raises `saqrmisc_bad_input` for a missing sheet; with `by = "merge"`, one
+without `name`, `status`, `merge` and `keyword_backup` (or `keyword`), or a
+`merge` other than empty, `yes` or `no`; with `by = "edit"`, one without
+`keyword` and `keyword_backup`; and the errors of [keywords_clean()].
 }
 
 \examples{
@@ -61,6 +74,13 @@ checked <- utils::read.csv(sheet)
 checked$merge <- ifelse(checked$keyword == "NLP", "yes", "no")
 utils::write.csv(checked, sheet, row.names = FALSE)
 keywords_merge(papers, decisions = sheet)
+
+# The same sheet edited the way OpenRefine edits it: keyword rewritten,
+# keyword_backup untouched.
+edited <- utils::read.csv(sheet)
+edited$keyword[edited$keyword == "NLP"] <- "NATURAL LANGUAGE PROCESSING"
+utils::write.csv(edited, sheet, row.names = FALSE)
+keywords_merge(papers, decisions = sheet, by = "edit")
 }
 \seealso{
 [keywords_clean()]

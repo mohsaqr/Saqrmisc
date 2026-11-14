@@ -1,22 +1,36 @@
+# Saqrmisc 0.9.13
+
+* `keywords_clean(level = "all")` merges nothing: it returns the data
+  unchanged and only writes the sheet; every merge happens in
+  `keywords_merge()`.
+* `keywords_merge(by = "edit")` applies keywords rewritten in another tool
+  (OpenRefine clustering) against the untouched `keyword_backup`; the sheet
+  lists every keyword in `min_papers` or more papers, grouped or `single`.
+* Keyword cleaning is about the author keywords (`DE`, the default); the
+  examples and README no longer use `ID`.
+
 # Saqrmisc 0.9.12
 
 ## `keywords_clean()` redesigned (breaking), new `keywords_merge()`
 
 * Returns the data frame itself; only papers whose keywords change are
   rewritten, the others keep their text exactly. Nothing is ever deleted.
-* Works on the distinct keywords of all columns at once (DE and ID agree on
-  every spelling) and rewrites papers by lookup: about 2 million papers in
-  minutes.
+* Cleans the author keywords (`DE`, the default). Works on the distinct
+  keywords and rewrites papers by lookup: about 2 million papers in minutes.
 * `level = "confirmed"` (default): cleanup, brackets, your `replace` tables,
   and spelling variants (case, punctuation, accents, hyphens, spaces, plurals,
   in word order).
-* `level = "all"` also writes every merge to a `decisions` sheet (`.xlsx` or
-  `.csv`) for review outside R: one group per `name`, rows `confirmed`
-  (applied) or `needs_revision` (keywords in `min_papers`, default 5, or more
-  papers spelled alike by MinHash on character trigrams, or acronyms with
+* `level = "all"` merges nothing: it returns the data unchanged and writes
+  every merge to a `decisions` sheet (`.xlsx` or `.csv`) for review outside
+  R: one group per `name`, rows `confirmed` or `needs_revision` (keywords
+  in `min_papers`, default 5, or more papers spelled alike by MinHash on character trigrams, or acronyms with
   their bracketed long forms), an empty `merge` column, a `keyword_backup`
   copy, and a prompt for a model beside it.
-* `keywords_merge()` brings the checked sheet back into the data.
+* `keywords_merge()` brings the checked sheet back into the data:
+  `by = "merge"` reads the `yes` / `no` answers, `by = "edit"` reads keywords
+  rewritten in another tool (OpenRefine clustering) against the untouched
+  `keyword_backup`. The sheet lists every keyword in `min_papers` or more
+  papers, grouped or `single`, so the other tool can cluster them all.
 * Removed: the `saqr_keywords` class and methods, `keywords_changes()`,
   `merge_similar`, `expand_acronyms` and `drop`; acronyms are no longer
   expanded without review.

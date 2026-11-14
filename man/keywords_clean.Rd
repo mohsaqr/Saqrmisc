@@ -21,7 +21,7 @@ data frame. The cleaners chain: `M |> authors_clean(ids = "scopus_exports")
 |> keywords_clean()`.}
 
 \item{columns}{Names of the keyword columns, `;`-separated. Default `"DE"`
-(author keywords); `c("DE", "ID")` adds Scopus's index keywords.}
+(author keywords).}
 
 \item{level}{`"confirmed"` (default) or `"all"`; see above.}
 
@@ -29,7 +29,8 @@ data frame. The cleaners chain: `M |> authors_clean(ids = "scopus_exports")
 ending in `.xlsx` or `.csv` (an existing file is never replaced). Its
 columns: `group`, `name`, `keyword`, `keyword_backup` (a copy of
 `keyword` that [keywords_merge()] matches on, so an edit of `keyword`
-does no harm), `status` (`name`, `confirmed` or `needs_revision`),
+does no harm), `status` (`name`, `single` for a keyword in no group,
+`confirmed` or `needs_revision`),
 `merge` (empty, for `yes` or `no`), `papers`, `source` (`same spelling`,
 `your table`, `spelling`, `acronym`) and `example` (the title of a paper
 using the keyword). The prompt goes to `<sheet>_prompt.txt` and, in an
@@ -54,14 +55,15 @@ rewritten and nothing added. `"all"` also adds `<column>_ORIGINAL` for
 each column, as it came in (kept when `data` already has it).}
 }
 \value{
-`data`, same class, rows and columns, with the keyword columns
-  rewritten where they change (`"; "`-separated); with `output = "all"`,
-  plus the `_ORIGINAL` columns. A message reports, per column, the written
+With `level = "confirmed"`: `data`, same class, rows and columns,
+  with the keyword columns rewritten where they change (`"; "`-separated);
+  with `output = "all"`, plus the `_ORIGINAL` columns. With
+  `level = "all"`: `data` unchanged (the sheet is the result). A message reports, per column, the written
   forms that became one keyword and the papers changed.
 }
 \description{
-Gives each concept one spelling in the keyword columns (bibliometrix's `DE`
-and `ID`) and returns the data frame, ready for bibliometrix. Only papers
+Gives each concept one spelling in the author keywords (bibliometrix's
+`DE`) and returns the data frame, ready for bibliometrix. Only papers
 whose keywords change are rewritten; the others keep their text exactly.
 Nothing is ever deleted.
 
@@ -83,17 +85,20 @@ The confirmed steps, applied with no review:
    them, else the form in most papers.
 5. Each keyword once per paper.
 
-`level = "all"` also writes every merge to the `decisions` sheet for a
-person or a model to check outside R, and a short prompt for the model
-beside it. The sheet has one group per `name`: the `name` row, its
-`confirmed` merges (the steps above, already applied) and its
-`needs_revision` candidates (not applied). A candidate is a keyword spelled
+`level = "all"` merges nothing: it returns `data` unchanged and writes
+every merge to the `decisions` sheet, for a person, a model or a tool such
+as OpenRefine to check outside R, with a short prompt for a model beside
+it. The sheet has one group per `name`: the `name` row, its `confirmed`
+merges (the steps above) and its `needs_revision` candidates. A candidate is a keyword spelled
 like the name (character trigrams, Jaccard 0.7 or more, found by MinHash,
 never by comparing all pairs) or an acronym whose long form is written in
 brackets elsewhere in the data. Spelled alike is not the same concept
 (`JUSTICE` / `INJUSTICE`), which is why candidates wait for a `yes`. Only
-keywords in at least `min_papers` papers go to the sheet. Bring the checked
-sheet back with [keywords_merge()].
+keywords in at least `min_papers` papers go to the sheet, each of them,
+grouped or alone (`single`), so a tool such as OpenRefine can also cluster
+the whole list itself. Bring the checked sheet back with [keywords_merge()]:
+by its `merge` answers, or by the edits of `keyword` against the untouched
+`keyword_backup`.
 }
 \section{Errors}{
 
