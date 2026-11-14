@@ -110,7 +110,6 @@ authors_clean <- function(data,
                           doi = "DI",
                           mailto = NULL,
                           output = c("minimal", "all")) {
-  data <- .papers_of(data)
   level <- match.arg(level)
   output <- match.arg(output)
   if (!is.data.frame(data)) .bad_input("`data` must be a data frame")

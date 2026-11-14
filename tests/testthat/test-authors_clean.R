@@ -256,7 +256,7 @@ test_that("the cleaners chain", {
     quiet_clean(ids = case$ids) |>
     keywords_clean() |>
     institutions_clean(openalex = FALSE)
-  out <- as.data.frame(chained)
+  out <- chained
   expect_identical(out$AU, quiet_clean(papers, ids = case$ids)$AU)
   expect_identical(unique(out$AU_UN), "UNIVERSITY OF TURKU")
 })
@@ -328,8 +328,8 @@ test_that("with every OpenAlex request failing, institutions_clean falls back to
   papers <- data.frame(DI = c("10.1/a", "10.1/b"), C1 = c("[KIM J] UNIV OULU, FINLAND", "[LEE A] UNIV TURKU, FINLAND"),
                        AU = c("KIM J", "LEE A"), TI = c("A", "B"))
   institutions <- expect_warning(
-    httr2::with_mocked_responses(spent, institutions_clean(papers)),
+    httr2::with_mocked_responses(spent, suppressMessages(institutions_clean(papers, cache = NULL))),
     class = "saqrmisc_openalex_failed")
-  expect_s3_class(institutions, "saqr_institutions")
+  expect_identical(institutions$AU_UN, c("UNIV OULU", "UNIV TURKU"))
 })
 

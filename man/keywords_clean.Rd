@@ -58,7 +58,7 @@ each column, as it came in (kept when `data` already has it).}
 With `level = "confirmed"`: `data`, same class, rows and columns,
   with the keyword columns rewritten where they change (`"; "`-separated);
   with `output = "all"`, plus the `_ORIGINAL` columns. With
-  `level = "all"`: `data` unchanged (the sheet is the result). A message reports, per column, the written
+  `level = "all"`: `data` unchanged, invisibly (the sheet is the result). A message reports, per column, the written
   forms that became one keyword and the papers changed.
 }
 \description{

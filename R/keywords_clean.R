@@ -86,7 +86,7 @@
 #' @return With `level = "confirmed"`: `data`, same class, rows and columns,
 #'   with the keyword columns rewritten where they change (`"; "`-separated);
 #'   with `output = "all"`, plus the `_ORIGINAL` columns. With
-#'   `level = "all"`: `data` unchanged (the sheet is the result). A message reports, per column, the written
+#'   `level = "all"`: `data` unchanged, invisibly (the sheet is the result). A message reports, per column, the written
 #'   forms that became one keyword and the papers changed.
 #'
 #' @section Errors:
@@ -134,7 +134,6 @@ keywords_clean <- function(data,
                            replace = NULL,
                            titles = "TI",
                            output = c("minimal", "all")) {
-  data <- .papers_of(data)
   level <- match.arg(level)
   output <- match.arg(output)
   .kw_check_columns(data, columns)
@@ -159,7 +158,7 @@ keywords_clean <- function(data,
     as.character(data[[titles]])
   }
   .kw_write_sheet(parsed, vocabulary, title_text, min_papers, decisions)
-  data
+  invisible(data)
 }
 
 #' Bring a checked keyword sheet back into the data
@@ -228,7 +227,6 @@ keywords_clean <- function(data,
 #' @export
 keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "DE", replace = NULL,
                            output = c("minimal", "all")) {
-  data <- .papers_of(data)
   by <- match.arg(by)
   output <- match.arg(output)
   .kw_check_columns(data, columns)
@@ -285,12 +283,6 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
   out <- do.call(rbind, tables)
   rownames(out) <- NULL
   out
-}
-
-# The papers a cleaner works on: a data frame, or the cleaned data of an
-# earlier clean_*() result, so that the cleaners chain with |>.
-.papers_of <- function(data) {
-  if (inherits(data, "saqr_institutions")) data$data else data
 }
 
 .kw_check_columns <- function(data, columns) {
@@ -605,12 +597,13 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
 
 # A checked sheet as `merge` (keyword -> name: needs_revision rows with
 # `yes`, and renamed groups) and `apart` (confirmed forms marked `no`).
-.kw_read_sheet <- function(path) {
+.kw_read_sheet <- function(path, term = "keyword") {
   sheet <- .kw_read_table(path, argument = "decisions")
-  matched_on <- if ("keyword_backup" %in% names(sheet)) "keyword_backup" else "keyword"
+  backup <- paste0(term, "_backup")
+  matched_on <- if (backup %in% names(sheet)) backup else term
   absent <- setdiff(c("name", "status", "merge", matched_on), names(sheet))
   if (length(absent) > 0L) {
-    .bad_input(sprintf("the sheet has no column(s) %s; use the sheet keywords_clean(level = \"all\") wrote",
+    .bad_input(sprintf("the sheet has no column(s) %s; use the sheet that level = \"all\" wrote",
                        paste(absent, collapse = ", ")))
   }
   answer <- tolower(trimws(as.character(sheet$merge)))
@@ -638,15 +631,16 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
 # leaves it) as maps backup -> keyword: `moved` for confirmed rows, applied
 # before the spelling merge so only that spelling moves; `merge` for every
 # other row, applied after it so all spellings of the keyword move.
-.kw_read_edits <- function(path) {
+.kw_read_edits <- function(path, term = "keyword") {
   sheet <- .kw_read_table(path, argument = "decisions")
-  absent <- setdiff(c("keyword", "keyword_backup"), names(sheet))
+  backup <- paste0(term, "_backup")
+  absent <- setdiff(c(term, backup), names(sheet))
   if (length(absent) > 0L) {
-    .bad_input(sprintf("`by = \"edit\"` needs the column(s) %s, as keywords_clean(level = \"all\") writes them",
+    .bad_input(sprintf("`by = \"edit\"` needs the column(s) %s, as level = \"all\" writes them",
                        paste(absent, collapse = ", ")))
   }
-  new <- trimws(as.character(sheet$keyword))
-  old <- trimws(as.character(sheet$keyword_backup))
+  new <- trimws(as.character(sheet[[term]]))
+  old <- trimws(as.character(sheet[[backup]]))
   status <- if ("status" %in% names(sheet)) tolower(trimws(as.character(sheet$status))) else rep("", nrow(sheet))
   status[is.na(status)] <- ""
   edited <- !is.na(new) & !is.na(old) & nzchar(new) & new != old
@@ -673,19 +667,12 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
   # Candidates: keywords spelled alike, and acronyms with their long forms.
   eligible <- which(papers >= min_papers)
   candidates <- terms[eligible]
-  similar <- .kw_similar_pairs(candidates, papers[eligible])
   acronym <- .kw_acronym_pairs(vocabulary, candidates, papers[eligible])
   acronym$source <- rep("acronym", nrow(acronym))
-  initials <- .kw_initials_pairs(candidates, papers[eligible])
-  acronym <- rbind(acronym, initials[!paste(initials$a, initials$b) %in% paste(acronym$a, acronym$b), ])
-  group <- .kw_groups(similar, acronym, papers[eligible])
+  found <- .kw_candidates(candidates, papers[eligible], acronym)
+  group <- found$group
+  source <- found$source
   in_group <- group %in% group[duplicated(group)]
-  # Each keyword's sources: those of every pair it is in.
-  links <- rbind(similar[c("a", "b", "source")], acronym[c("a", "b", "source")])
-  labels <- strsplit(c(links$source, links$source), "+", fixed = TRUE)
-  holder <- rep(c(links$a, links$b), lengths(labels))
-  source <- vapply(split(as.character(unlist(labels)), factor(holder, levels = seq_along(candidates))),
-                   \(x) paste(sort(unique(x)), collapse = "+"), character(1), USE.NAMES = FALSE)
   member <- which(in_group)
   proposed <- data.frame(keyword = candidates[member], name = candidates[group[member]],
                          status = ifelse(member == group[member], "name", "needs_revision"),
@@ -833,6 +820,29 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
   code <- match(gram, unique(gram))
   distinct <- !duplicated(term * (max(code) + 1) + code)
   list(term = term[distinct], code = code[distinct])
+}
+
+# Candidate groups among `candidates`, from every source: each keyword's
+# group root (`group`, an index) and the ways it was paired (`source`).
+# `acronym` holds pairs (a acronym, b long form) found beforehand. A `fixed`
+# term (an institution OpenAlex identified) is never paired with another
+# fixed one, and is always the name of its group.
+.kw_candidates <- function(candidates, papers, acronym, fixed = rep(FALSE, length(candidates))) {
+  similar <- .kw_similar_pairs(candidates, papers)
+  initials <- .kw_initials_pairs(candidates, papers)
+  acronym <- rbind(acronym, initials[!paste(initials$a, initials$b) %in% paste(acronym$a, acronym$b), ])
+  similar <- similar[!(fixed[similar$a] & fixed[similar$b]), ]
+  acronym <- acronym[!fixed[acronym$a], ]
+  # Grouping points each term to one in more papers; a fixed term outranks
+  # every other, so it is the root.
+  rank <- papers + fixed * (max(c(papers, 0)) + 1)
+  group <- .kw_groups(similar, acronym, rank)
+  links <- rbind(similar[c("a", "b", "source")], acronym[c("a", "b", "source")])
+  labels <- strsplit(c(links$source, links$source), "+", fixed = TRUE)
+  holder <- rep(c(links$a, links$b), lengths(labels))
+  source <- vapply(split(as.character(unlist(labels)), factor(holder, levels = seq_along(candidates))),
+                   \(x) paste(sort(unique(x)), collapse = "+"), character(1), USE.NAMES = FALSE)
+  list(group = group, source = source)
 }
 
 # Every pair of keywords alike in spelling: MinHash on trigrams (`spelling`),

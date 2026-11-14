@@ -10,13 +10,9 @@ suggest_merges(data, columns = "DE", skip = NULL, meaning = TRUE)
 \item{data}{Your papers, one row each: usually the result of
 [keywords_clean()]. For a large corpus, `keywords_clean(level =
 "needs_decision")` finds candidates without comparing all pairs.
-A `TI` column, if present, supplies example titles. A
-[institutions_clean()] result reviews institution names instead (column
-`AU_UN`): two institutions OpenAlex identified are never paired, and the
-OpenAlex name is the suggested one.}
+A `TI` column, if present, supplies example titles.}
 
-\item{columns}{The keyword columns. Default `"DE"`, or `"AU_UN"` for a
-[institutions_clean()] result.}
+\item{columns}{The keyword columns. Default `"DE"`.}
 
 \item{skip}{Review sheets from earlier rounds: pairs decided there are not
 suggested again.}

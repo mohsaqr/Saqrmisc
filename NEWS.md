@@ -1,3 +1,23 @@
+# Saqrmisc 0.9.18
+
+## `institutions_clean()` redesigned (breaking), new `institutions_merge()`
+
+* `institutions_clean()` returns the data frame with `AU_UN` written, ready
+  for bibliometrix, like `authors_clean()` and `keywords_clean()`; the
+  `saqr_institutions` object, its methods and `institutions_changes()` are
+  gone. `output = "all"` adds `AU_UN_ID` (OpenAlex IDs).
+* `level = "confirmed"` (default) applies only what OpenAlex settles, plus
+  names from address text written differently made one; `level = "all"`
+  merges nothing and writes a sheet like the keyword sheet;
+  `institutions_merge()` brings it back (`by = "merge"` or `"edit"`).
+* OpenAlex is asked 100 DOIs per request, ten requests at a time at most
+  ten a second, and its answers are cached on disk (`cache`), one file per
+  round of requests, so a stopped run resumes.
+* Web of Science author lists before an address (`[KIM, J; LEE, A] UNIV
+  OULU`) are dropped before the addresses are split.
+* `suggest_merges()` no longer takes institutions.
+* `keywords_clean(level = "all")` returns the data invisibly.
+
 # Saqrmisc 0.9.17
 
 * `keywords_clean(level = "all")` finds candidates four more ways, each named
