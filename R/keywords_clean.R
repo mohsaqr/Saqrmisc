@@ -11,11 +11,10 @@
 #' Nothing is ever deleted.
 #'
 #' The confirmed steps, applied with no review:
-#' 1. **Cleanup**: HTML entities decoded, invisible characters (zero-width
-#'    spaces and joiners, soft hyphens) removed, dashes and quotes unified,
-#'    quotes around the whole keyword dropped, `&` written `AND`, a leading
-#'    `#` and trailing punctuation (also `*`) dropped, spacing squeezed, upper
-#'    case. A keyword cleanup would leave empty (`.`) keeps its written form.
+#' 1. **Cleanup**: HTML entities decoded, dashes and quotes unified, `&`
+#'    written `AND`, a leading `#` and trailing punctuation dropped, spacing
+#'    squeezed, upper case. A keyword cleanup would leave empty (`.`) keeps
+#'    its written form.
 #' 2. **Brackets**: a plural marker goes (`VOICE ASSISTANT(S)`); an acronym in
 #'    brackets goes (`NATURAL LANGUAGE PROCESSING (NLP)`, also
 #'    `B-RNN (BI-DIRECTIONAL ...)`); other brackets lose only the brackets.
@@ -30,27 +29,19 @@
 #' 5. Each keyword once per paper.
 #'
 #' `level = "all"` merges nothing: it returns `data` unchanged and writes
-#' the `decisions` sheet, for a person, a model or a tool such as OpenRefine
-#' to check outside R, with a short prompt for a model beside it. It has
-#' three tables:
-#' * `decisions`: one question per row, should `keyword` be merged into
-#'   `merge_into`? A candidate is a keyword spelled like another (character
-#'   trigrams, Jaccard 0.7 or more, found by MinHash, never by comparing all
-#'   pairs) or an acronym whose long form is written in brackets elsewhere in
-#'   the data. Spelled alike is not the same concept, so a pair whose first
-#'   letters differ (`DEPRESSION` / `REPRESSION`) or with a word that is
-#'   another plus a prefix (`ADOLESCENTS` / `PREADOLESCENTS`, `SOCIAL
-#'   JUSTICE` / `SOCIAL INJUSTICE`) is never proposed, and the rest wait for
-#'   a `yes`.
-#' * `confirmed`: each keyword with the spellings the confirmed steps merge
-#'   into it, in one cell (`DEPRESSIONS (6); DÉPRESSION (9)`), with `yes` in
-#'   `merge`; change it to `no` to keep them apart.
-#' * `all_keywords`: every keyword, for a tool such as OpenRefine to cluster
-#'   the whole list itself.
-#'
-#' Only keywords in at least `min_papers` papers are in the sheet. Bring it
-#' back with [keywords_merge()]: by its `merge` answers, or by the edits of
-#' `keyword` against the untouched `keyword_backup`.
+#' every merge to the `decisions` sheet, for a person, a model or a tool such
+#' as OpenRefine to check outside R, with a short prompt for a model beside
+#' it. The sheet has one group per `name` (the keyword the group becomes): its `confirmed`
+#' merges (the steps above) and its `needs_revision` candidates. A candidate is a keyword spelled
+#' like the name (character trigrams, Jaccard 0.7 or more, found by MinHash,
+#' never by comparing all pairs) or an acronym whose long form is written in
+#' brackets elsewhere in the data. Spelled alike is not the same concept
+#' (`JUSTICE` / `INJUSTICE`), which is why candidates wait for a `yes`. Only
+#' keywords in at least `min_papers` papers go to the sheet, each of them,
+#' grouped or alone (`single`), so a tool such as OpenRefine can also cluster
+#' the whole list itself. Bring the checked sheet back with [keywords_merge()]:
+#' by its `merge` answers, or by the edits of `keyword` against the untouched
+#' `keyword_backup`.
 #'
 #' @param data A data frame with one row per paper, such as a bibliometrix
 #'   data frame. The cleaners chain: `M |> authors_clean(ids = "scopus_exports")
@@ -59,18 +50,15 @@
 #'   (author keywords).
 #' @param level `"confirmed"` (default) or `"all"`; see above.
 #' @param decisions With `level = "all"`: the sheet to write, a new path
-#'   ending in `.xlsx` or `.csv` (an existing file is never replaced). An
-#'   `.xlsx` has the tabs `decisions`, `confirmed`, `all_keywords` and
-#'   `prompt`; a `.csv` is the decisions table, with
-#'   `<sheet>_confirmed.csv` and `<sheet>_all_keywords.csv` beside it. The
-#'   prompt also goes to `<sheet>_prompt.txt`. Columns of `decisions`:
-#'   `keyword`, `keyword_backup` (a copy that [keywords_merge()] matches on,
-#'   so an edit of `keyword` does no harm), `merge_into`, `merge` (empty, for
-#'   `yes` or `no`), `papers`, `merge_into_papers`, `source` (`spelling`,
-#'   `acronym`) and `example` (the title of a paper using the keyword). Of
-#'   `confirmed`: `keyword`, `papers`, `also_written_as`, `source` (`same
-#'   spelling`, `your table`) and `merge`. Of `all_keywords`: `keyword`,
-#'   `keyword_backup`, `papers` and `example`.
+#'   ending in `.xlsx` or `.csv` (an existing file is never replaced). Its
+#'   columns: `group`, `name`, `keyword`, `keyword_backup` (a copy of
+#'   `keyword` that [keywords_merge()] matches on, so an edit of `keyword`
+#'   does no harm), `status` (`single` for a keyword in no group,
+#'   `confirmed` or `needs_revision`),
+#'   `papers`, `source` (`same spelling`,
+#'   `your table`, `spelling`, `acronym`) and `example` (the title of a paper
+#'   using the keyword). The prompt goes to `<sheet>_prompt.txt` and, in an
+#'   `.xlsx`, to a second tab `prompt`.
 #' @param min_papers Only keywords in at least this many papers go into the
 #'   sheet. Default 5: on a 2-million-paper psychology corpus, the 10\% of
 #'   author keywords in 5 or more papers carry 81\% of all keyword uses.
@@ -149,13 +137,6 @@ keywords_clean <- function(data,
       .bad_input("`level = \"all\"` needs `decisions`, a new path ending in .csv or .xlsx")
     }
     .kr_sheet_file(decisions)
-    taken <- Filter(file.exists, if (grepl("\\.csv$", decisions, ignore.case = TRUE)) {
-      vapply(.kw_parts[-1L], \(part) .kw_part_file(decisions, part), character(1))
-    })
-    if (length(taken) > 0L) {
-      .bad_input(sprintf("%s already exists and may hold your decisions; delete or choose another name",
-                         paste(taken, collapse = " and ")))
-    }
   }
   maps <- .kw_replacements(replace)
   if (level == "confirmed") return(.kw_run(data, columns, maps, character(), character(), output)$data)
@@ -176,31 +157,29 @@ keywords_clean <- function(data,
 #' it was checked outside R, and returns the data frame. The confirmed steps of
 #' [keywords_clean()] are applied again, then the sheet, read one of two ways:
 #'
-#' * `by = "merge"` (default), for a person or a model that answers `yes` or
-#'   `no` in `merge` (or in the column `answers` names): a `decisions` row
-#'   with `yes` merges its keyword, with all its spellings, into `merge_into`
-#'   (edit `merge_into` to send it elsewhere); a row left empty is not merged
-#'   and is counted in the message. The `confirmed` table is written with
-#'   `yes` in every row; a `no` there keeps the keyword's other spellings
-#'   apart.
+#' * `by = "merge"` (default), for a person or a model that adds a column
+#'   `merge` and answers `yes` or `no` in it:
+#'   * a `needs_revision` row with `yes` becomes its `name`;
+#'   * a `confirmed` row is merged unless `merge` says `no`; with `no` it keeps
+#'     its own spelling;
+#'   * an empty `merge` keeps what the row's `status` says.
 #' * `by = "edit"`, for a tool that rewrites the keywords themselves, such as
-#'   OpenRefine clustering the `keyword` column of `all_keywords` (or of
-#'   `decisions`): every keyword whose `keyword` no longer equals its
-#'   untouched `keyword_backup` becomes the new text, with all its spellings.
-#'   `merge` is ignored, and an edit of case or spacing alone changes nothing.
+#'   OpenRefine clustering the `keyword` column: every keyword whose `keyword`
+#'   no longer equals its untouched `keyword_backup` becomes the new text.
+#'   An edited `confirmed` row moves only that spelling; any other edited
+#'   keyword moves with all its spellings. `merge` and `name` are ignored, and
+#'   an edit of case or spacing alone changes nothing.
 #'
-#' Pass the same `columns` and `replace` as to [keywords_clean()], and the
-#' data as it was before cleaning: a confirmed merge marked `no` can only be
-#' undone from there (on cleaned data everything else gives the same result).
+#' Rows are matched on `keyword_backup` (on `keyword` when a sheet has no
+#' backup column with `by = "merge"`). Pass the same `columns` and `replace` as to
+#' [keywords_clean()], and the data as it was before cleaning: a confirmed
+#' merge marked `no` can only be undone from there (on cleaned data everything
+#' else gives the same result).
 #'
 #' @param data A data frame with one row per paper.
-#' @param decisions The checked sheet, `.xlsx` or `.csv` (the decisions
-#'   table; the other tables are read from beside it when they are there).
+#' @param decisions The checked sheet, `.xlsx` or `.csv`.
 #' @param by `"merge"` (default) reads the `merge` column; `"edit"` reads the
 #'   edits of `keyword` against `keyword_backup`. See above.
-#' @param answers With `by = "merge"`: the column of the decisions table
-#'   holding the yes / no answers. Default `"merge"`; name another when an
-#'   application writes its answers to a column of its own.
 #' @param columns,replace,output As in [keywords_clean()].
 #'
 #' @return `data`, same class, rows and columns, with the keyword columns
@@ -209,12 +188,10 @@ keywords_clean <- function(data,
 #'   rows applied from the sheet.
 #'
 #' @section Errors:
-#' Raises `saqrmisc_bad_input` for a missing sheet; with `by = "merge"`, a
-#' decisions table without `merge_into`, the `answers` column and
-#' `keyword_backup` (or `keyword`), or an answer other than empty, `yes` or
-#' `no`; with
-#' `by = "edit"`, no table with `keyword` and `keyword_backup`; and the
-#' errors of [keywords_clean()].
+#' Raises `saqrmisc_bad_input` for a missing sheet; with `by = "merge"`, one
+#' without `name`, `status`, `merge` and `keyword_backup` (or `keyword`), or a
+#' `merge` other than empty, `yes` or `no`; with `by = "edit"`, one without
+#' `keyword` and `keyword_backup`; and the errors of [keywords_clean()].
 #'
 #' @seealso [keywords_clean()]
 #' @examples
@@ -237,8 +214,8 @@ keywords_clean <- function(data,
 #' utils::write.csv(edited, sheet, row.names = FALSE)
 #' keywords_merge(papers, decisions = sheet, by = "edit")
 #' @export
-keywords_merge <- function(data, decisions, by = c("merge", "edit"), answers = "merge", columns = "DE",
-                           replace = NULL, output = c("minimal", "all")) {
+keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "DE", replace = NULL,
+                           output = c("minimal", "all")) {
   data <- .papers_of(data)
   by <- match.arg(by)
   output <- match.arg(output)
@@ -246,18 +223,17 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), answers = "
   if (missing(decisions) || !(is.character(decisions) && length(decisions) == 1L)) {
     .bad_input("`decisions` must be the path of the sheet keywords_clean(level = \"all\") wrote")
   }
-  if (!(is.character(answers) && length(answers) == 1L && !is.na(answers) && nzchar(answers))) {
-    .bad_input("`answers` must name the column holding yes or no")
-  }
-  sheet <- if (by == "merge") .kw_read_sheet(decisions, answers) else .kw_read_edits(decisions)
-  run <- .kw_run(data, columns, .kw_replacements(replace), sheet$merge, sheet$apart, output)
+  sheet <- if (by == "merge") .kw_read_sheet(decisions) else .kw_read_edits(decisions)
+  maps <- c(.kw_replacements(replace), if (length(sheet$moved) > 0L) list(sheet$moved))
+  run <- .kw_run(data, columns, maps, sheet$merge, sheet$apart, output)
   if (by == "merge") {
-    message(sprintf("keywords_merge: from %s, %d merge(s) applied, %d confirmed keyword(s) kept apart, %d row(s) unanswered (not merged)",
-                    basename(decisions), length(sheet$merge), length(sheet$apart), sheet$unanswered))
+    message(sprintf("keywords_merge: from %s, %d merge(s) and renames applied, %d confirmed merge(s) undone",
+                    basename(decisions), length(sheet$merge), length(sheet$apart)))
   } else {
+    targets <- unique(c(unname(sheet$merge), unname(sheet$moved)))
     message(sprintf("keywords_merge: from %s, %d edited keyword(s) applied, %d to a spelling not in the data",
-                    basename(decisions), length(sheet$merge),
-                    sum(!unique(unname(sheet$merge)) %in% run$vocabulary$stage)))
+                    basename(decisions), length(sheet$merge) + length(sheet$moved),
+                    sum(!targets %in% run$vocabulary$stage)))
   }
   run$data
 }
@@ -334,19 +310,17 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), answers = "
 .kw_normalise <- function(x) {
   x |>
     .au_decode_entities() |>
-    # Invisible format characters (zero-width spaces and joiners, BOM, soft
-    # hyphen): they make a keyword look identical to another yet differ.
+    # Invisible characters (zero-width spaces and joiners, BOM, soft hyphen)
+    # go; other spaces (no-break, thin, ideographic) become a plain space.
     gsub(pattern = "\\p{Cf}", replacement = "", perl = TRUE) |>
+    gsub(pattern = "[\u00a0\u2000-\u200a\u202f\u205f\u3000]", replacement = " ") |>
     gsub(pattern = "[\u2010-\u2015\u2212]", replacement = "-") |>
     gsub(pattern = "[\u2018\u2019]", replacement = "'") |>
     gsub(pattern = "[\"`\u201c\u201d]", replacement = "") |>
     gsub(pattern = "^\\s*#+", replacement = "") |>
     gsub(pattern = "\\s*&\\s*", replacement = " AND ") |>
     gsub(pattern = "\\s+", replacement = " ") |>
-    gsub(pattern = "[.,;:*]+$", replacement = "") |>
-    trimws() |>
-    # Quotes around the whole keyword ('DEPRESSION'); one inside stays.
-    sub(pattern = "^'(.+)'$", replacement = "\\1") |>
+    gsub(pattern = "[.,;:]+$", replacement = "") |>
     trimws() |>
     toupper()
 }
@@ -546,8 +520,7 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), answers = "
 # The written forms of every column, each with its `final` form. `merge`
 # (keyword -> name, from a checked sheet) is applied after the confirmed
 # merge, which is then repeated so every spelling of a keyword follows it;
-# the spellings of a keyword in `apart` (a confirmed merge marked no) keep
-# their own spelling. `stage` (after cleanup and
+# forms in `apart` keep their own spelling. `stage` (after cleanup and
 # brackets) and `mapped` (after `replace`) feed the sheet, the bracket parts
 # (`short`, `long`) its acronym candidates.
 .kw_vocabulary <- function(parsed, maps, merge, apart) {
@@ -562,12 +535,12 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), answers = "
   stage <- bracketed$term
   mapped <- .kw_apply_maps(stage, maps)
   merged <- .kw_merge_by_key(mapped, papers, .kw_targets(maps))
-  held <- merged$form %in% apart
   if (length(merge) > 0L) {
     merged$form <- .kw_apply_maps(merged$form, list(merge))
     merged <- .kw_merge_by_key(merged$form, papers, unique(unname(merge)))
   }
   form <- merged$form
+  held <- stage %in% apart
   form[held] <- stage[held]
   # Nothing is deleted: a form cleanup leaves empty keeps its written text.
   final <- ifelse(nzchar(form), form, written)
@@ -618,87 +591,63 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), answers = "
 
 # ---- decisions sheet ----------------------------------------------------------
 
-# The sheet has three tables: `decisions` (one question per row: should
-# `keyword` be merged into `merge_into`?), `confirmed` (each keyword with the
-# spellings the confirmed steps merge into it) and `all_keywords` (every
-# keyword in `min_papers` or more papers, for a tool such as OpenRefine). An
-# .xlsx holds them as tabs; a .csv sheet is the decisions table, with the
-# others in <sheet>_confirmed.csv and <sheet>_all_keywords.csv beside it.
-.kw_parts <- c("decisions", "confirmed", "all_keywords")
-
-.kw_part_file <- function(path, part) {
-  if (identical(part, "decisions")) return(path)
-  sub("\\.csv$", sprintf("_%s.csv", part), path, ignore.case = TRUE)
-}
-
-# One table of a checked sheet, or NULL when the sheet does not have it.
-.kw_read_part <- function(path, part) {
-  if (!file.exists(path)) .bad_input(sprintf("`decisions` file not found: %s", path))
-  if (grepl("\\.csv$", path, ignore.case = TRUE)) {
-    file <- .kw_part_file(path, part)
-    return(if (file.exists(file)) .kw_read_table(file, argument = "decisions"))
-  }
-  table <- .kw_read_table(path, argument = "decisions")
-  tabs <- readxl::excel_sheets(path)
-  if (identical(part, "decisions") && !"decisions" %in% tabs) return(table)
-  if (part %in% tabs) as.data.frame(readxl::read_excel(path, sheet = part, col_types = "text"))
-}
-
-# `merge` answers: empty, yes or no, any case or spacing.
-.kw_answers <- function(merge, column = "merge") {
-  answer <- tolower(trimws(as.character(merge)))
-  answer[is.na(answer)] <- ""
-  odd <- setdiff(answer, c("", "yes", "no"))
-  if (length(odd) > 0L) {
-    .bad_input(sprintf("`%s` must be yes or no, not %s", column, paste(sprintf("\"%s\"", odd), collapse = ", ")))
-  }
-  answer
-}
-
-.kw_no_map <- function() stats::setNames(character(), character())
-
-# A checked sheet as `merge` (keyword -> merge_into, the decisions marked
-# yes) and `apart` (keywords whose confirmed merge is marked no).
-.kw_read_sheet <- function(path, answers = "merge") {
-  sheet <- .kw_read_part(path, "decisions")
+# A checked sheet as `merge` (keyword -> name: needs_revision rows with
+# `yes`, and renamed groups) and `apart` (confirmed forms marked `no`).
+.kw_read_sheet <- function(path) {
+  sheet <- .kw_read_table(path, argument = "decisions")
   matched_on <- if ("keyword_backup" %in% names(sheet)) "keyword_backup" else "keyword"
-  absent <- setdiff(c("merge_into", answers, matched_on), names(sheet))
+  absent <- setdiff(c("name", "status", "merge", matched_on), names(sheet))
   if (length(absent) > 0L) {
     .bad_input(sprintf("the sheet has no column(s) %s; use the sheet keywords_clean(level = \"all\") wrote",
                        paste(absent, collapse = ", ")))
   }
-  keyword <- trimws(as.character(sheet[[matched_on]]))
-  into <- trimws(as.character(sheet$merge_into))
-  answer <- .kw_answers(sheet[[answers]], answers)
-  take <- answer == "yes" & !is.na(keyword) & !is.na(into) & nzchar(into)
-  merge <- if (any(take)) .kw_table_map(data.frame(OLD = keyword[take], NEW = into[take])) else .kw_no_map()
-  confirmed <- .kw_read_part(path, "confirmed")
-  undone <- if (!is.null(confirmed) && all(c("keyword", "merge") %in% names(confirmed))) {
-    confirmed$keyword[.kw_answers(confirmed$merge) == "no" & !is.na(confirmed$keyword)]
+  answer <- tolower(trimws(as.character(sheet$merge)))
+  answer[is.na(answer)] <- ""
+  odd <- setdiff(answer, c("", "yes", "no"))
+  if (length(odd) > 0L) {
+    .bad_input(sprintf("`merge` must be empty, yes or no, not %s", paste(sprintf("\"%s\"", odd), collapse = ", ")))
   }
-  list(merge = merge, apart = unique(.kw_brackets(.kw_normalise(as.character(undone)))$term),
-       unanswered = sum(answer == ""))
+  keyword <- as.character(sheet[[matched_on]])
+  name <- as.character(sheet$name)
+  status <- tolower(trimws(as.character(sheet$status)))
+  status[is.na(status)] <- ""
+  take <- !is.na(keyword) & !is.na(name) &
+    ((status == "needs_revision" & answer == "yes") | (status == "name" & keyword != name))
+  merge <- if (any(take)) {
+    .kw_table_map(data.frame(OLD = keyword[take], NEW = name[take]))
+  } else {
+    stats::setNames(character(), character())
+  }
+  undone <- keyword[status == "confirmed" & answer == "no" & !is.na(keyword)]
+  list(merge = merge, apart = unique(.kw_brackets(.kw_normalise(undone))$term), moved = character())
 }
 
 # An edited sheet (keyword rewritten, keyword_backup untouched, as OpenRefine
-# leaves it), from the decisions and all_keywords tables, as a map
-# backup -> keyword applied after the spelling merge, so every spelling of
-# an edited keyword follows it.
+# leaves it) as maps backup -> keyword: `moved` for confirmed rows, applied
+# before the spelling merge so only that spelling moves; `merge` for every
+# other row, applied after it so all spellings of the keyword move.
 .kw_read_edits <- function(path) {
-  tables <- Filter(\(t) !is.null(t) && all(c("keyword", "keyword_backup") %in% names(t)),
-                   lapply(c("decisions", "all_keywords"), \(part) .kw_read_part(path, part)))
-  if (length(tables) == 0L) {
-    .bad_input("`by = \"edit\"` needs the columns keyword and keyword_backup, as keywords_clean(level = \"all\") writes them")
+  sheet <- .kw_read_table(path, argument = "decisions")
+  absent <- setdiff(c("keyword", "keyword_backup"), names(sheet))
+  if (length(absent) > 0L) {
+    .bad_input(sprintf("`by = \"edit\"` needs the column(s) %s, as keywords_clean(level = \"all\") writes them",
+                       paste(absent, collapse = ", ")))
   }
-  new <- trimws(unlist(lapply(tables, \(t) as.character(t$keyword))))
-  old <- trimws(unlist(lapply(tables, \(t) as.character(t$keyword_backup))))
+  new <- trimws(as.character(sheet$keyword))
+  old <- trimws(as.character(sheet$keyword_backup))
+  status <- if ("status" %in% names(sheet)) tolower(trimws(as.character(sheet$status))) else rep("", nrow(sheet))
+  status[is.na(status)] <- ""
   edited <- !is.na(new) & !is.na(old) & nzchar(new) & new != old
-  pairs <- unique(data.frame(OLD = old[edited], NEW = new[edited]))
-  list(merge = if (nrow(pairs) > 0L) .kw_table_map(pairs) else .kw_no_map(), apart = character())
+  as_map <- \(rows) if (any(rows)) .kw_table_map(data.frame(OLD = old[rows], NEW = new[rows]))
+                    else stats::setNames(character(), character())
+  list(merge = as_map(edited & status != "confirmed"), moved = as_map(edited & status == "confirmed"),
+       apart = character())
 }
 
-# Writes the sheet for keywords in `min_papers` or more papers (counted over
-# all columns), nothing applied yet, and the prompt beside it.
+# Writes every merge to the sheet, one group per name: the name row, its
+# confirmed merges and its candidates (status needs_revision), none of them
+# applied yet, for keywords in `min_papers` or more papers (counted over all
+# columns); and the prompt beside it.
 .kw_write_sheet <- function(parsed, vocabulary, titles, min_papers, path) {
   terms <- unique(vocabulary$final)
   term_of_written <- match(vocabulary$final, terms)
@@ -708,122 +657,93 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), answers = "
   once <- !duplicated(use_paper * (length(terms) + 1) + use_term)
   papers <- tabulate(use_term[once], nbins = length(terms))
   first_paper <- use_paper[once][match(seq_along(terms), use_term[once])]
-  example_of <- \(k) if (is.null(titles)) rep(NA_character_, length(k)) else .kr_clip(titles[first_paper[match(k, terms)]], 150L)
 
   # Candidates: keywords spelled alike, and acronyms with their long forms.
   eligible <- which(papers >= min_papers)
   candidates <- terms[eligible]
-  counts <- papers[eligible]
   spelling <- .kw_minhash_pairs(candidates)
-  spelling <- spelling[!.kw_unlike_words(candidates[spelling$a], candidates[spelling$b]), ]
-  acronym <- .kw_acronym_pairs(vocabulary, candidates, counts)
-  group <- .kw_groups(spelling, acronym, counts)
+  acronym <- .kw_acronym_pairs(vocabulary, candidates, papers[eligible])
+  group <- .kw_groups(spelling, acronym, papers[eligible])
+  in_group <- group %in% group[duplicated(group)]
   source <- vapply(seq_along(candidates), \(i) paste(c(
     if (i %in% c(spelling$a, spelling$b)) "spelling",
     if (i %in% c(acronym$a, acronym$b)) "acronym"), collapse = "+"), character(1))
-  ask <- which(group != seq_along(candidates))
-  decisions <- data.frame(keyword = candidates[ask], keyword_backup = candidates[ask],
-                          merge_into = candidates[group[ask]], merge = rep(NA_character_, length(ask)),
-                          papers = counts[ask], merge_into_papers = counts[group[ask]], source = source[ask],
-                          example = example_of(candidates[ask]), stringsAsFactors = FALSE)
-  decisions <- decisions[order(-decisions$merge_into_papers, decisions$merge_into, -decisions$papers,
-                               decisions$keyword, method = "radix"), ]
+  member <- which(in_group)
+  proposed <- data.frame(keyword = candidates[member], name = candidates[group[member]],
+                         status = ifelse(member == group[member], "name", "needs_revision"),
+                         papers = papers[eligible][member],
+                         source = ifelse(member == group[member], NA_character_, source[member]),
+                         stringsAsFactors = FALSE)
 
-  # Confirmed: each keyword with the cleaned spellings a confirmed step gave
-  # its name, in one cell.
+  # Confirmed: each cleaned form that a confirmed step gave another name.
   moved <- vocabulary$stage != vocabulary$final & nzchar(vocabulary$stage)
-  forms <- data.frame(keyword = vocabulary$final[moved], spelling = vocabulary$stage[moved],
-                      papers = vocabulary$papers[moved],
-                      source = ifelse(vocabulary$mapped[moved] != vocabulary$stage[moved], "your table", "same spelling"),
+  pair <- paste(vocabulary$stage, vocabulary$final, sep = "\r")[moved]
+  first <- !duplicated(pair)
+  done <- data.frame(keyword = vocabulary$stage[moved][first], name = vocabulary$final[moved][first],
+                     status = rep("confirmed", sum(first)),
+                     papers = as.vector(rowsum(vocabulary$papers[moved], match(pair, unique(pair)), reorder = TRUE)),
+                     source = ifelse(vocabulary$mapped[moved][first] != vocabulary$stage[moved][first],
+                                     "your table", "same spelling"),
+                     stringsAsFactors = FALSE)
+  done <- done[papers[match(done$name, terms)] >= min_papers, ]
+  heads <- setdiff(unique(done$name), proposed$keyword[proposed$status == "name"])
+  named <- data.frame(keyword = heads, name = heads, status = rep("name", length(heads)),
+                      papers = papers[match(heads, terms)], source = rep(NA_character_, length(heads)),
                       stringsAsFactors = FALSE)
-  forms <- forms[forms$keyword %in% candidates, ]
-  pair <- match(paste(forms$keyword, forms$spelling, sep = "\r"), unique(paste(forms$keyword, forms$spelling, sep = "\r")))
-  total <- as.vector(rowsum(forms$papers, pair, reorder = TRUE))
-  forms <- forms[!duplicated(pair), ]
-  forms$papers <- total
-  forms <- forms[order(forms$keyword, -forms$papers, forms$spelling, method = "radix"), ]
-  confirmed_names <- unique(forms$keyword)
-  by_name <- factor(forms$keyword, levels = confirmed_names)
-  confirmed <- data.frame(
-    keyword = confirmed_names, papers = counts[match(confirmed_names, candidates)],
-    also_written_as = vapply(split(sprintf("%s (%d)", forms$spelling, as.integer(forms$papers)), by_name),
-                             paste, character(1), collapse = "; "),
-    source = vapply(split(forms$source, by_name), \(s) paste(sort(unique(s)), collapse = "+"), character(1)),
-    merge = rep("yes", length(confirmed_names)), stringsAsFactors = FALSE)
-  confirmed <- confirmed[order(-confirmed$papers, confirmed$keyword, method = "radix"), ]
 
-  # Every keyword, for a tool such as OpenRefine to cluster the whole list.
-  all_keywords <- data.frame(keyword = candidates, keyword_backup = candidates, papers = counts,
-                             example = example_of(candidates), stringsAsFactors = FALSE)
-  all_keywords <- all_keywords[order(-all_keywords$papers, all_keywords$keyword, method = "radix"), ]
-
-  tables <- lapply(list(decisions = decisions, confirmed = confirmed, all_keywords = all_keywords), \(t) {
-    rownames(t) <- NULL
-    t
-  })
+  # Every other keyword in min_papers or more papers, alone, so a tool such as
+  # OpenRefine can cluster the whole vocabulary.
+  alone <- setdiff(candidates, c(proposed$keyword, done$name, done$keyword))
+  single <- data.frame(keyword = alone, name = alone, status = rep("single", length(alone)),
+                       papers = papers[match(alone, terms)], source = rep(NA_character_, length(alone)),
+                       stringsAsFactors = FALSE)
+  # No `name` rows: the name is in the `name` column of every row of its group.
+  rows <- rbind(proposed, done, named, single)
+  rows <- rows[rows$status != "name", ]
+  rank <- match(rows$status, c("name", "single", "confirmed", "needs_revision"))
+  name_papers <- papers[match(rows$name, terms)]
+  rows <- rows[order(-name_papers, rows$name, rank, -rows$papers, rows$keyword, method = "radix"), ]
+  shown <- rows$status != "confirmed"
+  example <- rep(NA_character_, nrow(rows))
+  if (!is.null(titles)) example[shown] <- titles[first_paper[match(rows$keyword[shown], terms)]]
+  sheet <- data.frame(group = match(rows$name, unique(rows$name)), name = rows$name, keyword = rows$keyword,
+                      keyword_backup = rows$keyword, status = rows$status,
+                      papers = rows$papers, source = rows$source, example = .kr_clip(example, 150L),
+                      stringsAsFactors = FALSE)
+  rownames(sheet) <- NULL
   prompt <- .kw_prompt()
   prompt_file <- sub("\\.(csv|xlsx)$", "_prompt.txt", path, ignore.case = TRUE)
   writeLines(enc2utf8(prompt), prompt_file, useBytes = TRUE)
   if (grepl("\\.csv$", path, ignore.case = TRUE)) {
-    lapply(.kw_parts, \(part) .kr_write_csv(tables[[part]], .kw_part_file(path, part)))
+    .kr_write_csv(sheet, path)
   } else {
-    writexl::write_xlsx(c(tables, list(prompt = data.frame(prompt = strsplit(prompt, "\n")[[1L]]))), path)
+    writexl::write_xlsx(list(decisions = sheet, prompt = data.frame(prompt = strsplit(prompt, "\n")[[1L]])), path)
   }
-  message(sprintf(paste0("%s: %d merges to decide, %d keywords with confirmed spellings, %d keywords in %s or more ",
-                         "papers. Nothing is merged yet: write yes or no in `merge`, then ",
+  message(sprintf(paste0("%s: %d groups and single keywords, %d confirmed merges and %d to check, keywords in %s or more ",
+                         "papers. Nothing is merged yet: add a column `merge` (yes or no), then ",
                          "keywords_merge(data, decisions = \"%s\"). A prompt for a model is in %s."),
-                  basename(path), nrow(decisions), nrow(confirmed), nrow(all_keywords), format(min_papers),
-                  basename(path), basename(prompt_file)))
+                  basename(path), length(unique(sheet$group)), sum(sheet$status == "confirmed"),
+                  sum(sheet$status == "needs_revision"), format(min_papers), basename(path), basename(prompt_file)))
 }
 
 # The instructions for a model (or a person) checking the sheet.
 .kw_prompt <- function() {
   paste(
-    "You are checking proposed keyword merges for a bibliometric study.",
+    "Review keyword merges for a bibliometric study.",
     "",
-    "Each row asks one question: should `keyword` be merged into `merge_into`?",
-    "`example` is the title of a paper that uses `keyword`.",
+    "Each row proposes merging `keyword` into `name`. `example` is the title of a paper using `keyword`.",
     "",
-    "Write yes or no in `merge` on every row; leave none empty:",
-    "- yes: `keyword` means the same concept as `merge_into`: a spelling variant, a plural,",
-    "  a translation, an abbreviation or an acronym of it.",
-    "- no: it is broader or narrower, its opposite, a different concept that is only",
-    "  spelled alike, or you are not sure.",
+    "Add a column `merge` and write yes or no on every row:",
+    "- yes: same concept (spelling variant, plural, translation, abbreviation, or acronym).",
+    "- no: different, broader, narrower, opposite, or uncertain meaning.",
     "",
-    "Examples:",
-    "- CHATBOTS -> CHATBOT: yes (plural)",
-    "- AI -> ARTIFICIAL INTELLIGENCE: yes (acronym)",
-    "- PSICOLOGIA -> PSYCHOLOGY: yes (translation)",
-    "- VIRTUAL REALITY THERAPY -> VIRTUAL REALITY: no (narrower)",
-    "- DISHONESTY -> HONESTY: no (opposite)",
-    "- WEIGHT LOSS -> WEIGHT GAIN: no (different concept)",
+    "By `status`:",
+    "- needs_revision: yes or no.",
+    "- confirmed: yes, unless the merge is incorrect (no).",
+    "- single: no (nothing to merge).",
     "",
     "Change no other column.",
     sep = "\n")
-}
-
-# Pairs spelled alike that are different words: the first letter differs
-# (DEPRESSION / REPRESSION), or, word by word, a word starts with another
-# letter or is another word with a prefix (SOCIAL JUSTICE / SOCIAL
-# INJUSTICE, ADOLESCENTS / PREADOLESCENTS). Hyphens are ignored.
-.kw_prefixes <- c("PRE", "POST", "NON", "UN", "IN", "IM", "IR", "IL", "DIS", "MIS", "ANTI", "SUB", "SUPER",
-                  "SEMI", "MULTI", "INTER", "INTRA", "RE", "CO", "OVER", "UNDER", "HYPER", "HYPO")
-
-.kw_unlike_words <- function(a, b) {
-  a <- gsub("-", "", a, fixed = TRUE)
-  b <- gsub("-", "", b, fixed = TRUE)
-  unlike <- substr(a, 1L, 1L) != substr(b, 1L, 1L)
-  words_a <- strsplit(a, " ", fixed = TRUE)
-  words_b <- strsplit(b, " ", fixed = TRUE)
-  aligned <- which(lengths(words_a) == lengths(words_b))
-  if (length(aligned) == 0L) return(unlike)
-  x <- unlist(words_a[aligned])
-  y <- unlist(words_b[aligned])
-  pair <- rep(aligned, lengths(words_a[aligned]))
-  prefixed <- Reduce(`|`, lapply(.kw_prefixes, \(p) x == paste0(p, y) | y == paste0(p, x)), logical(length(x)))
-  clash <- x != y & (substr(x, 1L, 1L) != substr(y, 1L, 1L) | prefixed)
-  unlike[unique(pair[clash])] <- TRUE
-  unlike
 }
 
 # ---- candidates ---------------------------------------------------------------

@@ -259,133 +259,86 @@ decision_papers <- function() {
   data.frame(
     TI = sprintf("Title %d", 1:8),
     DE = c("CHATBOT; NATURAL LANGUAGE PROCESSING (NLP)", "CHAT-BOTS; NLP", "CHATBOT; NLP",
-           "CONVERSATIONAL AGENT; INTERPERSONAL JUSTICE", "SELF ESTEEM SCALES; NLP",
+           "CONVERSATIONAL AGENT; INTERPERSONAL JUSTICE", "INTERPERSONAL INJUSTICE; NLP",
            "INTERPERSONAL JUSTICE", "SELF-ESTEEM", "SELF ESTEEM SCALE"),
     ID = c("CHATBOTS", NA, NA, NA, NA, NA, "SELF ESTEEM", NA)
   )
 }
 
-# A sheet table edited the way a person or another app edits it.
-rewrite_part <- function(file, edit) {
-  table <- edit(.kr_read_csv(file))
-  unlink(file)
-  .kr_write_csv(table, file)
+write_checked <- function(sheet, answers) {
+  checked <- .kr_read_csv(sheet)
+  checked$merge <- answers[checked$keyword]
+  unlink(sheet)
+  .kr_write_csv(checked, sheet)
+  invisible(checked)
 }
 
-part <- function(sheet, name) .kr_read_csv(sub("\\.csv$", sprintf("_%s.csv", name), sheet))
-
-test_that("level = 'all' merges nothing and writes one question per row", {
+test_that("level = 'all' merges nothing and writes every merge with its status", {
   sheet <- tempfile(fileext = ".csv")
   papers <- decision_papers()
   out <- kc(papers, columns = c("DE", "ID"), level = "all", decisions = sheet, min_papers = 1)
   expect_identical(out, papers)
   written <- .kr_read_csv(sheet)
-  expect_named(written, c("keyword", "keyword_backup", "merge_into", "merge", "papers", "merge_into_papers",
-                          "source", "example"))
+  expect_named(written, c("group", "name", "keyword", "keyword_backup", "status", "papers", "source", "example"))
   expect_identical(written$keyword_backup, written$keyword)
-  expect_true(all(is.na(written$merge)))
-  expect_false(any(written$keyword == written$merge_into))
-  expect_identical(subset(written, keyword == "NLP")$merge_into, "NATURAL LANGUAGE PROCESSING")
+  expect_false("merge" %in% names(written))
+  expect_setequal(written$status, c("single", "confirmed", "needs_revision"))
+  expect_identical(subset(written, keyword == "CHAT-BOTS")$status, "confirmed")
+  expect_identical(subset(written, keyword == "CHAT-BOTS")$name, "CHATBOT")
+  expect_identical(subset(written, keyword == "NLP")$status, "needs_revision")
+  expect_identical(subset(written, keyword == "NLP")$name, "NATURAL LANGUAGE PROCESSING")
   expect_identical(subset(written, keyword == "NLP")$source, "acronym")
-  expect_identical(subset(written, keyword == "NLP")$merge_into_papers, 1L)
-  expect_true(all(written$example %in% papers$TI))
+  expect_identical(subset(written, keyword == "INTERPERSONAL INJUSTICE")$name, "INTERPERSONAL JUSTICE")
+  # No name rows; the group whose name has most papers comes first.
+  expect_false(any(written$keyword == written$name & written$status != "single"))
+  expect_identical(written$name[1], "CHATBOT")
+  expect_true(all(subset(written, status != "confirmed")$example %in% papers$TI))
   prompt <- readLines(sub("\\.csv$", "_prompt.txt", sheet))
-  expect_true(any(grepl("merge_into", prompt)))
+  expect_true(any(grepl("needs_revision", prompt)))
   expect_error(kc(papers, level = "all", decisions = sheet), class = "saqrmisc_bad_input")
 })
 
-test_that("confirmed spellings sit on one row per keyword, in their own table", {
-  sheet <- tempfile(fileext = ".csv")
-  kc(decision_papers(), columns = c("DE", "ID"), level = "all", decisions = sheet, min_papers = 1)
-  confirmed <- part(sheet, "confirmed")
-  expect_named(confirmed, c("keyword", "papers", "also_written_as", "source", "merge"))
-  expect_false(anyDuplicated(confirmed$keyword) > 0L)
-  expect_identical(subset(confirmed, keyword == "CHATBOT")$also_written_as, "CHAT-BOTS (1); CHATBOTS (1)")
-  expect_identical(subset(confirmed, keyword == "CHATBOT")$papers, 3L)
-  expect_true(all(confirmed$merge == "yes"))
-  expect_false("CHAT-BOTS" %in% .kr_read_csv(sheet)$keyword)
-})
-
-test_that("a csv sheet never replaces its companion tables", {
-  sheet <- tempfile(fileext = ".csv")
-  writeLines("taken", sub("\\.csv$", "_confirmed.csv", sheet))
-  expect_error(kc(decision_papers(), level = "all", decisions = sheet, min_papers = 1), class = "saqrmisc_bad_input")
-})
-
-test_that("invisible characters, wrapping quotes and a trailing star are cleanup, not merges", {
-  papers <- data.frame(DE = c("DEPRESSION", "DEPRESSION‌", "'DEPRESSION'", "DEPRESSION*", "DEPRE­SSION",
-                              "DON'T"))
-  expect_identical(kc(papers)$DE, c(rep("DEPRESSION", 5L), "DON'T"))
-  sheet <- tempfile(fileext = ".csv")
-  kc(papers, level = "all", decisions = sheet, min_papers = 1)
-  expect_identical(nrow(part(sheet, "confirmed")), 0L)
-})
-
-test_that("pairs spelled alike but with another first letter or a prefix are not proposed", {
-  expect_identical(.kw_unlike_words(c("DEPRESSION", "PREADOLESCENTS", "SOCIAL INJUSTICE", "SELF-ESTEEM SCALE",
-                                      "SUBSAMPLE", "CHATBOTS ASSISTANT"),
-                                    c("REPRESSION", "ADOLESCENTS", "SOCIAL JUSTICE", "SELF ESTEEM SCALES",
-                                      "SAMPLE", "CHATBOT ASSISTANT")),
-                   c(TRUE, TRUE, TRUE, FALSE, TRUE, FALSE))
-  papers <- data.frame(TI = "t", DE = c("DEPRESSION; ADOLESCENTS", "REPRESSION; PREADOLESCENTS",
-                                        "SOCIAL JUSTICE; SOCIAL INJUSTICE"))
-  sheet <- tempfile(fileext = ".csv")
-  kc(papers, level = "all", decisions = sheet, min_papers = 1)
-  expect_identical(nrow(.kr_read_csv(sheet)), 0L)
-})
-
-test_that("min_papers keeps rare keywords out of every table", {
+test_that("min_papers keeps rare keywords out of the sheet", {
   sheet <- tempfile(fileext = ".csv")
   kc(decision_papers(), level = "all", decisions = sheet, min_papers = 2)
-  expect_true(all(.kr_read_csv(sheet)$papers >= 2))
-  expect_true(all(part(sheet, "confirmed")$papers >= 2))
-  expect_true(all(part(sheet, "all_keywords")$papers >= 2))
-  expect_false("CONVERSATIONAL AGENT" %in% part(sheet, "all_keywords")$keyword)
+  written <- .kr_read_csv(sheet)
+  expect_true(all(subset(written, status != "confirmed")$papers >= 2))
+  expect_false("INTERPERSONAL INJUSTICE" %in% written$keyword)
 })
 
-test_that("every keyword in min_papers or more papers is in all_keywords, once", {
-  sheet <- tempfile(fileext = ".csv")
-  kc(decision_papers(), level = "all", decisions = sheet, min_papers = 1)
-  everything <- part(sheet, "all_keywords")
-  expect_named(everything, c("keyword", "keyword_backup", "papers", "example"))
-  expect_true(all(c("CONVERSATIONAL AGENT", "SELF ESTEEM SCALE", "NLP") %in% everything$keyword))
-  expect_false(anyDuplicated(everything$keyword) > 0L)
-})
-
-test_that("keywords_merge applies yes, keeps no, and undoes a confirmed keyword marked no", {
+test_that("keywords_merge applies yes, keeps no, and undoes a confirmed merge marked no", {
   sheet <- tempfile(fileext = ".csv")
   papers <- decision_papers()
   kc(papers, columns = c("DE", "ID"), level = "all", decisions = sheet, min_papers = 1)
-  rewrite_part(sheet, \(t) within(t, merge <- ifelse(keyword == "NLP", "Yes ", "no")))
-  rewrite_part(sub("\\.csv$", "_confirmed.csv", sheet), \(t) within(t, merge <- ifelse(keyword == "SELF ESTEEM", "no", NA)))
-  expect_message(out <- keywords_merge(papers, decisions = sheet, columns = c("DE", "ID")),
-                 "1 merge\\(s\\) applied, 1 confirmed keyword\\(s\\) kept apart, 0 row\\(s\\) unanswered")
+  write_checked(sheet, c(NLP = "yes", "INTERPERSONAL INJUSTICE" = "no", "SELF-ESTEEM" = "No "))
+  out <- suppressMessages(keywords_merge(papers, decisions = sheet, columns = c("DE", "ID")))
   expect_identical(out$DE[2], "CHATBOT; NATURAL LANGUAGE PROCESSING")
+  expect_identical(out$DE[5], "INTERPERSONAL INJUSTICE; NATURAL LANGUAGE PROCESSING")
   expect_identical(out$DE[7], "SELF-ESTEEM")
   expect_identical(out$ID[1], "CHATBOT")
-  # The data before or after cleaning gives the same result, but for the undone merge.
+  # The data before or after cleaning gives the same result.
   cleaned <- kc(papers, columns = c("DE", "ID"))
   expect_identical(suppressMessages(keywords_merge(cleaned, decisions = sheet, columns = c("DE", "ID")))$DE[-7],
                    out$DE[-7])
+  expect_message(keywords_merge(papers, decisions = sheet), "1 merge\\(s\\) and renames applied, 1 confirmed")
 })
 
-test_that("an edited merge_into sends the keyword there; rows match on keyword_backup", {
+test_that("rows match on keyword_backup", {
   sheet <- tempfile(fileext = ".csv")
   papers <- decision_papers()
   kc(papers, level = "all", decisions = sheet, min_papers = 1)
-  rewrite_part(sheet, \(t) within(t, {
-    merge <- ifelse(keyword_backup == "NLP", "yes", NA)
-    merge_into <- ifelse(keyword_backup == "NLP", "LANGUAGE TECHNOLOGY", merge_into)
-    keyword <- ifelse(keyword_backup == "NLP", "edited by hand", keyword)
-  }))
+  checked <- .kr_read_csv(sheet)
+  checked$keyword[checked$keyword_backup == "NLP"] <- "edited by hand"
+  checked$merge[checked$keyword_backup == "NLP"] <- "yes"
+  unlink(sheet)
+  .kr_write_csv(checked, sheet)
   out <- suppressMessages(keywords_merge(papers, decisions = sheet))
-  expect_identical(out$DE[2], "CHATBOT; LANGUAGE TECHNOLOGY")
-  expect_identical(out$DE[1], "CHATBOT; NATURAL LANGUAGE PROCESSING")
+  expect_identical(out$DE[1:3], rep("CHATBOT; NATURAL LANGUAGE PROCESSING", 3L))
 })
 
 test_that("a sheet is validated", {
   bad <- tempfile(fileext = ".csv")
-  .kr_write_csv(data.frame(keyword = "A", merge_into = "B", merge = "maybe"), bad)
+  .kr_write_csv(data.frame(keyword = "A", name = "B", status = "needs_revision", merge = "maybe"), bad)
   expect_error(keywords_merge(decision_papers(), decisions = bad), class = "saqrmisc_bad_input")
   no_cols <- tempfile(fileext = ".csv")
   .kr_write_csv(data.frame(keyword = "A", merge = "yes"), no_cols)
@@ -394,59 +347,73 @@ test_that("a sheet is validated", {
   expect_error(keywords_merge(decision_papers(), decisions = tempfile(fileext = ".csv")), class = "saqrmisc_bad_input")
 })
 
-test_that("the sheet round-trips through .xlsx, one tab per table", {
+test_that("the sheet round-trips through .xlsx, with the prompt in a second tab", {
   skip_if_not_installed("readxl")
   skip_if_not_installed("writexl")
   sheet <- tempfile(fileext = ".xlsx")
   kc(decision_papers(), level = "all", decisions = sheet, min_papers = 1)
-  expect_identical(readxl::excel_sheets(sheet), c("decisions", "confirmed", "all_keywords", "prompt"))
-  checked <- as.data.frame(readxl::read_excel(sheet, sheet = "decisions"))
-  checked$merge <- ifelse(checked$keyword == "NLP", "yes", NA)
-  confirmed <- as.data.frame(readxl::read_excel(sheet, sheet = "confirmed"))
-  confirmed$merge <- ifelse(confirmed$keyword == "CHATBOT", "no", NA)
+  expect_identical(readxl::excel_sheets(sheet), c("decisions", "prompt"))
+  checked <- as.data.frame(readxl::read_excel(sheet))
+  checked$merge[checked$keyword == "NLP"] <- "yes"
   unlink(sheet)
-  writexl::write_xlsx(list(decisions = checked, confirmed = confirmed), sheet)
+  writexl::write_xlsx(list(decisions = checked), sheet)
   out <- suppressMessages(keywords_merge(decision_papers(), decisions = sheet))
-  expect_identical(out$DE[1:2], c("CHATBOT; NATURAL LANGUAGE PROCESSING", "CHAT-BOTS; NATURAL LANGUAGE PROCESSING"))
+  expect_identical(out$DE[2], "CHATBOT; NATURAL LANGUAGE PROCESSING")
 })
 
-test_that("by = 'edit' maps each untouched keyword_backup to its edited keyword, from both tables", {
+test_that("every keyword in min_papers or more papers is in the sheet, grouped or single", {
+  sheet <- tempfile(fileext = ".csv")
+  kc(decision_papers(), level = "all", decisions = sheet, min_papers = 1)
+  written <- .kr_read_csv(sheet)
+  expect_true(all(c("CONVERSATIONAL AGENT", "SELF ESTEEM SCALE") %in% subset(written, status == "single")$keyword))
+  expect_false(anyDuplicated(subset(written, status != "confirmed")$keyword) > 0L)
+})
+
+test_that("by = 'edit' maps each untouched keyword_backup to its edited keyword", {
   sheet <- tempfile(fileext = ".csv")
   papers <- decision_papers()
   kc(papers, columns = c("DE", "ID"), level = "all", decisions = sheet, min_papers = 1)
-  # OpenRefine-style on all_keywords: a keyword renamed, a case-only edit; the
-  # same NLP edit in both tables counts once.
-  rewrite_part(sub("\\.csv$", "_all_keywords.csv", sheet), \(t) within(t, {
-    keyword[keyword_backup == "CHATBOT"] <- "CONVERSATIONAL AGENT"
-    keyword[keyword_backup == "INTERPERSONAL JUSTICE"] <- "interpersonal justice"
-    keyword[keyword_backup == "NLP"] <- "NATURAL LANGUAGE PROCESSING"
-  }))
-  rewrite_part(sheet, \(t) within(t, {
-    keyword[keyword_backup == "NLP"] <- "NATURAL LANGUAGE PROCESSING"
-    merge <- "no"
-  }))
+  edited <- .kr_read_csv(sheet)
+  # OpenRefine-style: a candidate edited into its name, a single keyword renamed, a case-only edit.
+  edited$keyword[edited$keyword_backup == "NLP"] <- "Natural Language Processing"
+  edited$keyword[edited$keyword_backup == "CONVERSATIONAL AGENT"] <- "CHATBOT"
+  edited$keyword[edited$keyword_backup == "INTERPERSONAL INJUSTICE"] <- "interpersonal injustice"
+  edited$merge <- "no"
+  unlink(sheet)
+  .kr_write_csv(edited, sheet)
   expect_message(out <- keywords_merge(papers, decisions = sheet, by = "edit", columns = c("DE", "ID")),
                  "2 edited keyword\\(s\\) applied, 0 to a spelling not in the data")
-  # CHAT-BOTS and CHATBOTS follow CHATBOT; NLP becomes the long form; case alone changes nothing.
-  expect_identical(out$DE[1:3], rep("CONVERSATIONAL AGENT; NATURAL LANGUAGE PROCESSING", 3L))
-  expect_identical(out$ID[1], "CONVERSATIONAL AGENT")
-  expect_identical(out$DE[6], "INTERPERSONAL JUSTICE")
+  # NLP becomes the long form; CONVERSATIONAL AGENT becomes CHATBOT; case alone changes nothing.
+  expect_identical(out$DE[1:3], rep("CHATBOT; NATURAL LANGUAGE PROCESSING", 3L))
+  expect_identical(out$DE[4], "CHATBOT; INTERPERSONAL JUSTICE")
+  expect_identical(out$DE[5], "INTERPERSONAL INJUSTICE; NATURAL LANGUAGE PROCESSING")
+})
+
+test_that("by = 'edit' on a confirmed row moves only that spelling", {
+  sheet <- tempfile(fileext = ".csv")
+  papers <- decision_papers()
+  kc(papers, columns = c("DE", "ID"), level = "all", decisions = sheet, min_papers = 1)
+  edited <- .kr_read_csv(sheet)
+  edited$keyword[edited$keyword_backup == "CHAT-BOTS"] <- "CHAT BOTS (OTHER)"
+  unlink(sheet)
+  .kr_write_csv(edited, sheet)
+  out <- suppressMessages(keywords_merge(papers, decisions = sheet, by = "edit", columns = c("DE", "ID")))
+  expect_identical(out$DE[2], "CHAT BOTS OTHER; NLP")
+  expect_identical(out$DE[1], "CHATBOT; NATURAL LANGUAGE PROCESSING")
+  expect_identical(out$ID[1], "CHATBOT")
 })
 
 test_that("by = 'edit' needs keyword and keyword_backup", {
   sheet <- tempfile(fileext = ".csv")
-  .kr_write_csv(data.frame(keyword = "A", merge_into = "A", merge = NA), sheet)
+  .kr_write_csv(data.frame(keyword = "A", name = "A", status = "name", merge = NA), sheet)
   expect_error(keywords_merge(decision_papers(), decisions = sheet, by = "edit"), class = "saqrmisc_bad_input")
 })
 
-test_that("answers can come from another column; empty rows are not merged and are counted", {
+test_that("invisible characters and odd spaces are cleaned, so look-alike spellings are one keyword", {
+  papers <- data.frame(DE = c("DEPRESSION", "DEPRESSION\u200c", "\u00a0DEPRESSION", "MENTAL\u00a0HEALTH",
+                              "MENTAL HEALTH", "DEPRE\u00adSSION"))
+  expect_identical(kc(papers)$DE, c(rep("DEPRESSION", 3L), rep("MENTAL HEALTH", 2L), "DEPRESSION"))
   sheet <- tempfile(fileext = ".csv")
-  papers <- decision_papers()
   kc(papers, level = "all", decisions = sheet, min_papers = 1)
-  rewrite_part(sheet, \(t) within(t, Tomerge <- ifelse(keyword == "NLP", "yes", NA)))
-  out <- suppressMessages(keywords_merge(papers, decisions = sheet, answers = "Tomerge"))
-  expect_identical(out$DE[2], "CHATBOT; NATURAL LANGUAGE PROCESSING")
-  expect_message(keywords_merge(papers, decisions = sheet), "0 merge\\(s\\) applied, 0 confirmed keyword\\(s\\) kept apart, 1 row\\(s\\) unanswered")
-  expect_error(keywords_merge(papers, decisions = sheet, answers = "absent"), class = "saqrmisc_bad_input")
-  expect_error(keywords_merge(papers, decisions = sheet, answers = NA_character_), class = "saqrmisc_bad_input")
+  expect_false(any(.kr_read_csv(sheet)$status == "confirmed"))
 })
