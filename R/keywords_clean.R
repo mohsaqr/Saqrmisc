@@ -32,11 +32,20 @@
 #' every merge to the `decisions` sheet, for a person, a model or a tool such
 #' as OpenRefine to check outside R, with a short prompt for a model beside
 #' it. The sheet has one group per `name` (the keyword the group becomes): its `confirmed`
-#' merges (the steps above) and its `needs_revision` candidates. A candidate is a keyword spelled
-#' like the name (character trigrams, Jaccard 0.7 or more, found by MinHash,
-#' never by comparing all pairs) or an acronym whose long form is written in
-#' brackets elsewhere in the data. Spelled alike is not the same concept
-#' (`JUSTICE` / `INJUSTICE`), which is why candidates wait for a `yes`. Only
+#' merges (the steps above) and its `needs_revision` candidates, found in
+#' six ways (`source`), none by comparing all pairs:
+#' * `spelling`: character trigrams, Jaccard 0.7 or more, by MinHash;
+#' * `word order`: the same words in another order (`PSYCHOLOGY, CLINICAL`);
+#' * `ngram`: the same letter pairs (OpenRefine's 2-gram fingerprint);
+#' * `stem`: the words share their stems (Porter; needs SnowballC);
+#' * `acronym`: an acronym whose long form is written in brackets elsewhere
+#'   in the data;
+#' * `initials`: an acronym spelled by the initials of a keyword
+#'   (`NLP`, `NATURAL LANGUAGE PROCESSING`).
+#'
+#' Most of these propose some wrong pairs (`APPLICATION` /
+#' `APPLICABILITY` share a stem), which is why candidates wait for a `yes`. Spelled alike is not the same concept
+#' (`JUSTICE` / `INJUSTICE`). Only
 #' keywords in at least `min_papers` papers go to the sheet, each of them,
 #' grouped or alone (`single`), so a tool such as OpenRefine can also cluster
 #' the whole list itself. Bring the checked sheet back with [keywords_merge()]:
@@ -56,7 +65,7 @@
 #'   does no harm), `status` (`single` for a keyword in no group,
 #'   `confirmed` or `needs_revision`),
 #'   `papers`, `source` (`same spelling`,
-#'   `your table`, `spelling`, `acronym`) and `example` (the title of a paper
+#'   `your table`, or the ways a candidate was found, see above) and `example` (the title of a paper
 #'   using the keyword). The prompt goes to `<sheet>_prompt.txt` and, in an
 #'   `.xlsx`, to a second tab `prompt`.
 #' @param min_papers Only keywords in at least this many papers go into the
@@ -93,6 +102,9 @@
 #' Broder, A. Z. (1997). On the resemblance and containment of documents.
 #' *Proceedings of Compression and Complexity of Sequences*, 21-29.
 #' \doi{10.1109/SEQUEN.1997.666900}
+#'
+#' Porter, M. F. (1980). An algorithm for suffix stripping. *Program*,
+#' 14(3), 130-137. \\doi{10.1108/eb046814}
 #'
 #' Leskovec, J., Rajaraman, A., & Ullman, J. D. (2020). *Mining of Massive
 #' Datasets* (3rd ed.), chapter 3. Cambridge University Press.
@@ -661,13 +673,19 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
   # Candidates: keywords spelled alike, and acronyms with their long forms.
   eligible <- which(papers >= min_papers)
   candidates <- terms[eligible]
-  spelling <- .kw_minhash_pairs(candidates)
+  similar <- .kw_similar_pairs(candidates, papers[eligible])
   acronym <- .kw_acronym_pairs(vocabulary, candidates, papers[eligible])
-  group <- .kw_groups(spelling, acronym, papers[eligible])
+  acronym$source <- rep("acronym", nrow(acronym))
+  initials <- .kw_initials_pairs(candidates, papers[eligible])
+  acronym <- rbind(acronym, initials[!paste(initials$a, initials$b) %in% paste(acronym$a, acronym$b), ])
+  group <- .kw_groups(similar, acronym, papers[eligible])
   in_group <- group %in% group[duplicated(group)]
-  source <- vapply(seq_along(candidates), \(i) paste(c(
-    if (i %in% c(spelling$a, spelling$b)) "spelling",
-    if (i %in% c(acronym$a, acronym$b)) "acronym"), collapse = "+"), character(1))
+  # Each keyword's sources: those of every pair it is in.
+  links <- rbind(similar[c("a", "b", "source")], acronym[c("a", "b", "source")])
+  labels <- strsplit(c(links$source, links$source), "+", fixed = TRUE)
+  holder <- rep(c(links$a, links$b), lengths(labels))
+  source <- vapply(split(as.character(unlist(labels)), factor(holder, levels = seq_along(candidates))),
+                   \(x) paste(sort(unique(x)), collapse = "+"), character(1), USE.NAMES = FALSE)
   member <- which(in_group)
   proposed <- data.frame(keyword = candidates[member], name = candidates[group[member]],
                          status = ifelse(member == group[member], "name", "needs_revision"),
@@ -782,18 +800,27 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
   if (is.null(pairs)) return(none)
   pairs <- unique(data.frame(a = pmin(pairs[, 1L], pairs[, 2L]), b = pmax(pairs[, 1L], pairs[, 2L])))
 
-  # Exact Jaccard, vectorised: each trigram of a is looked up among b's.
-  offset <- c(0L, cumsum(sizes))
-  per_pair <- sizes[pairs$a]
-  pair_of <- rep(seq_len(nrow(pairs)), per_pair)
-  gram_of_a <- code[rep(offset[pairs$a], per_pair) + sequence(per_pair)]
-  width <- max(code) + 1
-  in_b <- (pairs$b[pair_of] * width + gram_of_a) %in% (term_of * width + code)
-  shared <- tabulate(pair_of[in_b], nbins = nrow(pairs))
-  jaccard <- shared / (sizes[pairs$a] + sizes[pairs$b] - shared)
+  jaccard <- .kw_jaccard(grams, pairs$a, pairs$b)
   kept <- cbind(pairs, jaccard = jaccard)[jaccard >= threshold, ]
   rownames(kept) <- NULL
   kept
+}
+
+# Exact Jaccard similarity of the trigrams of terms a and b (indices into the
+# terms of `grams`), vectorised: each trigram of a is looked up among b's.
+.kw_jaccard <- function(grams, a, b) {
+  if (length(a) == 0L) return(numeric())
+  term_of <- grams$term
+  code <- grams$code
+  sizes <- tabulate(term_of, nbins = max(term_of, a, b))
+  offset <- c(0L, cumsum(sizes))
+  per_pair <- sizes[a]
+  pair_of <- rep(seq_along(a), per_pair)
+  gram_of_a <- code[rep(offset[a], per_pair) + sequence(per_pair)]
+  width <- max(code) + 1
+  in_b <- (b[pair_of] * width + gram_of_a) %in% (term_of * width + code)
+  shared <- tabulate(pair_of[in_b], nbins = length(a))
+  shared / (sizes[a] + sizes[b] - shared)
 }
 
 # Each term's distinct character trigrams as integer codes, grouped by term
@@ -806,6 +833,106 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
   code <- match(gram, unique(gram))
   distinct <- !duplicated(term * (max(code) + 1) + code)
   list(term = term[distinct], code = code[distinct])
+}
+
+# Every pair of keywords alike in spelling: MinHash on trigrams (`spelling`),
+# and keys two keywords share, as OpenRefine clusters (key collision): the
+# words in any order (`word order`), the letter pairs (`ngram`) and the
+# word stems (`stem`, Porter; needs SnowballC). A key links each keyword to the one with
+# most papers sharing it. Returns a, b, the trigram Jaccard and the sources.
+.kw_similar_pairs <- function(candidates, papers) {
+  spelling <- .kw_minhash_pairs(candidates)
+  spelling$source <- rep("spelling", nrow(spelling))
+  keys <- list("word order" = .kw_key_word_set(candidates), "ngram" = .kw_key_bigrams(candidates),
+               "stem" = .kw_key_by_word(candidates, .kw_stem, "SnowballC"))
+  keyed <- do.call(rbind, Map(\(key, label) .kw_key_pairs(key, papers, label), Filter(Negate(is.null), keys),
+                              names(Filter(Negate(is.null), keys))))
+  pairs <- rbind(spelling[c("a", "b", "source")], keyed)
+  if (nrow(pairs) == 0L) return(data.frame(a = integer(), b = integer(), jaccard = numeric(), source = character()))
+  low <- pmin(pairs$a, pairs$b)
+  high <- pmax(pairs$a, pairs$b)
+  pair <- match(paste(low, high), unique(paste(low, high)))
+  first <- !duplicated(pair)
+  out <- data.frame(a = low[first], b = high[first], stringsAsFactors = FALSE)
+  out$source <- vapply(split(pairs$source, factor(pair, levels = seq_len(nrow(out)))),
+                       \(x) paste(unique(x), collapse = "+"), character(1), USE.NAMES = FALSE)
+  out$jaccard <- .kw_jaccard(.kw_trigrams(candidates), out$a, out$b)
+  out
+}
+
+# Star pairs from a key: each keyword with the keyword in most papers that
+# shares its key. Keywords with no key (NA) are left out.
+.kw_key_pairs <- function(key, papers, label) {
+  by_key <- order(key, -papers, seq_along(key), method = "radix")
+  heads <- by_key[!duplicated(key[by_key])]
+  head_of <- heads[match(key, key[heads])]
+  member <- which(!is.na(key) & head_of != seq_along(key))
+  data.frame(a = member, b = head_of[member], source = rep(label, length(member)), stringsAsFactors = FALSE)
+}
+
+.kw_words <- function(terms) {
+  lapply(strsplit(terms, "[^\\p{L}\\p{N}]+", perl = TRUE), \(w) w[nzchar(w)])
+}
+
+# The distinct words, sorted: PSYCHOLOGY, CLINICAL = CLINICAL PSYCHOLOGY.
+.kw_key_word_set <- function(terms) {
+  vapply(.kw_words(terms), \(w) paste(sort(unique(w), method = "radix"), collapse = " "), character(1))
+}
+
+# The distinct letter pairs, sorted (OpenRefine's 2-gram fingerprint), for
+# keywords of five or more letters; shorter ones (acronyms) have no key.
+.kw_key_bigrams <- function(terms) {
+  letters_only <- gsub("[^\\p{L}\\p{N}]", "", terms, perl = TRUE)
+  n <- nchar(letters_only)
+  vapply(seq_along(terms), \(i) {
+    if (n[i] < 5L) return(NA_character_)
+    pairs <- substring(letters_only[i], seq_len(n[i] - 1L), seq_len(n[i] - 1L) + 1L)
+    paste(sort(unique(pairs), method = "radix"), collapse = "")
+  }, character(1))
+}
+
+# Each Latin word of four or more letters replaced by `transform` (a stem), in word order; other words stay as written. NULL, with a message,
+# when the package `transform` needs is missing.
+.kw_key_by_word <- function(terms, transform, package) {
+  if (!requireNamespace(package, quietly = TRUE)) {
+    message(sprintf("keywords: the %s package is not installed, so no `stem` candidates; install.packages(\"%s\")",
+                    package, package))
+    return(NULL)
+  }
+  words <- .kw_words(terms)
+  flat <- unlist(words)
+  latin <- grepl("^[A-Z]{4,}$", flat)
+  distinct <- unique(flat[latin])
+  flat[latin] <- transform(distinct)[match(flat[latin], distinct)]
+  holder <- factor(rep(seq_along(terms), lengths(words)), levels = seq_along(terms))
+  key <- vapply(split(flat, holder), paste, character(1), collapse = " ", USE.NAMES = FALSE)
+  key[!nzchar(key)] <- NA_character_
+  key
+}
+
+.kw_stem <- function(words) toupper(SnowballC::wordStem(tolower(words), language = "english"))
+
+# Pairs (acronym, long form) by initials: a one-word keyword whose letters
+# are the initials of a keyword of several words (NLP, NATURAL LANGUAGE
+# PROCESSING), even when no paper writes them together; up to three long
+# forms per acronym, most papers first.
+.kw_initials_pairs <- function(candidates, papers) {
+  none <- data.frame(a = integer(), b = integer(), source = character())
+  letters_only <- gsub("[^A-Z0-9]", "", candidates)
+  short <- which(!grepl(" ", candidates) & nchar(letters_only) >= 2L & nchar(letters_only) <= 8L &
+                   grepl("[A-Z]", letters_only))
+  long <- which(grepl(" ", candidates))
+  if (length(short) == 0L || length(long) == 0L) return(none)
+  spelled <- lapply(candidates[long], .kw_spellings)
+  spellings <- data.frame(b = rep(long, lengths(spelled)), spelling = unlist(spelled))
+  wanted <- lapply(candidates[short], .kw_acronym_letters)
+  acronyms <- data.frame(a = rep(short, lengths(wanted)), spelling = unlist(wanted))
+  pairs <- unique(merge(acronyms, spellings, by = "spelling")[c("a", "b")])
+  pairs <- pairs[nchar(letters_only[pairs$a]) < nchar(letters_only[pairs$b]), ]
+  if (nrow(pairs) == 0L) return(none)
+  pairs <- pairs[order(pairs$a, -papers[pairs$b], pairs$b, method = "radix"), ]
+  pairs <- pairs[stats::ave(pairs$a, pairs$a, FUN = seq_along) <= 3L, ]
+  data.frame(a = pairs$a, b = pairs$b, source = rep("initials", nrow(pairs)))
 }
 
 # Pairs (acronym, long form) among the candidates: a keyword that is an

@@ -1,3 +1,12 @@
+# Saqrmisc 0.9.17
+
+* `keywords_clean(level = "all")` finds candidates four more ways, each named
+  in `source`: `word order` (`PSYCHOLOGY, CLINICAL`), `ngram` (OpenRefine's
+  2-gram fingerprint), `stem` (Porter, with SnowballC) and `initials` (`NLP`
+  for `NATURAL LANGUAGE PROCESSING` without brackets in the data). On 94,000
+  keywords they add about 20 s. SnowballC is a suggested package; without it
+  `stem` is skipped with a message.
+
 # Saqrmisc 0.9.16
 
 * The keyword sheet of 0.9.15 is withdrawn; the sheet is the one of 0.9.13,

@@ -32,7 +32,7 @@ columns: `group`, `name`, `keyword`, `keyword_backup` (a copy of
 does no harm), `status` (`single` for a keyword in no group,
 `confirmed` or `needs_revision`),
 `papers`, `source` (`same spelling`,
-`your table`, `spelling`, `acronym`) and `example` (the title of a paper
+`your table`, or the ways a candidate was found, see above) and `example` (the title of a paper
 using the keyword). The prompt goes to `<sheet>_prompt.txt` and, in an
 `.xlsx`, to a second tab `prompt`.}
 
@@ -89,11 +89,20 @@ The confirmed steps, applied with no review:
 every merge to the `decisions` sheet, for a person, a model or a tool such
 as OpenRefine to check outside R, with a short prompt for a model beside
 it. The sheet has one group per `name` (the keyword the group becomes): its `confirmed`
-merges (the steps above) and its `needs_revision` candidates. A candidate is a keyword spelled
-like the name (character trigrams, Jaccard 0.7 or more, found by MinHash,
-never by comparing all pairs) or an acronym whose long form is written in
-brackets elsewhere in the data. Spelled alike is not the same concept
-(`JUSTICE` / `INJUSTICE`), which is why candidates wait for a `yes`. Only
+merges (the steps above) and its `needs_revision` candidates, found in
+six ways (`source`), none by comparing all pairs:
+* `spelling`: character trigrams, Jaccard 0.7 or more, by MinHash;
+* `word order`: the same words in another order (`PSYCHOLOGY, CLINICAL`);
+* `ngram`: the same letter pairs (OpenRefine's 2-gram fingerprint);
+* `stem`: the words share their stems (Porter; needs SnowballC);
+* `acronym`: an acronym whose long form is written in brackets elsewhere
+  in the data;
+* `initials`: an acronym spelled by the initials of a keyword
+  (`NLP`, `NATURAL LANGUAGE PROCESSING`).
+
+Most of these propose some wrong pairs (`APPLICATION` /
+`APPLICABILITY` share a stem), which is why candidates wait for a `yes`. Spelled alike is not the same concept
+(`JUSTICE` / `INJUSTICE`). Only
 keywords in at least `min_papers` papers go to the sheet, each of them,
 grouped or alone (`single`), so a tool such as OpenRefine can also cluster
 the whole list itself. Bring the checked sheet back with [keywords_merge()]:
@@ -131,6 +140,9 @@ utils::read.csv(sheet)
 Broder, A. Z. (1997). On the resemblance and containment of documents.
 *Proceedings of Compression and Complexity of Sequences*, 21-29.
 \doi{10.1109/SEQUEN.1997.666900}
+
+Porter, M. F. (1980). An algorithm for suffix stripping. *Program*,
+14(3), 130-137. \\doi{10.1108/eb046814}
 
 Leskovec, J., Rajaraman, A., & Ullman, J. D. (2020). *Mining of Massive
 Datasets* (3rd ed.), chapter 3. Cambridge University Press.

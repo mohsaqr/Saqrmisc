@@ -417,3 +417,34 @@ test_that("invisible characters and odd spaces are cleaned, so look-alike spelli
   kc(papers, level = "all", decisions = sheet, min_papers = 1)
   expect_false(any(.kr_read_csv(sheet)$status == "confirmed"))
 })
+
+test_that("candidates come from word order, initials and stem, each named in source", {
+  skip_if_not_installed("SnowballC")
+  papers <- data.frame(TI = sprintf("T%d", 1:8), DE = c(
+    "CLINICAL PSYCHOLOGY; NATURAL LANGUAGE PROCESSING; BEHAVIOR", "PSYCHOLOGY, CLINICAL; NLP; BEHAVIOUR",
+    "WORK-FAMILY CONFLICT; PSYCHOLOGICAL", "FAMILY-WORK CONFLICT; PSYCHOLOGY",
+    "WORK-FAMILY CONFLICT; ARTIFICIAL INTELLIGENCE", "AI; CLINICAL PSYCHOLOGY", "ARTIFICIAL INTELLIGENCE; BEHAVIOR",
+    "PSYCHOLOGY"))
+  sheet <- tempfile(fileext = ".csv")
+  out <- kc(papers, level = "all", decisions = sheet, min_papers = 1)
+  expect_identical(out, papers)
+  asked <- subset(.kr_read_csv(sheet), status == "needs_revision", select = c(keyword, name, source))
+  expected <- data.frame(
+    keyword = c("AI", "PSYCHOLOGY, CLINICAL", "PSYCHOLOGICAL", "FAMILY-WORK CONFLICT", "NLP"),
+    name = c("ARTIFICIAL INTELLIGENCE", "CLINICAL PSYCHOLOGY", "PSYCHOLOGY", "WORK-FAMILY CONFLICT",
+             "NATURAL LANGUAGE PROCESSING"),
+    source = c("initials", "word order", "stem", "word order", "initials"))
+  sorted <- \(t) { t <- t[order(t$keyword), ]; rownames(t) <- NULL; t }
+  expect_identical(sorted(asked), sorted(expected))
+})
+
+test_that("key pairs link each keyword to the one in most papers sharing its key", {
+  expect_identical(.kw_key_pairs(c("x", "y", "x", NA, "x"), c(1, 5, 9, 3, 2), "k"),
+                   data.frame(a = c(1L, 5L), b = c(3L, 3L), source = c("k", "k")))
+  expect_identical(.kw_key_word_set(c("PSYCHOLOGY, CLINICAL", "CLINICAL PSYCHOLOGY")),
+                   rep("CLINICAL PSYCHOLOGY", 2L))
+  expect_true(is.na(.kw_key_bigrams("CDC")))
+  expect_identical(.kw_initials_pairs(c("NLP", "NATURAL LANGUAGE PROCESSING", "NEW LIFE PLAN"), c(5, 9, 2)),
+                   data.frame(a = c(1L, 1L), b = c(2L, 3L), source = c("initials", "initials")))
+  expect_identical(.kw_jaccard(.kw_trigrams(c("ABCD", "ABCE")), 1L, 2L), 1 / 3)
+})
