@@ -27,14 +27,22 @@ writes every merge to the \`decisions\` sheet, for a person, a model or
 a tool such as OpenRefine to check outside R, with a short prompt for a
 model beside it. The sheet has one group per \`name\` (the keyword the
 group becomes): its \`confirmed\` merges (the steps above) and its
-\`needs_revision\` candidates. A candidate is a keyword spelled like the
-name (character trigrams, Jaccard 0.7 or more, found by MinHash, never
-by comparing all pairs) or an acronym whose long form is written in
-brackets elsewhere in the data. Spelled alike is not the same concept
-(\`JUSTICE\` / \`INJUSTICE\`), which is why candidates wait for a
-\`yes\`. Only keywords in at least \`min_papers\` papers go to the
-sheet, each of them, grouped or alone (\`single\`), so a tool such as
-OpenRefine can also cluster the whole list itself. Bring the checked
+\`needs_revision\` candidates, found in six ways (\`source\`), none by
+comparing all pairs: \* \`spelling\`: character trigrams, Jaccard 0.7 or
+more, by MinHash; \* \`word order\`: the same words in another order
+(\`PSYCHOLOGY, CLINICAL\`); \* \`ngram\`: the same letter pairs
+(OpenRefine's 2-gram fingerprint); \* \`stem\`: the words share their
+stems (Porter; needs SnowballC); \* \`acronym\`: an acronym whose long
+form is written in brackets elsewhere in the data; \* \`initials\`: an
+acronym spelled by the initials of a keyword (\`NLP\`, \`NATURAL
+LANGUAGE PROCESSING\`).
+
+Most of these propose some wrong pairs (\`APPLICATION\` /
+\`APPLICABILITY\` share a stem), which is why candidates wait for a
+\`yes\`. Spelled alike is not the same concept (\`JUSTICE\` /
+\`INJUSTICE\`). Only keywords in at least \`min_papers\` papers go to
+the sheet, each of them, grouped or alone (\`single\`), so a tool such
+as OpenRefine can also cluster the whole list itself. Bring the checked
 sheet back with \[keywords_merge()\]: by its \`merge\` answers, or by
 the edits of \`keyword\` against the untouched \`keyword_backup\`.
 
@@ -78,10 +86,10 @@ keywords_clean(
   of \`keyword\` that \[keywords_merge()\] matches on, so an edit of
   \`keyword\` does no harm), \`status\` (\`single\` for a keyword in no
   group, \`confirmed\` or \`needs_revision\`), \`papers\`, \`source\`
-  (\`same spelling\`, \`your table\`, \`spelling\`, \`acronym\`) and
-  \`example\` (the title of a paper using the keyword). The prompt goes
-  to \`\<sheet\>\_prompt.txt\` and, in an \`.xlsx\`, to a second tab
-  \`prompt\`.
+  (\`same spelling\`, \`your table\`, or the ways a candidate was found,
+  see above) and \`example\` (the title of a paper using the keyword).
+  The prompt goes to \`\<sheet\>\_prompt.txt\` and, in an \`.xlsx\`, to
+  a second tab \`prompt\`.
 
 - min_papers:
 
@@ -136,6 +144,9 @@ Broder, A. Z. (1997). On the resemblance and containment of documents.
 \*Proceedings of Compression and Complexity of Sequences\*, 21-29.
 [doi:10.1109/SEQUEN.1997.666900](https://doi.org/10.1109/SEQUEN.1997.666900)
 
+Porter, M. F. (1980). An algorithm for suffix stripping. \*Program\*,
+14(3), 130-137. \doi10.1108/eb046814
+
 Leskovec, J., Rajaraman, A., & Ullman, J. D. (2020). \*Mining of Massive
 Datasets\* (3rd ed.), chapter 3. Cambridge University Press.
 
@@ -173,22 +184,20 @@ keywords_clean(papers, replace = data.frame(OLD = "AI", NEW = "ARTIFICIAL INTELL
 # Every merge to a sheet, for a person or a model to check.
 sheet <- tempfile(fileext = ".csv")
 cleaned <- keywords_clean(papers, level = "all", decisions = sheet, min_papers = 1)
-#> file1df535e90835.csv: 6 groups and single keywords, 2 confirmed merges and 1 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1df535e90835.csv"). A prompt for a model is in file1df535e90835_prompt.txt.
+#> file1e5139b2d1e7.csv: 5 groups and single keywords, 2 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1e5139b2d1e7.csv"). A prompt for a model is in file1e5139b2d1e7_prompt.txt.
 utils::read.csv(sheet)
-#>   group                        name                 keyword
-#> 1     1                     CHATBOT               CHAT-BOTS
-#> 2     1                     CHATBOT                CHATBOTS
-#> 3     2                          AI                      AI
-#> 4     3     ARTIFICIAL INTELLIGENCE ARTIFICIAL INTELLIGENCE
-#> 5     4                  E-LEARNING              E-LEARNING
-#> 6     5 NATURAL LANGUAGE PROCESSING                     NLP
-#> 7     6                      SURVEY                  SURVEY
-#>            keyword_backup         status papers        source     example
-#> 1               CHAT-BOTS      confirmed      1 same spelling            
-#> 2                CHATBOTS      confirmed      1 same spelling            
-#> 3                      AI         single      1                 Paper one
-#> 4 ARTIFICIAL INTELLIGENCE         single      1                 Paper two
-#> 5              E-LEARNING         single      1               Paper three
-#> 6                     NLP needs_revision      1       acronym   Paper two
-#> 7                  SURVEY         single      1               Paper three
+#>   group                        name    keyword keyword_backup         status
+#> 1     1                     CHATBOT  CHAT-BOTS      CHAT-BOTS      confirmed
+#> 2     1                     CHATBOT   CHATBOTS       CHATBOTS      confirmed
+#> 3     2     ARTIFICIAL INTELLIGENCE         AI             AI needs_revision
+#> 4     3                  E-LEARNING E-LEARNING     E-LEARNING         single
+#> 5     4 NATURAL LANGUAGE PROCESSING        NLP            NLP needs_revision
+#> 6     5                      SURVEY     SURVEY         SURVEY         single
+#>   papers        source     example
+#> 1      1 same spelling            
+#> 2      1 same spelling            
+#> 3      1      initials   Paper one
+#> 4      1               Paper three
+#> 5      1       acronym   Paper two
+#> 6      1               Paper three
 ```

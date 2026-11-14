@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.16</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.17</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,11 @@
       <small>Source: <a href="https://github.com/mohsaqr/Saqrmisc/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.17" id="saqrmisc-0917">Saqrmisc 0.9.17<a class="anchor" aria-label="anchor" href="#saqrmisc-0917"></a></h2>
+<ul><li>
+<code>keywords_clean(level = "all")</code> finds candidates four more ways, each named in <code>source</code>: <code>word order</code> (<code>PSYCHOLOGY, CLINICAL</code>), <code>ngram</code> (OpenRefine’s 2-gram fingerprint), <code>stem</code> (Porter, with SnowballC) and <code>initials</code> (<code>NLP</code> for <code>NATURAL LANGUAGE PROCESSING</code> without brackets in the data). On 94,000 keywords they add about 20 s. SnowballC is a suggested package; without it <code>stem</code> is skipped with a message.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.16" id="saqrmisc-0916">Saqrmisc 0.9.16<a class="anchor" aria-label="anchor" href="#saqrmisc-0916"></a></h2>
 <ul><li>The keyword sheet of 0.9.15 is withdrawn; the sheet is the one of 0.9.13, with two changes:

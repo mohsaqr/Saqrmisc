@@ -45,7 +45,7 @@ else gives the same result)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.16</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.17</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -163,13 +163,13 @@ without `name`, `status`, `merge` and `keyword_backup` (or `keyword`), or a
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">sheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="fu"><a href="keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">papers</span>, level <span class="op">=</span> <span class="st">"all"</span>, decisions <span class="op">=</span> <span class="va">sheet</span>, min_papers <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> file1df5372c649f.csv: 3 groups and single keywords, 1 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1df5372c649f.csv"). A prompt for a model is in file1df5372c649f_prompt.txt.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> file1e5154feead0.csv: 3 groups and single keywords, 1 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1e5154feead0.csv"). A prompt for a model is in file1e5154feead0_prompt.txt.</span>
 <span class="r-in"><span><span class="va">checked</span> <span class="op">&lt;-</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">sheet</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">checked</span><span class="op">$</span><span class="va">merge</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">checked</span><span class="op">$</span><span class="va">keyword</span> <span class="op">==</span> <span class="st">"NLP"</span>, <span class="st">"yes"</span>, <span class="st">"no"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span><span class="va">checked</span>, <span class="va">sheet</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">keywords_merge</span><span class="op">(</span><span class="va">papers</span>, decisions <span class="op">=</span> <span class="va">sheet</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> keywords: DE: 6 written forms became 5 keywords; 3 papers changed</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> keywords_merge: from file1df5372c649f.csv, 1 merge(s) and renames applied, 1 confirmed merge(s) undone</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> keywords_merge: from file1e5154feead0.csv, 1 merge(s) and renames applied, 1 confirmed merge(s) undone</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                  TI                                                   DE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 Chatbots in class                 CHATBOT; NATURAL LANGUAGE PROCESSING</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2    Bots that talk               CHAT-BOTS; NATURAL LANGUAGE PROCESSING</span>
@@ -183,7 +183,7 @@ without `name`, `status`, `merge` and `keyword_backup` (or `keyword`), or a
 <span class="r-in"><span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span><span class="va">edited</span>, <span class="va">sheet</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">keywords_merge</span><span class="op">(</span><span class="va">papers</span>, decisions <span class="op">=</span> <span class="va">sheet</span>, by <span class="op">=</span> <span class="st">"edit"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> keywords: DE: 6 written forms became 4 keywords; 3 papers changed</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> keywords_merge: from file1df5372c649f.csv, 1 edited keyword(s) applied, 0 to a spelling not in the data</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> keywords_merge: from file1e5154feead0.csv, 1 edited keyword(s) applied, 0 to a spelling not in the data</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                  TI                                                   DE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 Chatbots in class                 CHATBOT; NATURAL LANGUAGE PROCESSING</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2    Bots that talk                 CHATBOT; NATURAL LANGUAGE PROCESSING</span>

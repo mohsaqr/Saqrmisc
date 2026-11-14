@@ -68,7 +68,7 @@ if (requireNamespace("writexl", quietly = TRUE) &&
   review_sheet(suggest_merges(papers, meaning = FALSE), file)
   review_report(file)
 }
-#> file1df5373819ae.xlsx: 2 pair(s) to check (0 of them blind), 0 accepted and 0 rejected by the AI. Write yours in decision_2.
-#> file1df5373819ae.xlsx: 2 pairs, 0 accepted, 0 rejected, 2 still to check
+#> file1e5124941f21.xlsx: 2 pair(s) to check (0 of them blind), 0 accepted and 0 rejected by the AI. Write yours in decision_2.
+#> file1e5124941f21.xlsx: 2 pairs, 0 accepted, 0 rejected, 2 still to check
 #> You decided 0 pair(s) in decision_2, overruling the AI on 0
 ```
