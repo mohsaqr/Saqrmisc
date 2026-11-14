@@ -1,5 +1,31 @@
 # Changelog
 
+## Saqrmisc 0.9.12
+
+### `keywords_clean()` redesigned (breaking), new `keywords_merge()`
+
+- Returns the data frame itself; only papers whose keywords change are
+  rewritten, the others keep their text exactly. Nothing is ever
+  deleted.
+- Works on the distinct keywords of all columns at once (DE and ID agree
+  on every spelling) and rewrites papers by lookup: about 2 million
+  papers in minutes.
+- `level = "confirmed"` (default): cleanup, brackets, your `replace`
+  tables, and spelling variants (case, punctuation, accents, hyphens,
+  spaces, plurals, in word order).
+- `level = "all"` also writes every merge to a `decisions` sheet
+  (`.xlsx` or `.csv`) for review outside R: one group per `name`, rows
+  `confirmed` (applied) or `needs_revision` (keywords in `min_papers`,
+  default 5, or more papers spelled alike by MinHash on character
+  trigrams, or acronyms with their bracketed long forms), an empty
+  `merge` column, a `keyword_backup` copy, and a prompt for a model
+  beside it.
+- [`keywords_merge()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_merge.md)
+  brings the checked sheet back into the data.
+- Removed: the `saqr_keywords` class and methods, `keywords_changes()`,
+  `merge_similar`, `expand_acronyms` and `drop`; acronyms are no longer
+  expanded without review.
+
 ## Saqrmisc 0.9.11
 
 ### Fewer dependencies
@@ -47,8 +73,8 @@
   [`keywords_clean()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_clean.md),
   [`institutions_clean()`](https://pak.dynasite.org/Saqrmisc/reference/institutions_clean.md),
   each with a `_changes()` verb (`authors_changes()`,
-  [`keywords_changes()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_changes.md),
-  `institutions_changes(source =)`) and `authors_check()`.
+  `keywords_changes()`, `institutions_changes(source =)`) and
+  `authors_check()`.
   [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) gives
   the cleaned papers.
 

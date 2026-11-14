@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,23 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.12" id="saqrmisc-0912">Saqrmisc 0.9.12<a class="anchor" aria-label="anchor" href="#saqrmisc-0912"></a></h2>
+<div class="section level3">
+<h3 id="keywords_clean-redesigned-breaking-new-keywords_merge-0-9-12">
+<code>keywords_clean()</code> redesigned (breaking), new <code>keywords_merge()</code>
+<a class="anchor" aria-label="anchor" href="#keywords_clean-redesigned-breaking-new-keywords_merge-0-9-12"></a></h3>
+<ul><li>Returns the data frame itself; only papers whose keywords change are rewritten, the others keep their text exactly. Nothing is ever deleted.</li>
+<li>Works on the distinct keywords of all columns at once (DE and ID agree on every spelling) and rewrites papers by lookup: about 2 million papers in minutes.</li>
+<li>
+<code>level = "confirmed"</code> (default): cleanup, brackets, your <code>replace</code> tables, and spelling variants (case, punctuation, accents, hyphens, spaces, plurals, in word order).</li>
+<li>
+<code>level = "all"</code> also writes every merge to a <code>decisions</code> sheet (<code>.xlsx</code> or <code>.csv</code>) for review outside R: one group per <code>name</code>, rows <code>confirmed</code> (applied) or <code>needs_revision</code> (keywords in <code>min_papers</code>, default 5, or more papers spelled alike by MinHash on character trigrams, or acronyms with their bracketed long forms), an empty <code>merge</code> column, a <code>keyword_backup</code> copy, and a prompt for a model beside it.</li>
+<li>
+<code><a href="../reference/keywords_merge.html">keywords_merge()</a></code> brings the checked sheet back into the data.</li>
+<li>Removed: the <code>saqr_keywords</code> class and methods, <code>keywords_changes()</code>, <code>merge_similar</code>, <code>expand_acronyms</code> and <code>drop</code>; acronyms are no longer expanded without review.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.11" id="saqrmisc-0911">Saqrmisc 0.9.11<a class="anchor" aria-label="anchor" href="#saqrmisc-0911"></a></h2>
 <div class="section level3">
 <h3 id="fewer-dependencies-0-9-11">Fewer dependencies<a class="anchor" aria-label="anchor" href="#fewer-dependencies-0-9-11"></a></h3>
@@ -68,7 +85,7 @@
 <h2 class="pkg-version" data-toc-text="0.9.9" id="saqrmisc-099">Saqrmisc 0.9.9<a class="anchor" aria-label="anchor" href="#saqrmisc-099"></a></h2>
 <div class="section level3">
 <h3 id="author-and-keyword-cleaning-for-bibliometric-data-0-9-9">Author and keyword cleaning for bibliometric data<a class="anchor" aria-label="anchor" href="#author-and-keyword-cleaning-for-bibliometric-data-0-9-9"></a></h3>
-<ul><li><p>The cleaners are named by what they clean: <code><a href="../reference/authors_clean.html">authors_clean()</a></code>, <code><a href="../reference/keywords_clean.html">keywords_clean()</a></code>, <code><a href="../reference/institutions_clean.html">institutions_clean()</a></code>, each with a <code>_changes()</code> verb (<code>authors_changes()</code>, <code><a href="../reference/keywords_changes.html">keywords_changes()</a></code>, <code>institutions_changes(source =)</code>) and <code>authors_check()</code>. <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the cleaned papers.</p></li>
+<ul><li><p>The cleaners are named by what they clean: <code><a href="../reference/authors_clean.html">authors_clean()</a></code>, <code><a href="../reference/keywords_clean.html">keywords_clean()</a></code>, <code><a href="../reference/institutions_clean.html">institutions_clean()</a></code>, each with a <code>_changes()</code> verb (<code>authors_changes()</code>, <code>keywords_changes()</code>, <code>institutions_changes(source =)</code>) and <code>authors_check()</code>. <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the cleaned papers.</p></li>
 <li><p><code><a href="../reference/authors_clean.html">authors_clean()</a></code> reads the Scopus author IDs from <code>data</code> when <code>scopus</code> is left out and <code>data</code> has them (column <code>author_ids</code>, default <code>"Author(s) ID"</code>).</p></li>
 <li><p><code>authors_changes()</code> and <code>authors_check()</code> give every changed person and the merges to check from an <code><a href="../reference/authors_clean.html">authors_clean()</a></code> result. <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> loses its <code>check</code> argument.</p></li>
 <li><p>OpenAlex lookups no longer sleep until a spent daily request budget resets (a 429 asking for hours): the request fails at once, the cleaners warn <code>saqrmisc_openalex_failed</code> (“request limit reached, try again in N hours”) and fall back, also when every request fails.</p></li>

@@ -43,12 +43,13 @@ suggest_merges(data, columns = "DE", skip = NULL, meaning = TRUE)
 
 - data:
 
-  Your papers, one row each: usually
-  \`as.data.frame(keywords_clean(...))\`, or the \[keywords_clean()\]
-  result. A \`TI\` column, if present, supplies example titles. A
-  \[institutions_clean()\] result reviews institution names instead
-  (column \`AU_UN\`): two institutions OpenAlex identified are never
-  paired, and the OpenAlex name is the suggested one.
+  Your papers, one row each: usually the result of \[keywords_clean()\].
+  For a large corpus, \`keywords_clean(level = "needs_decision")\` finds
+  candidates without comparing all pairs. A \`TI\` column, if present,
+  supplies example titles. A \[institutions_clean()\] result reviews
+  institution names instead (column \`AU_UN\`): two institutions
+  OpenAlex identified are never paired, and the OpenAlex name is the
+  suggested one.
 
 - columns:
 

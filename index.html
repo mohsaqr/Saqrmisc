@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -886,13 +886,15 @@
 <span>                    decisions <span class="op">=</span> <span class="st">"author_decisions.xlsx"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="keywords_clean">
-<code>keywords_clean()</code><a class="anchor" aria-label="anchor" href="#keywords_clean"></a>
+<h3 id="keywords_clean-and-keywords_merge">
+<code>keywords_clean()</code> and <code>keywords_merge()</code>
+<a class="anchor" aria-label="anchor" href="#keywords_clean-and-keywords_merge"></a>
 </h3>
-<p>Gives each concept one keyword. Every keyword is handled as a whole term, so its position in the list, the separator spacing and characters such as <code>(</code> or <code>+</code> make no difference.</p>
+<p>Gives each concept one keyword in <code>DE</code> (and <code>ID</code>) and returns <code>M</code>, ready for bibliometrix. It works on the distinct keywords, never deletes one, and rewrites only the papers whose keywords change.</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">data</span>, columns <span class="op">=</span> <span class="st">"DE"</span>, replace <span class="op">=</span> <span class="cn">NULL</span>, drop <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>               merge_similar <span class="op">=</span> <span class="cn">TRUE</span>, expand_acronyms <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">data</span>, columns <span class="op">=</span> <span class="st">"DE"</span>, level <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"confirmed"</span>, <span class="st">"all"</span><span class="op">)</span>, decisions <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>               min_papers <span class="op">=</span> <span class="fl">5</span>, replace <span class="op">=</span> <span class="cn">NULL</span>, titles <span class="op">=</span> <span class="st">"TI"</span>, output <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"minimal"</span>, <span class="st">"all"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/keywords_merge.html">keywords_merge</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">decisions</span>, columns <span class="op">=</span> <span class="st">"DE"</span>, replace <span class="op">=</span> <span class="cn">NULL</span>, output <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"minimal"</span>, <span class="st">"all"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <colgroup>
 <col width="41%">
@@ -904,33 +906,35 @@
 </tr></thead>
 <tbody>
 <tr>
-<td><code>columns</code></td>
-<td>Keyword columns to clean, e.g. <code>c("DE", "ID")</code>
-</td>
+<td><code>level = "confirmed"</code></td>
+<td>Default. Only what is certain: case, punctuation, accents, hyphens, spaces and plurals (<code>CHAT BOT</code> / <code>CHAT-BOTS</code> / <code>CHATBOT</code>, in word order), brackets (<code>(S)</code>, <code>(NLP)</code>) and your <code>replace</code> tables</td>
+</tr>
+<tr>
+<td><code>level = "all"</code></td>
+<td>The same, plus every merge written to the <code>decisions</code> sheet, with a prompt for a model beside it</td>
+</tr>
+<tr>
+<td><code>min_papers</code></td>
+<td>Only keywords in this many papers or more go to the sheet. Default 5</td>
 </tr>
 <tr>
 <td><code>replace</code></td>
-<td>Your <code>OLD</code>/<code>NEW</code> table: a data frame or a <code>.csv</code>/<code>.xlsx</code> file; several are applied in order, and a later row overrides an earlier one</td>
+<td>Your <code>OLD</code>/<code>NEW</code> table: a data frame or a <code>.csv</code>/<code>.xlsx</code> file; several are applied in order</td>
 </tr>
 <tr>
-<td><code>drop</code></td>
-<td>Keywords to delete (similar spellings go too)</td>
-</tr>
-<tr>
-<td><code>merge_similar</code></td>
-<td>Merge <code>CHAT BOT</code> / <code>CHAT-BOTS</code> / <code>CHATBOT</code> into one</td>
-</tr>
-<tr>
-<td><code>expand_acronyms</code></td>
-<td>
-<code>NLP</code> becomes <code>NATURAL LANGUAGE PROCESSING</code> when the data defines it, unambiguously, in brackets</td>
+<td><code>output = "all"</code></td>
+<td>Adds <code>DE_ORIGINAL</code> (and <code>ID_ORIGINAL</code>)</td>
 </tr>
 </tbody>
 </table>
 <div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">keywords</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">keywords</span>                                      <span class="co"># counts per column</span></span>
-<span><span class="fu"><a href="reference/keywords_changes.html">keywords_changes</a></span><span class="op">(</span><span class="va">keywords</span><span class="op">)</span>                    <span class="co"># every keyword that changed, and why</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">M1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DE"</span>, <span class="st">"ID"</span><span class="op">)</span><span class="op">)</span>                    <span class="co"># confirmed only</span></span>
+<span></span>
+<span><span class="va">M1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DE"</span>, <span class="st">"ID"</span><span class="op">)</span>, level <span class="op">=</span> <span class="st">"all"</span>,</span>
+<span>                     decisions <span class="op">=</span> <span class="st">"keyword_decisions.xlsx"</span><span class="op">)</span>           <span class="co"># + the sheet</span></span>
+<span><span class="co"># ... a person or a model fills in `merge` (yes / no) ...</span></span>
+<span><span class="va">M2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_merge.html">keywords_merge</a></span><span class="op">(</span><span class="va">M</span>, decisions <span class="op">=</span> <span class="st">"keyword_decisions.xlsx"</span>, columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DE"</span>, <span class="st">"ID"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The sheet has one group per <code>name</code>: the <code>name</code> row, its <code>confirmed</code> merges (applied) and its <code>needs_revision</code> candidates (keywords spelled alike, found by MinHash on character trigrams without comparing all pairs, and acronyms with their long forms from brackets in the data). Columns: <code>group</code>, <code>name</code>, <code>keyword</code>, <code>keyword_backup</code> (the copy <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> matches on), <code>status</code>, <code>merge</code>, <code>papers</code>, <code>source</code>, <code>example</code> (a title using the keyword). <code><a href="reference/keywords_merge.html">keywords_merge()</a></code> merges a <code>needs_revision</code> row marked <code>yes</code>, keeps a <code>confirmed</code> row marked <code>no</code> apart, and renames a group whose <code>name</code> was edited. The prompt (<code>keyword_decisions_prompt.txt</code>, and a <code>prompt</code> tab in the <code>.xlsx</code>) tells a model what <code>yes</code> and <code>no</code> mean, with examples. A small local model is a first pass, not a judge: <code>qwen3-vl-4b</code> agreed with a person on 17 of 20 test pairs and merged a narrower term (<code>SMART CHATBOT</code> into <code>CHATBOT</code>).</p>
 </div>
 <div class="section level3">
 <h3 id="institutions_clean">
@@ -945,20 +949,20 @@
 <div class="section level3">
 <h3 id="all-three-at-once">All three at once<a class="anchor" aria-label="anchor" href="#all-three-at-once"></a>
 </h3>
-<p>Each cleaner also takes the result of the one before, so the whole cleaning is one pipe, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the cleaned papers:</p>
+<p>Each cleaner takes the result of the one before, so the whole cleaning is one pipe; <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the papers after <code><a href="reference/institutions_clean.html">institutions_clean()</a></code>:</p>
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="va">M</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="st">"scopus_exports"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span>replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span>columns <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DE"</span>, <span class="st">"ID"</span><span class="op">)</span>, replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/institutions_clean.html">institutions_clean</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">cleaned</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="reviewing-merges">Reviewing merges<a class="anchor" aria-label="anchor" href="#reviewing-merges"></a>
+<h3 id="reviewing-merges-with-an-ai-in-r">Reviewing merges with an AI in R<a class="anchor" aria-label="anchor" href="#reviewing-merges-with-an-ai-in-r"></a>
 </h3>
-<p>Keyword variants rules cannot settle, and institution names no ID covers, go through four steps. Nothing is merged until it is accepted.</p>
+<p>For a small corpus, keyword variants and institution names no ID covers can also be reviewed with an AI from R, in four steps. It compares candidate pairs exhaustively, so for a large corpus use <code>keywords_clean(level = "needs_decision")</code> above. Nothing is merged until it is accepted.</p>
 <div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/suggest_merges.html">suggest_merges</a></span><span class="op">(</span><span class="va">keywords</span><span class="op">)</span>                  <span class="co"># 1. find possible merges</span></span>
+<code class="sourceCode R"><span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/suggest_merges.html">suggest_merges</a></span><span class="op">(</span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span><span class="op">)</span><span class="op">)</span>        <span class="co"># 1. find possible merges</span></span>
 <span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ask_ai.html">ask_ai</a></span><span class="op">(</span><span class="va">merges</span>, model <span class="op">=</span> <span class="st">"gpt-5-mini"</span><span class="op">)</span>      <span class="co"># 2. the AI fills `decision`</span></span>
 <span><span class="fu"><a href="reference/review_sheet.html">review_sheet</a></span><span class="op">(</span><span class="va">merges</span>, <span class="st">"keyword_review.xlsx"</span><span class="op">)</span>         <span class="co"># 3. you overrule it in `decision_2`</span></span>
 <span><span class="fu"><a href="reference/review_report.html">review_report</a></span><span class="op">(</span><span class="st">"keyword_review.xlsx"</span><span class="op">)</span>                <span class="co">#    what was decided, AI agreement</span></span>

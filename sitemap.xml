@@ -13,7 +13,6 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/add_total.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.mosaic_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_institutions.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_keywords.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_proposals.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_review.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/ask_ai.html</loc></url>
@@ -40,8 +39,8 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/institutions_changes.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/institutions_clean.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/is_outlier.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/keywords_changes.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/keywords_clean.html</loc></url>
+<url><loc>https://pak.dynasite.org/Saqrmisc/reference/keywords_merge.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/launch_app.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/little_mcar_test.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/missing_analysis.html</loc></url>
@@ -61,7 +60,6 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.network_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_clustering.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_institutions.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_keywords.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_plots.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_proposals.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/print.saqr_result.html</loc></url>
@@ -88,7 +86,6 @@
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.network_analysis.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_clustering.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_institutions.html</loc></url>
-<url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_keywords.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_proposals.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_review.html</loc></url>
 <url><loc>https://pak.dynasite.org/Saqrmisc/reference/to_dataframe.html</loc></url>

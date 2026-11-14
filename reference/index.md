@@ -8,8 +8,6 @@
   : Tidy accessor for a mosaic_analysis result
 - [`as.data.frame(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_institutions.md)
   : Tables from an institutions_clean() result
-- [`as.data.frame(`*`<saqr_keywords>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_keywords.md)
-  : Tables from a keywords_clean() result
 - [`as.data.frame(`*`<saqr_proposals>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_proposals.md)
   : Tables of suggested keyword merges
 - [`as.data.frame(`*`<saqr_review>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/as.data.frame.saqr_review.md)
@@ -61,10 +59,10 @@
   : Clean institution names by OpenAlex institution ID
 - [`is_outlier()`](https://pak.dynasite.org/Saqrmisc/reference/is_outlier.md)
   : Check if Value is Outlier (vectorized for mutate/across)
-- [`keywords_changes()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_changes.md)
-  : Every keyword that changed
 - [`keywords_clean()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_clean.md)
   : Clean bibliometric keywords
+- [`keywords_merge()`](https://pak.dynasite.org/Saqrmisc/reference/keywords_merge.md)
+  : Bring a checked keyword sheet back into the data
 - [`launch_app()`](https://pak.dynasite.org/Saqrmisc/reference/launch_app.md)
   : Launch the Saqrmisc mosaic analysis Shiny app
 - [`missing_analysis()`](https://pak.dynasite.org/Saqrmisc/reference/missing_analysis.md)
@@ -101,8 +99,6 @@
   : Print a Clustering Result
 - [`print(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_institutions.md)
   : Print an institutions_clean() result
-- [`print(`*`<saqr_keywords>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_keywords.md)
-  : Print a keywords_clean() result
 - [`print(`*`<saqr_plots>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_plots.md)
   : Print Several Clustering Plots
 - [`print(`*`<saqr_proposals>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/print.saqr_proposals.md)
@@ -155,8 +151,6 @@
   : Compare the Candidate Models of a Clustering Result
 - [`summary(`*`<saqr_institutions>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_institutions.md)
   : Summarise an institutions_clean() result
-- [`summary(`*`<saqr_keywords>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_keywords.md)
-  : Summarise a keywords_clean() result
 - [`summary(`*`<saqr_proposals>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_proposals.md)
   : Count suggested keyword merges
 - [`summary(`*`<saqr_review>`*`)`](https://pak.dynasite.org/Saqrmisc/reference/summary.saqr_review.md)
