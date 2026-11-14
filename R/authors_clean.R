@@ -23,7 +23,8 @@
 #' that share a spelling stay as they are: they are not numbered or split.
 #'
 #' The Scopus author IDs are matched to the papers by record ID (the Scopus
-#' EID), then by position: the *i*-th author of a paper takes its *i*-th ID. A
+#' EID, ignoring case: bibliometrix writes `2-S2.0-...`, Scopus `2-s2.0-...`),
+#' then by position: the *i*-th author of a paper takes its *i*-th ID. A
 #' paper whose record is not in `ids`, or whose number of authors and of IDs
 #' differ, is left untouched; the message names the reasons.
 #'
@@ -224,7 +225,7 @@ authors_clean <- function(data,
                stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, tables)
-  out[!is.na(out$EID) & !duplicated(out$EID), ]
+  out[!is.na(out$EID) & !duplicated(toupper(out$EID)), ]
 }
 
 # Splits a `;`-separated name field. The `;` that ends an HTML entity
@@ -253,7 +254,8 @@ authors_clean <- function(data,
 # (`entries`), and a function giving the names to match those authors on
 # OpenAlex (built only when OpenAlex is asked: it is a per-paper loop).
 .au_match_papers <- function(data, record, authors, full_names, years, id_table) {
-  hit <- match(record, id_table$EID)
+  # Case is ignored: bibliometrix writes the EID as 2-S2.0-..., Scopus as 2-s2.0-...
+  hit <- match(toupper(record), toupper(id_table$EID))
   au_list <- .au_split_field(data[[authors]])
   id_list <- .au_split_ids(id_table$author_ids[hit])
   # Vectorised over all IDs at once: a per-paper loop is slow on millions.

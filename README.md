@@ -528,7 +528,15 @@ keywords_clean(M, level = "all", decisions = "keyword_decisions.xlsx")         #
 M2 <- keywords_merge(M, decisions = "keyword_decisions.xlsx")
 ```
 
-The sheet has one group per `name`: the `name` row, its `confirmed` merges and its `needs_revision` candidates; nothing is merged until `keywords_merge()` (keywords spelled alike, found by MinHash on character trigrams without comparing all pairs, and acronyms with their long forms from brackets in the data). Columns: `group`, `name`, `keyword`, `keyword_backup` (the copy `keywords_merge()` matches on), `status`, `merge`, `papers`, `source`, `example` (a title using the keyword). Every keyword in `min_papers` or more papers is in the sheet, in a group or alone (`single`), so OpenRefine can also cluster the whole list. `keywords_merge()` reads the sheet one of two ways. `by = "merge"` (default): a `needs_revision` row marked `yes` is merged, a `confirmed` row marked `no` is kept apart, a group whose `name` was edited is renamed. `by = "edit"`: each keyword whose `keyword` was rewritten (by OpenRefine clustering, say) becomes the new text, matched on the untouched `keyword_backup`.
+The sheet has three tabs, and nothing is merged until `keywords_merge()`:
+
+| Tab | One row per | Columns |
+|-----|-------------|---------|
+| `decisions` | question: should `keyword` be merged into `merge_into`? | `keyword`, `keyword_backup`, `merge_into`, `merge`, `papers`, `merge_into_papers`, `source`, `example` |
+| `confirmed` | keyword, with the spellings the confirmed steps merge into it in one cell | `keyword`, `papers`, `also_written_as` (`DEPRESSIONS (6); DÉPRESSION (9)`), `source`, `merge` |
+| `all_keywords` | keyword, for OpenRefine to cluster the whole list | `keyword`, `keyword_backup`, `papers`, `example` |
+
+A `decisions` row is a keyword spelled like another (MinHash on character trigrams, without comparing all pairs) or an acronym with its long form from brackets in the data. Pairs whose first letters differ (`DEPRESSION` / `REPRESSION`) or with a word that is another plus a prefix (`ADOLESCENTS` / `PREADOLESCENTS`) are not proposed. With a `.csv`, the other tables go beside it (`keyword_decisions_confirmed.csv`, `keyword_decisions_all_keywords.csv`). `keywords_merge()` reads the sheet one of two ways. `by = "merge"` (default): a `decisions` row marked `yes` is merged into its `merge_into`; a `confirmed` row (written with `yes`) changed to `no` keeps its spellings apart; an empty row is never merged, and the message counts them. `answers = "Tomerge"` reads the answers from a column an application added. `by = "edit"`: each keyword whose `keyword` was rewritten (by OpenRefine clustering, say) becomes the new text, matched on the untouched `keyword_backup`.
 
 ```r
 M2 <- keywords_merge(M, decisions = "keyword_decisions.xlsx", by = "edit")

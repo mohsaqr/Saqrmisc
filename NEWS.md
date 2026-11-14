@@ -1,3 +1,32 @@
+# Saqrmisc 0.9.15
+
+* The `keywords_clean(level = "all")` sheet is one question per row: should
+  `keyword` be merged into `merge_into`? There are no more `name`, `group` or
+  `status` columns. The confirmed spellings move to their own `confirmed`
+  table, one row per keyword with its spellings in `also_written_as`; every
+  keyword is in an `all_keywords` table for OpenRefine. An `.xlsx` has one tab
+  per table; a `.csv` gets `_confirmed.csv` and `_all_keywords.csv` beside it.
+* Cleanup removes invisible characters (zero-width joiners and spaces, soft
+  hyphens), quotes around a whole keyword and a trailing `*`, so
+  `DEPRESSION` followed by a zero-width joiner is no longer listed as a
+  separate spelling.
+* Spelling candidates whose first letters differ (`DEPRESSION` /
+  `REPRESSION`) or with a word that is another plus a prefix (`ADOLESCENTS` /
+  `PREADOLESCENTS`, `SOCIAL JUSTICE` / `SOCIAL INJUSTICE`) are not proposed.
+* No empty cell means "merge": the `confirmed` table is written with `yes`
+  in every row, a decisions row left empty is not merged, and the message
+  counts the unanswered rows. `keywords_merge(answers = )` names the column
+  holding the answers, for an application that writes its own (`Tomerge`).
+* `keywords_merge()`: `by = "merge"` reads `merge_into` (edit it to send a
+  keyword elsewhere) and the `no` answers of the confirmed table; `by = "edit"`
+  reads the edits in the decisions and all_keywords tables.
+
+# Saqrmisc 0.9.14
+
+* `authors_clean()` matches record IDs ignoring case: bibliometrix writes the
+  EID as `2-S2.0-...`, the Scopus exports as `2-s2.0-...`, and no paper
+  matched.
+
 # Saqrmisc 0.9.13
 
 * `keywords_clean(level = "all")` merges nothing: it returns the data

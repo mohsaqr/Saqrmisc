@@ -153,6 +153,16 @@ test_that("IDs come from a folder of exports, files or a data frame, read as tex
   expect_identical(.au_read_ids(folder)$author_ids[5], "57200000000000001")
 })
 
+test_that("record IDs match whatever their case, as bibliometrix upper-cases the EID", {
+  case <- make_case()
+  upper <- transform(case$papers, eid = toupper(eid))
+  expect_identical(quiet_clean(upper, ids = case$ids)$AU, quiet_clean(case$papers, ids = case$ids)$AU)
+  scopus_style <- transform(case$ids, EID = sprintf("2-s2.0-%d", 1:6))
+  bibliometrix_style <- transform(case$papers, eid = sprintf("2-S2.0-%d", 1:7))
+  expect_identical(quiet_clean(bibliometrix_style, ids = scopus_style)$AU,
+                   quiet_clean(case$papers, ids = case$ids)$AU)
+})
+
 test_that("renamed columns work", {
   case <- make_case()
   papers <- stats::setNames(case$papers, c("EID", "Authors", "Year", "TI"))

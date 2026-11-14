@@ -8,6 +8,7 @@ keywords_merge(
   data,
   decisions,
   by = c("merge", "edit"),
+  answers = "merge",
   columns = "DE",
   replace = NULL,
   output = c("minimal", "all")
@@ -16,10 +17,15 @@ keywords_merge(
 \arguments{
 \item{data}{A data frame with one row per paper.}
 
-\item{decisions}{The checked sheet, `.xlsx` or `.csv`.}
+\item{decisions}{The checked sheet, `.xlsx` or `.csv` (the decisions
+table; the other tables are read from beside it when they are there).}
 
 \item{by}{`"merge"` (default) reads the `merge` column; `"edit"` reads the
 edits of `keyword` against `keyword_backup`. See above.}
+
+\item{answers}{With `by = "merge"`: the column of the decisions table
+holding the yes / no answers. Default `"merge"`; name another when an
+application writes its answers to a column of its own.}
 
 \item{columns, replace, output}{As in [keywords_clean()].}
 }
@@ -35,31 +41,30 @@ it was checked outside R, and returns the data frame. The confirmed steps of
 [keywords_clean()] are applied again, then the sheet, read one of two ways:
 
 * `by = "merge"` (default), for a person or a model that answers `yes` or
-  `no` in `merge`:
-  * a `needs_revision` row with `yes` becomes its `name`;
-  * a `confirmed` row is merged unless `merge` says `no`; with `no` it keeps
-    its own spelling;
-  * an edited `name` renames its whole group;
-  * an empty `merge` keeps what the row's `status` says.
+  `no` in `merge` (or in the column `answers` names): a `decisions` row
+  with `yes` merges its keyword, with all its spellings, into `merge_into`
+  (edit `merge_into` to send it elsewhere); a row left empty is not merged
+  and is counted in the message. The `confirmed` table is written with
+  `yes` in every row; a `no` there keeps the keyword's other spellings
+  apart.
 * `by = "edit"`, for a tool that rewrites the keywords themselves, such as
-  OpenRefine clustering the `keyword` column: every keyword whose `keyword`
-  no longer equals its untouched `keyword_backup` becomes the new text.
-  An edited `confirmed` row moves only that spelling; any other edited
-  keyword moves with all its spellings. `merge` and `name` are ignored, and
-  an edit of case or spacing alone changes nothing.
+  OpenRefine clustering the `keyword` column of `all_keywords` (or of
+  `decisions`): every keyword whose `keyword` no longer equals its
+  untouched `keyword_backup` becomes the new text, with all its spellings.
+  `merge` is ignored, and an edit of case or spacing alone changes nothing.
 
-Rows are matched on `keyword_backup` (on `keyword` when a sheet has no
-backup column with `by = "merge"`). Pass the same `columns` and `replace` as to
-[keywords_clean()], and the data as it was before cleaning: a confirmed
-merge marked `no` can only be undone from there (on cleaned data everything
-else gives the same result).
+Pass the same `columns` and `replace` as to [keywords_clean()], and the
+data as it was before cleaning: a confirmed merge marked `no` can only be
+undone from there (on cleaned data everything else gives the same result).
 }
 \section{Errors}{
 
-Raises `saqrmisc_bad_input` for a missing sheet; with `by = "merge"`, one
-without `name`, `status`, `merge` and `keyword_backup` (or `keyword`), or a
-`merge` other than empty, `yes` or `no`; with `by = "edit"`, one without
-`keyword` and `keyword_backup`; and the errors of [keywords_clean()].
+Raises `saqrmisc_bad_input` for a missing sheet; with `by = "merge"`, a
+decisions table without `merge_into`, the `answers` column and
+`keyword_backup` (or `keyword`), or an answer other than empty, `yes` or
+`no`; with
+`by = "edit"`, no table with `keyword` and `keyword_backup`; and the
+errors of [keywords_clean()].
 }
 
 \examples{
