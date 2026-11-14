@@ -286,41 +286,35 @@ results <- mosaic_analysis(example_data, "gender", "education")
 #> 
 #> CONSOLIDATED FREQUENCY TABLE
 #> ===========================
-#> # A tibble: 9 × 7
-#>   Variable Type      Bachelor `High School` Master   PhD Total
-#>   <chr>    <chr>        <dbl>         <dbl>  <dbl> <dbl> <dbl>
-#> 1 "Female" Observed      39            27     20    11    97  
-#> 2 ""       Expected      42.7          25.2   18.9  10.2  97  
-#> 3 ""       % (total)     19.5          13.5   10     5.5  48.5
-#> 4 "Male"   Observed      49            25     19    10   103  
-#> 5 ""       Expected      45.3          26.8   20.1  10.8 103  
-#> 6 ""       % (total)     24.5          12.5    9.5   5    51.5
-#> 7 "Total"  Observed      88            52     39    21   200  
-#> 8 ""       Expected      88            52     39    21   200  
-#> 9 ""       % (total)     44            26     19.5  10.5 100  
+#>  Variable      Type Bachelor High School Master  PhD Total
+#>    Female  Observed     39.0        27.0   20.0 11.0  97.0
+#>            Expected     42.7        25.2   18.9 10.2  97.0
+#>           % (total)     19.5        13.5   10.0  5.5  48.5
+#>      Male  Observed     49.0        25.0   19.0 10.0 103.0
+#>            Expected     45.3        26.8   20.1 10.8 103.0
+#>           % (total)     24.5        12.5    9.5  5.0  51.5
+#>     Total  Observed     88.0        52.0   39.0 21.0 200.0
+#>            Expected     88.0        52.0   39.0 21.0 200.0
+#>           % (total)     44.0        26.0   19.5 10.5 100.0
 #> 
 #> STANDARDIZED RESIDUALS
 #> =====================
 #> (Values > |2| indicate significant deviation from expected)
-#> # A tibble: 2 × 5
-#>   Variable Bachelor `High School` Master   PhD
-#>   <chr>       <dbl>         <dbl>  <dbl> <dbl>
-#> 1 Female      -1.05          0.57   0.39  0.38
-#> 2 Male         1.05         -0.57  -0.39 -0.38
+#>  Variable Bachelor High School Master   PhD
+#>    Female    -1.05        0.57   0.39  0.38
+#>      Male     1.05       -0.57  -0.39 -0.38
 #> 
 #> STATISTICAL SUMMARY
 #> ==================
-#> # A tibble: 8 × 2
-#>   Statistic          Value          
-#>   <chr>              <chr>          
-#> 1 Test type          Chi-square test
-#> 2 Test statistic     1.108          
-#> 3 Degrees of freedom 3              
-#> 4 p-value            0.775          
-#> 5 Cramer's V         0.074          
-#> 6 Effect size        negligible     
-#> 7 Sample size        200            
-#> 8 Categories removed None           
+#>           Statistic           Value
+#>           Test type Chi-square test
+#>      Test statistic           1.108
+#>  Degrees of freedom               3
+#>             p-value           0.775
+#>          Cramer's V           0.074
+#>         Effect size      negligible
+#>         Sample size             200
+#>  Categories removed            None
 #> 
 
 # Access results
@@ -329,17 +323,15 @@ results$cramers_v
 results$cramers_v_interpretation
 #> [1] "negligible"
 results$stats_summary
-#> # A tibble: 8 × 2
-#>   Statistic          Value          
-#>   <chr>              <chr>          
-#> 1 Test type          Chi-square test
-#> 2 Test statistic     1.108          
-#> 3 Degrees of freedom 3              
-#> 4 p-value            0.775          
-#> 5 Cramer's V         0.074          
-#> 6 Effect size        negligible     
-#> 7 Sample size        200            
-#> 8 Categories removed None           
+#>            Statistic           Value
+#> 1          Test type Chi-square test
+#> 2     Test statistic           1.108
+#> 3 Degrees of freedom               3
+#> 4            p-value           0.775
+#> 5         Cramer's V           0.074
+#> 6        Effect size      negligible
+#> 7        Sample size             200
+#> 8 Categories removed            None
 
 # \donttest{
 # With row percentages and custom labels
@@ -360,41 +352,35 @@ results <- mosaic_analysis(
 #> 
 #> CONSOLIDATED FREQUENCY TABLE
 #> ===========================
-#> # A tibble: 9 × 7
-#>   Variable Type     Bachelor `High School` Master   PhD Total
-#>   <chr>    <chr>       <dbl>         <dbl>  <dbl> <dbl> <dbl>
-#> 1 "Female" Observed     39            27     20    11     97 
-#> 2 ""       Expected     42.7          25.2   18.9  10.2   97 
-#> 3 ""       % (row)      40.2          27.8   20.6  11.3  100 
-#> 4 "Male"   Observed     49            25     19    10    103 
-#> 5 ""       Expected     45.3          26.8   20.1  10.8  103 
-#> 6 ""       % (row)      47.6          24.3   18.4   9.7  100 
-#> 7 "Total"  Observed     88            52     39    21    200 
-#> 8 ""       Expected     88            52     39    21    200 
-#> 9 ""       % (row)      87.8          52.1   39    21    200.
+#>  Variable     Type Bachelor High School Master  PhD Total
+#>    Female Observed     39.0        27.0   20.0 11.0  97.0
+#>           Expected     42.7        25.2   18.9 10.2  97.0
+#>            % (row)     40.2        27.8   20.6 11.3 100.0
+#>      Male Observed     49.0        25.0   19.0 10.0 103.0
+#>           Expected     45.3        26.8   20.1 10.8 103.0
+#>            % (row)     47.6        24.3   18.4  9.7 100.0
+#>     Total Observed     88.0        52.0   39.0 21.0 200.0
+#>           Expected     88.0        52.0   39.0 21.0 200.0
+#>            % (row)     87.8        52.1   39.0 21.0 199.9
 #> 
 #> STANDARDIZED RESIDUALS
 #> =====================
 #> (Values > |2| indicate significant deviation from expected)
-#> # A tibble: 2 × 5
-#>   Variable Bachelor `High School` Master   PhD
-#>   <chr>       <dbl>         <dbl>  <dbl> <dbl>
-#> 1 Female      -1.05          0.57   0.39  0.38
-#> 2 Male         1.05         -0.57  -0.39 -0.38
+#>  Variable Bachelor High School Master   PhD
+#>    Female    -1.05        0.57   0.39  0.38
+#>      Male     1.05       -0.57  -0.39 -0.38
 #> 
 #> STATISTICAL SUMMARY
 #> ==================
-#> # A tibble: 8 × 2
-#>   Statistic          Value          
-#>   <chr>              <chr>          
-#> 1 Test type          Chi-square test
-#> 2 Test statistic     1.108          
-#> 3 Degrees of freedom 3              
-#> 4 p-value            0.775          
-#> 5 Cramer's V         0.074          
-#> 6 Effect size        negligible     
-#> 7 Sample size        200            
-#> 8 Categories removed None           
+#>           Statistic           Value
+#>           Test type Chi-square test
+#>      Test statistic           1.108
+#>  Degrees of freedom               3
+#>             p-value           0.775
+#>          Cramer's V           0.074
+#>         Effect size      negligible
+#>         Sample size             200
+#>  Categories removed            None
 #> 
 
 # Using Fisher's exact test for small samples

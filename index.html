@@ -21,7 +21,7 @@
 
     <a class="navbar-brand me-2" href="index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -161,17 +161,55 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/install-deprecated.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"mohsaqr/Saqrmisc"</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/mohsaqr/Saqrmisc" class="external-link">Saqrmisc</a></span><span class="op">)</span></span></code></pre></div>
-<p><strong>Dependencies:</strong></p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  <span class="st">"dplyr"</span>, <span class="st">"ggplot2"</span>, <span class="st">"gt"</span>, <span class="st">"tibble"</span>, <span class="st">"tidyr"</span>, <span class="st">"rlang"</span>,</span>
-<span>  <span class="st">"MoEClust"</span>, <span class="st">"mclust"</span>, <span class="st">"vcd"</span>, <span class="st">"gridExtra"</span>,</span>
-<span>  <span class="st">"bootnet"</span>, <span class="st">"qgraph"</span>, <span class="st">"mgm"</span>,</span>
-<span>  <span class="st">"BayesFactor"</span>, <span class="st">"effectsize"</span>, <span class="st">"effsize"</span></span>
-<span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Optional</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ggstatsplot"</span>, <span class="st">"TOSTER"</span>, <span class="st">"kableExtra"</span>, <span class="st">"httr2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Installing Saqrmisc brings only <code>dplyr</code>, <code>ggplot2</code>, <code>gt</code>, <code>tidyr</code> and <code>rlang</code>. Each feature below needs its own package, installed only if you use it; without it, the function stops and names the package to install.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Feature</th>
+<th>Install</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code><a href="reference/clustering.html">clustering()</a></code>, <code><a href="reference/plot_clustering.html">plot_clustering()</a></code>
+</td>
+<td><code>remotes::install_github("mohsaqr/latents")</code></td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/estimate_single_network.html">estimate_single_network()</a></code>, <code><a href="reference/estimate_grouped_networks.html">estimate_grouped_networks()</a></code>
+</td>
+<td><code>install.packages(c("bootnet", "qgraph", "mgm"))</code></td>
+</tr>
+<tr>
+<td><code><a href="reference/compare_networks.html">compare_networks()</a></code></td>
+<td><code>install.packages("NetworkComparisonTest")</code></td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/compare_groups.html">compare_groups()</a></code> plots / <code>bayesian = TRUE</code> / <code>equivalence = TRUE</code>
+</td>
+<td><code>install.packages(c("gridExtra", "BayesFactor", "TOSTER"))</code></td>
+</tr>
+<tr>
+<td><code>mosaic_analysis(plot_style = "classic")</code></td>
+<td><code>install.packages("vcd")</code></td>
+</tr>
+<tr>
+<td>
+<code>authors_clean(level = "needs_decision")</code>, <code><a href="reference/institutions_clean.html">institutions_clean()</a></code> with OpenAlex</td>
+<td><code>install.packages("httr2")</code></td>
+</tr>
+<tr>
+<td>
+<code>.xlsx</code> sheets in the bibliometric cleaners</td>
+<td><code>install.packages(c("readxl", "writexl"))</code></td>
+</tr>
+</tbody>
+</table>
 <hr>
 </div>
 <div class="section level2">
@@ -182,7 +220,7 @@
 <code>correlations()</code><a class="anchor" aria-label="anchor" href="#correlations"></a>
 </h3>
 <p>Full pairwise correlation table with coefficients, CIs, t-statistics, df, p-values, and sample sizes.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/correlations.html">correlations</a></span><span class="op">(</span><span class="va">data</span>, Vars <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"bivariate"</span>, method <span class="op">=</span> <span class="st">"pearson"</span>,</span>
 <span>             p_adjust <span class="op">=</span> <span class="st">"none"</span>, ci_level <span class="op">=</span> <span class="fl">0.95</span>, min_r <span class="op">=</span> <span class="cn">NULL</span>, sig_only <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>             multilevel <span class="op">=</span> <span class="cn">FALSE</span>, id <span class="op">=</span> <span class="cn">NULL</span>, between <span class="op">=</span> <span class="cn">FALSE</span>, group_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -247,7 +285,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/correlations.html">correlations</a></span><span class="op">(</span><span class="va">mtcars</span>, Vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span>, <span class="st">"wt"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/correlations.html">correlations</a></span><span class="op">(</span><span class="va">mtcars</span>, Vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span>, <span class="st">"wt"</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"partial"</span>, sig_only <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Returns:</strong> List with <code>$table</code>, <code>$data</code>, <code>$n_pairs</code>, <code>$n_significant</code>.</p>
@@ -258,7 +296,7 @@
 <code>correlation_matrix()</code><a class="anchor" aria-label="anchor" href="#correlation_matrix"></a>
 </h3>
 <p>Publication-ready correlation matrix with significance stars and optional heatmap.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/correlation_matrix.html">correlation_matrix</a></span><span class="op">(</span><span class="va">data</span>, Vars <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"bivariate"</span>, method <span class="op">=</span> <span class="st">"pearson"</span>,</span>
 <span>                   triangle <span class="op">=</span> <span class="st">"lower"</span>, diagonal <span class="op">=</span> <span class="st">"dash"</span>, show_n <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>                   show_ci <span class="op">=</span> <span class="cn">FALSE</span>, show_p <span class="op">=</span> <span class="cn">FALSE</span>, p_adjust <span class="op">=</span> <span class="st">"none"</span>,</span>
@@ -294,7 +332,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/correlation_matrix.html">correlation_matrix</a></span><span class="op">(</span><span class="va">mtcars</span>, Vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span>, <span class="st">"wt"</span>, <span class="st">"qsec"</span><span class="op">)</span>, show_ci <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Returns:</strong> List with <code>$table</code>, <code>$correlation_matrix</code>, <code>$p_matrix</code>, <code>$heatmap</code>.</p>
 <hr>
@@ -308,7 +346,7 @@
 <code>compare_groups()</code><a class="anchor" aria-label="anchor" href="#compare_groups"></a>
 </h3>
 <p>Compare groups using t-tests, ANOVA, or nonparametric alternatives with publication-ready tables and plots. Automatically selects the appropriate test based on group count and data properties.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/compare_groups.html">compare_groups</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">category</span>, Vars <span class="op">=</span> <span class="cn">NULL</span>, repeat_category <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>               compare_by <span class="op">=</span> <span class="cn">NULL</span>, compare_mode <span class="op">=</span> <span class="st">"between"</span>, type <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>               posthoc <span class="op">=</span> <span class="cn">TRUE</span>, posthoc_method <span class="op">=</span> <span class="st">"games-howell"</span>,</span>
@@ -396,7 +434,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Two-group comparison (t-test)</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compare_groups.html">compare_groups</a></span><span class="op">(</span><span class="va">mtcars</span>, category <span class="op">=</span> <span class="st">"am"</span>, Vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -407,7 +445,7 @@
 <h4 id="pivot-tables">Pivot Tables<a class="anchor" aria-label="anchor" href="#pivot-tables"></a>
 </h4>
 <p>Compact summary with category levels as columns and a <code>p (ES)</code> column:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compare_groups.html">compare_groups</a></span><span class="op">(</span><span class="va">df</span>, category <span class="op">=</span> <span class="st">"group"</span>, Vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span>,</span>
 <span>                          pivot <span class="op">=</span> <span class="cn">TRUE</span>, pivot_stat <span class="op">=</span> <span class="st">"mean_sd"</span><span class="op">)</span></span>
 <span><span class="va">results</span><span class="op">$</span><span class="va">pivot_table</span></span></code></pre></div>
@@ -416,7 +454,7 @@
 <h4 id="within-group-analysis">Within-Group Analysis<a class="anchor" aria-label="anchor" href="#within-group-analysis"></a>
 </h4>
 <p>Test whether factors have effects within each category level:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compare_groups.html">compare_groups</a></span><span class="op">(</span><span class="va">df</span>, category <span class="op">=</span> <span class="st">"llm"</span>, Vars <span class="op">=</span> <span class="st">"score"</span>,</span>
 <span>                          compare_by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pronoun"</span>, <span class="st">"support"</span><span class="op">)</span>,</span>
 <span>                          compare_mode <span class="op">=</span> <span class="st">"within"</span><span class="op">)</span></span>
@@ -433,7 +471,7 @@
 <code>descriptive_table()</code><a class="anchor" aria-label="anchor" href="#descriptive_table"></a>
 </h3>
 <p>Flexible summary statistics table with selectable statistics.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/descriptive_table.html">descriptive_table</a></span><span class="op">(</span><span class="va">data</span>, Vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>                  stats <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"n"</span>, <span class="st">"mean"</span>, <span class="st">"sd"</span>, <span class="st">"median"</span>, <span class="st">"min"</span>, <span class="st">"max"</span><span class="op">)</span>,</span>
 <span>                  group_by <span class="op">=</span> <span class="cn">NULL</span>, overall <span class="op">=</span> <span class="cn">FALSE</span>, labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -473,7 +511,7 @@
 </tbody>
 </table>
 <p><strong>Available statistics:</strong> <code>n</code>, <code>missing</code>, <code>missing_pct</code>, <code>mean</code>, <code>sd</code>, <code>se</code>, <code>var</code>, <code>median</code>, <code>min</code>, <code>max</code>, <code>range</code>, <code>iqr</code>, <code>q1</code>, <code>q3</code>, <code>skewness</code>, <code>kurtosis</code>, <code>cv</code></p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/descriptive_table.html">descriptive_table</a></span><span class="op">(</span><span class="va">mtcars</span>, Vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span>, <span class="st">"wt"</span><span class="op">)</span>, group_by <span class="op">=</span> <span class="st">"cyl"</span>, overall <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -482,10 +520,10 @@
 <code>categorical_table()</code><a class="anchor" aria-label="anchor" href="#categorical_table"></a>
 </h3>
 <p>Frequency and cross-tabulation tables with optional chi-square test.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/categorical_table.html">categorical_table</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">var</span>, by <span class="op">=</span> <span class="cn">NULL</span>, chi_square <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>                  cramers_v <span class="op">=</span> <span class="cn">FALSE</span>, group_by <span class="op">=</span> <span class="cn">NULL</span>, format <span class="op">=</span> <span class="st">"gt"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/categorical_table.html">categorical_table</a></span><span class="op">(</span><span class="va">mtcars</span>, var <span class="op">=</span> <span class="st">"cyl"</span>, by <span class="op">=</span> <span class="st">"am"</span>, chi_square <span class="op">=</span> <span class="cn">TRUE</span>, cramers_v <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -494,7 +532,7 @@
 <code>auto_describe()</code><a class="anchor" aria-label="anchor" href="#auto_describe"></a>
 </h3>
 <p>Automatically detects variable types and produces appropriate summaries for each.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/auto_describe.html">auto_describe</a></span><span class="op">(</span><span class="va">data</span>, group_by <span class="op">=</span> <span class="cn">NULL</span>, format <span class="op">=</span> <span class="st">"gt"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Returns:</strong> List with <code>$numeric</code>, <code>$categorical</code>, <code>$variable_types</code>.</p>
 <hr>
@@ -509,9 +547,9 @@
 <code>center()</code><a class="anchor" aria-label="anchor" href="#center"></a>
 </h3>
 <p>Mean centering (grand-mean or group-mean).</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/center.html">center</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">Vars</span>, suffix <span class="op">=</span> <span class="st">"_c"</span>, group_by <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/center.html">center</a></span><span class="op">(</span><span class="va">mtcars</span>, Vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span><span class="op">)</span>, group_by <span class="op">=</span> <span class="st">"cyl"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -520,7 +558,7 @@
 <code>standardize()</code><a class="anchor" aria-label="anchor" href="#standardize"></a>
 </h3>
 <p>Z-score standardization.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/standardize.html">standardize</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">Vars</span>, suffix <span class="op">=</span> <span class="st">"_z"</span>, group_by <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -529,7 +567,7 @@
 <code>scale_vars()</code><a class="anchor" aria-label="anchor" href="#scale_vars"></a>
 </h3>
 <p>Scale by standard deviation or rescale to a custom range.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/scale_vars.html">scale_vars</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">Vars</span>, method <span class="op">=</span> <span class="st">"sd"</span>, range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>, suffix <span class="op">=</span> <span class="st">"_s"</span>, group_by <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <thead><tr>
@@ -558,9 +596,9 @@
 <code>reverse_code()</code><a class="anchor" aria-label="anchor" href="#reverse_code"></a>
 </h3>
 <p>Reverse code items for Likert scales. Auto-detects or accepts explicit <code>min</code>/<code>max</code>.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/reverse_code.html">reverse_code</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">Vars</span>, min <span class="op">=</span> <span class="cn">NULL</span>, max <span class="op">=</span> <span class="cn">NULL</span>, suffix <span class="op">=</span> <span class="st">"_r"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/reverse_code.html">reverse_code</a></span><span class="op">(</span><span class="va">df</span>, Vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"item2"</span>, <span class="st">"item5"</span><span class="op">)</span>, min <span class="op">=</span> <span class="fl">1</span>, max <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -573,7 +611,7 @@
 <code>missing_analysis()</code><a class="anchor" aria-label="anchor" href="#missing_analysis"></a>
 </h3>
 <p>Comprehensive missing data diagnostics including patterns, Little’s MCAR test, and visualizations.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/missing_analysis.html">missing_analysis</a></span><span class="op">(</span><span class="va">data</span>, Vars <span class="op">=</span> <span class="cn">NULL</span>, pattern_plot <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>                 mcar_test <span class="op">=</span> <span class="cn">TRUE</span>, correlations <span class="op">=</span> <span class="cn">FALSE</span>, digits <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Returns:</strong> List with <code>$summary</code>, <code>$patterns</code>, <code>$mcar</code>, <code>$plot</code>.</p>
@@ -584,7 +622,7 @@
 <code>replace_missing()</code><a class="anchor" aria-label="anchor" href="#replace_missing"></a>
 </h3>
 <p>Simple imputation by mean or median, with optional group-wise computation.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/replace_missing.html">replace_missing</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">Vars</span>, method <span class="op">=</span> <span class="st">"mean"</span>, group_by <span class="op">=</span> <span class="cn">NULL</span>, suffix <span class="op">=</span> <span class="st">"_imp"</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <colgroup>
@@ -623,7 +661,7 @@
 <code>outlier_check()</code><a class="anchor" aria-label="anchor" href="#outlier_check"></a>
 </h3>
 <p>Detect outliers using multiple methods.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/outlier_check.html">outlier_check</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">Vars</span>, method <span class="op">=</span> <span class="st">"zscore"</span>, threshold <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>              flag <span class="op">=</span> <span class="cn">TRUE</span>, plot <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
@@ -660,7 +698,7 @@
 <code>replace_outliers()</code><a class="anchor" aria-label="anchor" href="#replace_outliers"></a>
 </h3>
 <p>Treat outliers by winsorizing, replacing with NA, or substituting with median/mean.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/replace_outliers.html">replace_outliers</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">Vars</span>, method <span class="op">=</span> <span class="st">"winsorize"</span>, threshold <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>                 suffix <span class="op">=</span> <span class="st">"_treated"</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
@@ -693,7 +731,7 @@
 <code>normality_check()</code><a class="anchor" aria-label="anchor" href="#normality_check"></a>
 </h3>
 <p>Shapiro-Wilk test, skewness, kurtosis, Q-Q plots, and histograms.</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/normality_check.html">normality_check</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">Vars</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Returns:</strong> List with <code>$summary</code>, <code>$plots</code>, <code>$overall</code>.</p>
 <hr>
@@ -707,7 +745,7 @@
 <code>clustering()</code><a class="anchor" aria-label="anchor" href="#clustering-1"></a>
 </h3>
 <p>Latent profile clustering with the <a href="https://github.com/mohsaqr/latents" class="external-link">latents</a> package. Fits every combination of profile counts and covariance structures (the 14 mclust codes, EII through VVV) and keeps the one with the lowest BIC.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/clustering.html">clustering</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">vars</span>, <span class="va">n_profiles</span>, models <span class="op">=</span> <span class="st">"VVI"</span>,</span>
 <span>           scaling <span class="op">=</span> <span class="st">"standardize"</span>, n_starts <span class="op">=</span> <span class="fl">10</span>, seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>           na_action <span class="op">=</span> <span class="st">"omit"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -743,7 +781,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/clustering.html">clustering</a></span><span class="op">(</span><span class="va">mtcars</span>, vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mpg"</span>, <span class="st">"hp"</span>, <span class="st">"wt"</span><span class="op">)</span>, n_profiles <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">4</span>,</span>
 <span>                  models <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"EEE"</span>, <span class="st">"VVI"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit</span>                    <span class="co"># the selected model</span></span>
@@ -764,7 +802,7 @@
 <code>estimate_single_network()</code><a class="anchor" aria-label="anchor" href="#estimate_single_network"></a>
 </h3>
 <p>Estimate psychological networks using EBICglasso regularized partial correlations.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/estimate_single_network.html">estimate_single_network</a></span><span class="op">(</span><span class="va">df</span>, Vars <span class="op">=</span> <span class="cn">NULL</span>, layout <span class="op">=</span> <span class="st">"circle"</span>,</span>
 <span>                        default <span class="op">=</span> <span class="st">"EBICglasso"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>                        compute_centrality <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -776,7 +814,7 @@
 <code>compare_networks()</code><a class="anchor" aria-label="anchor" href="#compare_networks"></a>
 </h3>
 <p>Estimate and compare networks between groups.</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/compare_networks.html">compare_networks</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">group_var</span>, variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>                 method <span class="op">=</span> <span class="st">"EBICglasso"</span>, layout <span class="op">=</span> <span class="st">"circle"</span><span class="op">)</span></span></code></pre></div>
 <hr>
@@ -790,7 +828,7 @@
 <code>mosaic_analysis()</code><a class="anchor" aria-label="anchor" href="#mosaic_analysis"></a>
 </h3>
 <p>Mosaic plot with chi-square test and Cramer’s V.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/mosaic_analysis.html">mosaic_analysis</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">var1</span>, <span class="va">var2</span>, show_percentages <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>                percentage_base <span class="op">=</span> <span class="st">"total"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Returns:</strong> Object with <code>$plot</code>, <code>$chi_test</code>, <code>$cramers_v</code>, <code>$summary</code>.</p>
@@ -805,7 +843,7 @@
 <code>authors_clean()</code><a class="anchor" aria-label="anchor" href="#authors_clean"></a>
 </h3>
 <p>Gives each person one spelling in <code>AU</code> (and <code>AF</code>) by Scopus author ID, and returns <code>M</code> itself, ready for bibliometrix. bibliometrix drops the Scopus author IDs when it builds <code>M</code>, so they are supplied as <code>ids</code>: the raw Scopus CSV exports <code>M</code> was built from (a folder of them, the files, or a data frame read from them). They are matched to the papers by record ID (the EID), then by author position.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">ids</span>, record_id <span class="op">=</span> <span class="st">"eid"</span>, authors <span class="op">=</span> <span class="st">"AU"</span>, full_names <span class="op">=</span> <span class="st">"AF"</span>,</span>
 <span>              year <span class="op">=</span> <span class="st">"PY"</span>, level <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"confirmed"</span>, <span class="st">"needs_decision"</span><span class="op">)</span>,</span>
 <span>              decisions <span class="op">=</span> <span class="cn">NULL</span>, doi <span class="op">=</span> <span class="st">"DI"</span>, mailto <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -836,14 +874,14 @@
 </tbody>
 </table>
 <p>A person’s spelling is the most frequent in <code>M</code>, then the most recent, then the longest; a spelling with letters lost (<code>KAI Z</code> for <code>KACIC Z</code>) is never chosen. Authors not merged keep their spelling, and people who share a spelling under different IDs are left as they are.</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">M1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span><span class="va">M</span>, ids <span class="op">=</span> <span class="st">"scopus_exports"</span><span class="op">)</span>    <span class="co"># the folder of raw Scopus CSV exports</span></span></code></pre></div>
 <p>That is all most analyses need. A message gives the counts and says why any paper was left untouched. To see what changed:</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">M1</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span><span class="va">M</span>, ids <span class="op">=</span> <span class="st">"scopus_exports"</span>, output <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">M1</span>, <span class="va">check_authors</span> <span class="op">==</span> <span class="st">"YES"</span><span class="op">)</span>                <span class="co"># the papers to look at</span></span></code></pre></div>
 <p>To add the ORCID merges, run with <code>level = "needs_decision"</code>: the first run writes the candidates to <code>decisions</code> and applies none; write <code>merge</code> in <code>decision</code> for the right ones and run the same call again.</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">M2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span><span class="va">M</span>, ids <span class="op">=</span> <span class="st">"scopus_exports"</span>, level <span class="op">=</span> <span class="st">"needs_decision"</span>,</span>
 <span>                    decisions <span class="op">=</span> <span class="st">"author_decisions.xlsx"</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -852,7 +890,7 @@
 <code>keywords_clean()</code><a class="anchor" aria-label="anchor" href="#keywords_clean"></a>
 </h3>
 <p>Gives each concept one keyword. Every keyword is handled as a whole term, so its position in the list, the separator spacing and characters such as <code>(</code> or <code>+</code> make no difference.</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">data</span>, columns <span class="op">=</span> <span class="st">"DE"</span>, replace <span class="op">=</span> <span class="cn">NULL</span>, drop <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>               merge_similar <span class="op">=</span> <span class="cn">TRUE</span>, expand_acronyms <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
@@ -889,7 +927,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">keywords</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span><span class="va">M</span>, replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">keywords</span>                                      <span class="co"># counts per column</span></span>
 <span><span class="fu"><a href="reference/keywords_changes.html">keywords_changes</a></span><span class="op">(</span><span class="va">keywords</span><span class="op">)</span>                    <span class="co"># every keyword that changed, and why</span></span></code></pre></div>
@@ -899,7 +937,7 @@
 <code>institutions_clean()</code><a class="anchor" aria-label="anchor" href="#institutions_clean"></a>
 </h3>
 <p>Gives each institution one name by its OpenAlex institution ID (with its ROR ID where OpenAlex has one), the way <code><a href="reference/authors_clean.html">authors_clean()</a></code> uses Scopus author IDs. Papers OpenAlex does not cover are resolved from their addresses: first through the addresses OpenAlex linked on other papers, then by the institution part of the address (a university before a college, before an institute or company). What is left keeps its written name and goes to the review below. Two institutions that share a name get their country code (<code>NORTHEASTERN UNIVERSITY, US</code> / <code>, CN</code>).</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">institutions</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/institutions_clean.html">institutions_clean</a></span><span class="op">(</span><span class="va">M</span><span class="op">)</span>          <span class="co"># AU_UN and AU_UN_ID by OpenAlex ID</span></span>
 <span><span class="va">institutions</span></span>
 <span><span class="fu"><a href="reference/institutions_changes.html">institutions_changes</a></span><span class="op">(</span><span class="va">institutions</span><span class="op">)</span>             <span class="co"># every address and what it became</span></span></code></pre></div>
@@ -908,7 +946,7 @@
 <h3 id="all-three-at-once">All three at once<a class="anchor" aria-label="anchor" href="#all-three-at-once"></a>
 </h3>
 <p>Each cleaner also takes the result of the one before, so the whole cleaning is one pipe, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> gives the cleaned papers:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="va">M</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/authors_clean.html">authors_clean</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="st">"scopus_exports"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/keywords_clean.html">keywords_clean</a></span><span class="op">(</span>replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"replace_kw.xlsx"</span>, <span class="st">"sanitized2-csv.xlsx"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -919,7 +957,7 @@
 <h3 id="reviewing-merges">Reviewing merges<a class="anchor" aria-label="anchor" href="#reviewing-merges"></a>
 </h3>
 <p>Keyword variants rules cannot settle, and institution names no ID covers, go through four steps. Nothing is merged until it is accepted.</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/suggest_merges.html">suggest_merges</a></span><span class="op">(</span><span class="va">keywords</span><span class="op">)</span>                  <span class="co"># 1. find possible merges</span></span>
 <span><span class="va">merges</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ask_ai.html">ask_ai</a></span><span class="op">(</span><span class="va">merges</span>, model <span class="op">=</span> <span class="st">"gpt-5-mini"</span><span class="op">)</span>      <span class="co"># 2. the AI fills `decision`</span></span>
 <span><span class="fu"><a href="reference/review_sheet.html">review_sheet</a></span><span class="op">(</span><span class="va">merges</span>, <span class="st">"keyword_review.xlsx"</span><span class="op">)</span>         <span class="co"># 3. you overrule it in `decision_2`</span></span>
@@ -984,7 +1022,7 @@
 <code>pass()</code><a class="anchor" aria-label="anchor" href="#pass"></a>
 </h3>
 <p>Pipe any R output to an AI model for scientific interpretation.</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/pass.html">pass</a></span><span class="op">(</span><span class="va">result</span>, action <span class="op">=</span> <span class="st">"interpret"</span>, style <span class="op">=</span> <span class="st">"scientific"</span>, output <span class="op">=</span> <span class="st">"text"</span>,</span>
 <span>     provider <span class="op">=</span> <span class="st">"openai"</span>, model <span class="op">=</span> <span class="cn">NULL</span>, context <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>     system_message <span class="op">=</span> <span class="cn">NULL</span>, prompt <span class="op">=</span> <span class="cn">NULL</span>, base_url <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
@@ -1029,13 +1067,13 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/t.test.html" class="external-link">t.test</a></span><span class="op">(</span><span class="va">mpg</span> <span class="op">~</span> <span class="va">am</span>, data <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/pass.html">pass</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">mpg</span> <span class="op">~</span> <span class="va">wt</span> <span class="op">+</span> <span class="va">hp</span>, data <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/pass.html">pass</a></span><span class="op">(</span>action <span class="op">=</span> <span class="st">"write"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level4">
 <h4 id="api-key-setup">API Key Setup<a class="anchor" aria-label="anchor" href="#api-key-setup"></a>
 </h4>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/set_openai_key.html">set_openai_key</a></span><span class="op">(</span><span class="st">"sk-..."</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/set_claude_key.html">set_claude_key</a></span><span class="op">(</span><span class="st">"sk-ant-..."</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/set_gemini_key.html">set_gemini_key</a></span><span class="op">(</span><span class="st">"AIza..."</span><span class="op">)</span></span>

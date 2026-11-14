@@ -41,9 +41,11 @@ plot_clustering(results, type = "clusters", ...)
 
 ## Value
 
-One type: a ggplot object. Several: a `saqr_plots` list of ggplot
-objects named by type, which draws every one when printed. Print, save
-with
+One plot: a ggplot object. Several: a `saqr_plots` list of ggplot
+objects named by type, which draws every one when printed. A type that
+latents draws once per model (`"tree"` on a grid of several models)
+gives one entry per model, named `<type>_<model>` (`"tree_EEE"`). Print,
+save with
 [`ggplot2::ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html),
 or restyle with `+ ggplot2::theme()`.
 
@@ -63,18 +65,16 @@ that needs more candidates than were fitted is skipped with a message.
 
 ``` r
 # \donttest{
-set.seed(1)
-vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
-fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
+if (requireNamespace("latents", quietly = TRUE)) {
+  set.seed(1)
+  vars <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+  fit <- clustering(iris, vars, n_profiles = 2:4, models = "EEE")
+  plot_clustering(fit, type = "profiles")
+  plot_clustering(fit, type = "diagnostics")
+  plot_clustering(fit, type = c("pairs", "tree"))
+}
 #> Fitting 3 candidate(s): 2, 3, 4 profiles x EEE.
 #> Selected EEE with 4 profiles (BIC = 808.1).
-plot_clustering(fit, type = "profiles")
-
-plot_clustering(fit, type = "diagnostics")
-
-
-
-plot_clustering(fit, type = c("pairs", "tree"))
 
 
 # }

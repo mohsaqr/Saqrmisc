@@ -13,7 +13,7 @@ summary table with observed/expected counts and residuals."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -316,41 +316,35 @@ conditional on the stratifier). Reach these with
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> CONSOLIDATED FREQUENCY TABLE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ===========================</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 9 × 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Variable Type      Bachelor `High School` Master   PhD Total</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> <span style="color: #949494;">"</span>Female<span style="color: #949494;">"</span> Observed      39            27     20    11    97  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> <span style="color: #949494;">""</span>       Expected      42.7          25.2   18.9  10.2  97  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> <span style="color: #949494;">""</span>       % (total)     19.5          13.5   10     5.5  48.5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> <span style="color: #949494;">"</span>Male<span style="color: #949494;">"</span>   Observed      49            25     19    10   103  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> <span style="color: #949494;">""</span>       Expected      45.3          26.8   20.1  10.8 103  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> <span style="color: #949494;">""</span>       % (total)     24.5          12.5    9.5   5    51.5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span> <span style="color: #949494;">"</span>Total<span style="color: #949494;">"</span>  Observed      88            52     39    21   200  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span> <span style="color: #949494;">""</span>       Expected      88            52     39    21   200  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">9</span> <span style="color: #949494;">""</span>       % (total)     44            26     19.5  10.5 100  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Variable      Type Bachelor High School Master  PhD Total</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    Female  Observed     39.0        27.0   20.0 11.0  97.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Expected     42.7        25.2   18.9 10.2  97.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           % (total)     19.5        13.5   10.0  5.5  48.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      Male  Observed     49.0        25.0   19.0 10.0 103.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Expected     45.3        26.8   20.1 10.8 103.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           % (total)     24.5        12.5    9.5  5.0  51.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Total  Observed     88.0        52.0   39.0 21.0 200.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Expected     88.0        52.0   39.0 21.0 200.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           % (total)     44.0        26.0   19.5 10.5 100.0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> STANDARDIZED RESIDUALS</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> =====================</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Values &gt; |2| indicate significant deviation from expected)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 2 × 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Variable Bachelor `High School` Master   PhD</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Female      -<span style="color: #BB0000;">1.05</span>          0.57   0.39  0.38</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Male         1.05         -<span style="color: #BB0000;">0.57</span>  -<span style="color: #BB0000;">0.39</span> -<span style="color: #BB0000;">0.38</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Variable Bachelor High School Master   PhD</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    Female    -1.05        0.57   0.39  0.38</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      Male     1.05       -0.57  -0.39 -0.38</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> STATISTICAL SUMMARY</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ==================</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 8 × 2</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Statistic          Value          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Test type          Chi-square test</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Test statistic     1.108          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Degrees of freedom 3              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> p-value            0.775          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Cramer's V         0.074          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> Effect size        negligible     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span> Sample size        200            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span> Categories removed None           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           Statistic           Value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           Test type Chi-square test</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      Test statistic           1.108</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Degrees of freedom               3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>             p-value           0.775</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>          Cramer's V           0.074</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         Effect size      negligible</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         Sample size             200</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Categories removed            None</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Access results</span></span></span>
@@ -359,17 +353,15 @@ conditional on the stratifier). Reach these with
 <span class="r-in"><span><span class="va">results</span><span class="op">$</span><span class="va">cramers_v_interpretation</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "negligible"</span>
 <span class="r-in"><span><span class="va">results</span><span class="op">$</span><span class="va">stats_summary</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 8 × 2</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Statistic          Value          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Test type          Chi-square test</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Test statistic     1.108          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Degrees of freedom 3              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> p-value            0.775          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Cramer's V         0.074          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> Effect size        negligible     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span> Sample size        200            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span> Categories removed None           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            Statistic           Value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1          Test type Chi-square test</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2     Test statistic           1.108</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 Degrees of freedom               3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4            p-value           0.775</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5         Cramer's V           0.074</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6        Effect size      negligible</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7        Sample size             200</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8 Categories removed            None</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># With row percentages and custom labels</span></span></span>
@@ -390,41 +382,35 @@ conditional on the stratifier). Reach these with
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> CONSOLIDATED FREQUENCY TABLE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ===========================</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 9 × 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Variable Type     Bachelor `High School` Master   PhD Total</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> <span style="color: #949494;">"</span>Female<span style="color: #949494;">"</span> Observed     39            27     20    11     97 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> <span style="color: #949494;">""</span>       Expected     42.7          25.2   18.9  10.2   97 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> <span style="color: #949494;">""</span>       % (row)      40.2          27.8   20.6  11.3  100 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> <span style="color: #949494;">"</span>Male<span style="color: #949494;">"</span>   Observed     49            25     19    10    103 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> <span style="color: #949494;">""</span>       Expected     45.3          26.8   20.1  10.8  103 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> <span style="color: #949494;">""</span>       % (row)      47.6          24.3   18.4   9.7  100 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span> <span style="color: #949494;">"</span>Total<span style="color: #949494;">"</span>  Observed     88            52     39    21    200 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span> <span style="color: #949494;">""</span>       Expected     88            52     39    21    200 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">9</span> <span style="color: #949494;">""</span>       % (row)      87.8          52.1   39    21    200.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Variable     Type Bachelor High School Master  PhD Total</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    Female Observed     39.0        27.0   20.0 11.0  97.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           Expected     42.7        25.2   18.9 10.2  97.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            % (row)     40.2        27.8   20.6 11.3 100.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      Male Observed     49.0        25.0   19.0 10.0 103.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           Expected     45.3        26.8   20.1 10.8 103.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            % (row)     47.6        24.3   18.4  9.7 100.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Total Observed     88.0        52.0   39.0 21.0 200.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           Expected     88.0        52.0   39.0 21.0 200.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            % (row)     87.8        52.1   39.0 21.0 199.9</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> STANDARDIZED RESIDUALS</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> =====================</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Values &gt; |2| indicate significant deviation from expected)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 2 × 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Variable Bachelor `High School` Master   PhD</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Female      -<span style="color: #BB0000;">1.05</span>          0.57   0.39  0.38</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Male         1.05         -<span style="color: #BB0000;">0.57</span>  -<span style="color: #BB0000;">0.39</span> -<span style="color: #BB0000;">0.38</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Variable Bachelor High School Master   PhD</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    Female    -1.05        0.57   0.39  0.38</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      Male     1.05       -0.57  -0.39 -0.38</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> STATISTICAL SUMMARY</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ==================</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 8 × 2</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Statistic          Value          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> Test type          Chi-square test</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> Test statistic     1.108          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> Degrees of freedom 3              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> p-value            0.775          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> Cramer's V         0.074          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> Effect size        negligible     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">7</span> Sample size        200            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">8</span> Categories removed None           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           Statistic           Value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           Test type Chi-square test</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      Test statistic           1.108</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Degrees of freedom               3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>             p-value           0.775</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>          Cramer's V           0.074</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         Effect size      negligible</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         Sample size             200</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Categories removed            None</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Using Fisher's exact test for small samples</span></span></span>

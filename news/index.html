@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,17 @@
       <small>Source: <a href="https://github.com/mohsaqr/Saqrmisc/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.11" id="saqrmisc-0911">Saqrmisc 0.9.11<a class="anchor" aria-label="anchor" href="#saqrmisc-0911"></a></h2>
+<div class="section level3">
+<h3 id="fewer-dependencies-0-9-11">Fewer dependencies<a class="anchor" aria-label="anchor" href="#fewer-dependencies-0-9-11"></a></h3>
+<ul><li>Imports are now <code>dplyr</code>, <code>ggplot2</code>, <code>gt</code>, <code>tidyr</code> and <code>rlang</code> (plus base <code>grid</code>, <code>stats</code>, <code>grDevices</code>, <code>utils</code>).</li>
+<li>Moved to Suggests, each checked where it is used (<code>saqrmisc_missing_package</code> names what to install): <code>latents</code>, <code>bootnet</code>, <code>qgraph</code>, <code>mgm</code>, <code>BayesFactor</code>, <code>vcd</code>, <code>gridExtra</code>.</li>
+<li>Removed: <code>magrittr</code> (<code>%&gt;%</code> comes from dplyr), <code>tibble</code> (mosaic tables are data frames), <code>effsize</code> and <code>effectsize</code> (Cohen’s d and eta squared in base R, equal to both to 4.4e-16), and the unused Suggests <code>scales</code>, <code>roxygen2</code>, <code>devtools</code>.</li>
+<li>
+<code><a href="../reference/mosaic_analysis.html">mosaic_analysis()</a></code> tables are data frames instead of tibbles, with the same values.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.10" id="saqrmisc-0910">Saqrmisc 0.9.10<a class="anchor" aria-label="anchor" href="#saqrmisc-0910"></a></h2>
 <div class="section level3">

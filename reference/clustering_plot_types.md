@@ -19,7 +19,7 @@ A data.frame with one row per plot type and columns `type`, `group`
 ## Examples
 
 ``` r
-clustering_plot_types()
+if (requireNamespace("latents", quietly = TRUE)) clustering_plot_types()
 #>           type       group
 #> 1     profiles    clusters
 #> 2         bars    clusters
