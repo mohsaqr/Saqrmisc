@@ -398,7 +398,7 @@ test_that("keywords_clean applies the accepted pairs only and warns about open o
   edit_sheet(file, c(`1` = "accept", `2` = "reject", `3` = "reject", `4` = "check", `5` = "accept"))
   expect_warning(cleaned <- keywords_clean(review_papers(), replace = file),
                  class = "saqrmisc_review_pending")
-  de <- as.data.frame(cleaned)$DE
+  de <- cleaned$DE
   expect_identical(de[2], "BEHAVIOR CHANGE; SOCIAL NETWORK; WEB 3.0")
   expect_match(de[4], "RNN; ANALYSIS OF DATA", fixed = TRUE)
   expect_identical(de[6], "MEDITATION")
@@ -437,7 +437,7 @@ test_that("keywords_clean applies an ask_ai result as the AI decided", {
   merges <- asked(spelled(review_papers()), model = "m", key = "k")$value
   expect_warning(cleaned <- keywords_clean(review_papers(), replace = merges),
                  class = "saqrmisc_review_pending")
-  de <- as.data.frame(cleaned)$DE
+  de <- cleaned$DE
   # Pairs 1 and 5 accepted; 3 (MEDIATION, not sure) and 4 (RNN) left alone.
   expect_identical(de[2], "BEHAVIOR CHANGE; SOCIAL NETWORK; WEB 3.0")
   expect_identical(de[6], "MEDITATION")
@@ -506,7 +506,7 @@ test_that("a .csv review sheet round-trips, also when saved back with ;", {
   expect_identical(x$final[x$pair == 5L], "reject")
   expect_false(anyNA(x$ai_verdict))
   expect_false("SOCIAL NETWORKING" %in% as.data.frame(review_report(file), what = "replace")$OLD)
-  de <- suppressWarnings(as.data.frame(keywords_clean(review_papers(), replace = file))$DE)
+  de <- suppressWarnings(keywords_clean(review_papers(), replace = file))$DE
   expect_identical(de[2], "BEHAVIOR CHANGE; SOCIAL NETWORKING; WEB 3.0")
 })
 

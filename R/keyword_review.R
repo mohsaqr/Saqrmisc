@@ -36,8 +36,9 @@
 #' / `SPEECH TO TEXT` scores 0.97. The cosine orders the pairs; [ask_ai()] and
 #' you decide them.
 #'
-#' @param data Your papers, one row each: usually
-#'   `as.data.frame(keywords_clean(...))`, or the [keywords_clean()] result.
+#' @param data Your papers, one row each: usually the result of
+#'   [keywords_clean()]. For a large corpus, `keywords_clean(level =
+#'   "needs_decision")` finds candidates without comparing all pairs.
 #'   A `TI` column, if present, supplies example titles. A
 #'   [institutions_clean()] result reviews institution names instead (column
 #'   `AU_UN`): two institutions OpenAlex identified are never paired, and the
@@ -93,7 +94,7 @@ suggest_merges <- function(data, columns = "DE", skip = NULL, meaning = TRUE) {
     known <- institutions$institution[!is.na(institutions$openalex_id)]
     if (missing(columns)) columns <- "AU_UN"
   }
-  if (inherits(data, c("saqr_keywords", "saqr_institutions"))) data <- as.data.frame(data)
+  if (inherits(data, "saqr_institutions")) data <- as.data.frame(data)
   .kw_check_columns(data, columns)
   if (!isTRUE(meaning) && !isFALSE(meaning)) .bad_input("`meaning` must be TRUE or FALSE")
   if (meaning && !.kr_has_sbert()) {

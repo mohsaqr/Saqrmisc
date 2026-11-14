@@ -502,28 +502,34 @@ M2 <- authors_clean(M, ids = "scopus_exports", level = "needs_decision",
 ```
 
 
-### `keywords_clean()`
+### `keywords_clean()` and `keywords_merge()`
 
-Gives each concept one keyword. Every keyword is handled as a whole term, so its position in the list, the separator spacing and characters such as `(` or `+` make no difference.
+Gives each concept one keyword in `DE` (and `ID`) and returns `M`, ready for bibliometrix. It works on the distinct keywords, never deletes one, and rewrites only the papers whose keywords change.
 
 ```r
-keywords_clean(data, columns = "DE", replace = NULL, drop = NULL,
-               merge_similar = TRUE, expand_acronyms = TRUE)
+keywords_clean(data, columns = "DE", level = c("confirmed", "all"), decisions = NULL,
+               min_papers = 5, replace = NULL, titles = "TI", output = c("minimal", "all"))
+keywords_merge(data, decisions, columns = "DE", replace = NULL, output = c("minimal", "all"))
 ```
 
 | Argument | What it does |
 |----------|--------------|
-| `columns` | Keyword columns to clean, e.g. `c("DE", "ID")` |
-| `replace` | Your `OLD`/`NEW` table: a data frame or a `.csv`/`.xlsx` file; several are applied in order, and a later row overrides an earlier one |
-| `drop` | Keywords to delete (similar spellings go too) |
-| `merge_similar` | Merge `CHAT BOT` / `CHAT-BOTS` / `CHATBOT` into one |
-| `expand_acronyms` | `NLP` becomes `NATURAL LANGUAGE PROCESSING` when the data defines it, unambiguously, in brackets |
+| `level = "confirmed"` | Default. Only what is certain: case, punctuation, accents, hyphens, spaces and plurals (`CHAT BOT` / `CHAT-BOTS` / `CHATBOT`, in word order), brackets (`(S)`, `(NLP)`) and your `replace` tables |
+| `level = "all"` | The same, plus every merge written to the `decisions` sheet, with a prompt for a model beside it |
+| `min_papers` | Only keywords in this many papers or more go to the sheet. Default 5 |
+| `replace` | Your `OLD`/`NEW` table: a data frame or a `.csv`/`.xlsx` file; several are applied in order |
+| `output = "all"` | Adds `DE_ORIGINAL` (and `ID_ORIGINAL`) |
 
 ```r
-keywords <- keywords_clean(M, replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx"))
-keywords                                      # counts per column
-keywords_changes(keywords)                    # every keyword that changed, and why
+M1 <- keywords_clean(M, columns = c("DE", "ID"))                    # confirmed only
+
+M1 <- keywords_clean(M, columns = c("DE", "ID"), level = "all",
+                     decisions = "keyword_decisions.xlsx")           # + the sheet
+# ... a person or a model fills in `merge` (yes / no) ...
+M2 <- keywords_merge(M, decisions = "keyword_decisions.xlsx", columns = c("DE", "ID"))
 ```
+
+The sheet has one group per `name`: the `name` row, its `confirmed` merges (applied) and its `needs_revision` candidates (keywords spelled alike, found by MinHash on character trigrams without comparing all pairs, and acronyms with their long forms from brackets in the data). Columns: `group`, `name`, `keyword`, `keyword_backup` (the copy `keywords_merge()` matches on), `status`, `merge`, `papers`, `source`, `example` (a title using the keyword). `keywords_merge()` merges a `needs_revision` row marked `yes`, keeps a `confirmed` row marked `no` apart, and renames a group whose `name` was edited. The prompt (`keyword_decisions_prompt.txt`, and a `prompt` tab in the `.xlsx`) tells a model what `yes` and `no` mean, with examples. A small local model is a first pass, not a judge: `qwen3-vl-4b` agreed with a person on 17 of 20 test pairs and merged a narrower term (`SMART CHATBOT` into `CHATBOT`).
 
 ### `institutions_clean()`
 
@@ -537,22 +543,22 @@ institutions_changes(institutions)             # every address and what it becam
 
 ### All three at once
 
-Each cleaner also takes the result of the one before, so the whole cleaning is one pipe, and `as.data.frame()` gives the cleaned papers:
+Each cleaner takes the result of the one before, so the whole cleaning is one pipe; `as.data.frame()` gives the papers after `institutions_clean()`:
 
 ```r
 cleaned <- M |>
   authors_clean(ids = "scopus_exports") |>
-  keywords_clean(replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx")) |>
+  keywords_clean(columns = c("DE", "ID"), replace = c("replace_kw.xlsx", "sanitized2-csv.xlsx")) |>
   institutions_clean()
 as.data.frame(cleaned)
 ```
 
-### Reviewing merges
+### Reviewing merges with an AI in R
 
-Keyword variants rules cannot settle, and institution names no ID covers, go through four steps. Nothing is merged until it is accepted.
+For a small corpus, keyword variants and institution names no ID covers can also be reviewed with an AI from R, in four steps. It compares candidate pairs exhaustively, so for a large corpus use `keywords_clean(level = "needs_decision")` above. Nothing is merged until it is accepted.
 
 ```r
-merges <- suggest_merges(keywords)                  # 1. find possible merges
+merges <- suggest_merges(keywords_clean(M))        # 1. find possible merges
 merges <- ask_ai(merges, model = "gpt-5-mini")      # 2. the AI fills `decision`
 review_sheet(merges, "keyword_review.xlsx")         # 3. you overrule it in `decision_2`
 review_report("keyword_review.xlsx")                #    what was decided, AI agreement

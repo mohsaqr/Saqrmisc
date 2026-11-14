@@ -162,7 +162,7 @@ authors_clean <- function(data,
   check_paper <- seq_len(nrow(data)) %in% entries$paper[entries$check]
 
   if (ask_openalex) {
-    .au_write_candidates(entries, data, doi, matched$match_names, mailto, decisions)
+    .au_write_candidates(entries, data, doi, matched$match_names(), mailto, decisions)
   }
   if (output == "all") {
     cleaned <- .au_add_extras(cleaned, data, authors, full_names, matched, check_paper)
@@ -233,50 +233,63 @@ authors_clean <- function(data,
   protected <- gsub("(&#[xX]?[0-9A-Fa-f]+);", "\\1\001", as.character(x))
   parts <- strsplit(protected, ";", fixed = TRUE)
   parts[is.na(x)] <- list(character())
-  lapply(parts, \(p) trimws(gsub("\001", ";", p, fixed = TRUE)))
+  .au_relist(trimws(gsub("\001", ";", unlist(parts), fixed = TRUE)), lengths(parts))
+}
+
+# A flat vector cut back into one element per record, `sizes` long each.
+# Cleaning the flat vector once is far faster than a loop over millions.
+.au_relist <- function(flat, sizes) {
+  unname(split(as.character(flat), factor(rep(seq_along(sizes), sizes), levels = seq_along(sizes))))
 }
 
 .au_split_ids <- function(ids) {
-  out <- lapply(strsplit(sub(";\\s*$", "", ids), ";", fixed = TRUE), trimws)
-  out[is.na(ids)] <- list(character())
-  out
+  parts <- strsplit(sub(";\\s*$", "", ids), ";", fixed = TRUE)
+  parts[is.na(ids)] <- list(character())
+  .au_relist(trimws(unlist(parts)), lengths(parts))
 }
 
 # Links each paper to its Scopus record and its authors to their IDs. Returns
 # the status of each paper, one row per author of the papers that line up
-# (`entries`), and the names used to match those authors on OpenAlex.
+# (`entries`), and a function giving the names to match those authors on
+# OpenAlex (built only when OpenAlex is asked: it is a per-paper loop).
 .au_match_papers <- function(data, record, authors, full_names, years, id_table) {
   hit <- match(record, id_table$EID)
   au_list <- .au_split_field(data[[authors]])
   id_list <- .au_split_ids(id_table$author_ids[hit])
-  numeric_ids <- vapply(id_list, \(i) all(grepl("^[0-9]+$", i)), logical(1))
+  # Vectorised over all IDs at once: a per-paper loop is slow on millions.
+  id_paper <- rep(seq_along(id_list), lengths(id_list))
+  numeric_ids <- tabulate(id_paper[!grepl("^[0-9]+$", unlist(id_list))], nbins = length(id_list)) == 0L
   status <- ifelse(is.na(hit), "record not in ids",
             ifelse(lengths(au_list) != lengths(id_list), "author and ID counts differ",
             ifelse(!numeric_ids, "an author ID is not numeric", "ok")))
 
   ok <- which(status == "ok")
   n <- lengths(au_list[ok])
-  af_list <- if (is.null(full_names)) lapply(n, \(k) rep(NA_character_, k)) else .au_split_field(data[[full_names]])[ok]
-  af_aligned <- lengths(af_list) == n
-  af_list[!af_aligned] <- lapply(n[!af_aligned], \(k) rep(NA_character_, k))
+  full <- rep(NA_character_, sum(n))
+  if (!is.null(full_names)) {
+    af_list <- .au_split_field(data[[full_names]])[ok]
+    af_aligned <- lengths(af_list) == n
+    full[rep(af_aligned, n)] <- unlist(af_list[af_aligned])
+  }
 
   # OpenAlex matching reads the export's own names (with their accents) when
   # they line up with the IDs, else the names in `data`.
-  scopus_names <- lapply(.au_split_names(as.character(ifelse(is.na(id_table$Authors[hit[ok]]), "", id_table$Authors[hit[ok]]))),
-                         .au_normalise)
-  match_names <- Map(\(s, a) if (length(s) == length(a)) s else a, scopus_names, au_list[ok])
+  match_names <- \() {
+    scopus <- as.character(id_table$Authors[hit[ok]])
+    scopus_names <- lapply(.au_split_names(ifelse(is.na(scopus), "", scopus)), .au_normalise)
+    unlist(Map(\(s, a) if (length(s) == length(a)) s else a, scopus_names, au_list[ok])) %||% character()
+  }
 
   entries <- data.frame(
     paper = rep(ok, n),
     position = sequence(n),
     name = unlist(au_list[ok]) %||% character(),
-    full = unlist(af_list) %||% character(),
+    full = full,
     scopus_id = unlist(id_list[ok]) %||% character(),
     year = rep(years[ok], n),
     stringsAsFactors = FALSE
   )
-  list(status = status, entries = entries, id_list = id_list,
-       match_names = unlist(match_names) %||% character())
+  list(status = status, entries = entries, id_list = id_list, match_names = match_names)
 }
 
 # The person of each entry: its decided group when it has one, else its ID.
@@ -292,15 +305,25 @@ authors_clean <- function(data,
 .au_pick <- function(person, value, year) {
   keep <- !is.na(value) & nzchar(value)
   if (!any(keep)) return(stats::setNames(character(), character()))
-  picks <- data.frame(person = person[keep], value = value[keep],
-                      year = ifelse(is.na(year[keep]), -Inf, year[keep]), stringsAsFactors = FALSE)
-  pair <- paste(picks$person, picks$value, sep = "\r")
-  picks$n <- stats::ave(picks$year, pair, FUN = length)
-  picks$latest <- stats::ave(picks$year, pair, FUN = max)
-  picks$lost <- .au_letters_lost(picks$person, picks$value)
-  picks <- picks[order(picks$person, picks$lost, -picks$n, -picks$latest, -nchar(picks$value), picks$value), ]
-  picks <- picks[!duplicated(picks$person), ]
-  stats::setNames(picks$value, picks$person)
+  person <- person[keep]
+  value <- value[keep]
+  year <- ifelse(is.na(year[keep]), -Inf, year[keep])
+  # One row per distinct (person, spelling): how often, and how recently.
+  pair_id <- match(paste(person, value, sep = "\r"), paste(person, value, sep = "\r"))
+  first <- which(pair_id == seq_along(pair_id))
+  by_recency <- order(pair_id, -year, method = "radix")
+  picks <- data.frame(person = person[first], value = value[first],
+                      n = tabulate(pair_id, nbins = length(pair_id))[first],
+                      latest = year[by_recency][!duplicated(pair_id[by_recency])],
+                      stringsAsFactors = FALSE)
+  # Only people with several spellings need a choice.
+  several <- picks$person %in% picks$person[duplicated(picks$person)]
+  choose <- picks[several, ]
+  choose$lost <- .au_letters_lost(choose$person, choose$value)
+  choose <- choose[order(choose$person, choose$lost, -choose$n, -choose$latest, -nchar(choose$value),
+                         choose$value, method = "radix"), ]
+  choose <- choose[!duplicated(choose$person), ]
+  stats::setNames(c(picks$value[!several], choose$value), c(picks$person[!several], choose$person))
 }
 
 # TRUE for a spelling that is another spelling of the same person with letters
@@ -327,7 +350,8 @@ authors_clean <- function(data,
   pairs <- unique(entries[entries$name != entries$new_name, c("person", "name", "new_name")])
   if (nrow(pairs) == 0L) return(character())
   # A spelling with letters deleted (KAI Z for KACIC Z) is the same name.
-  alike <- .au_is_subsequence(pairs$name, pairs$new_name) | .au_similar(pairs$name, pairs$new_name)
+  alike <- .au_is_subsequence(pairs$name, pairs$new_name)
+  alike[!alike] <- .au_similar(pairs$name[!alike], pairs$new_name[!alike])
   unique(pairs$person[!alike])
 }
 
