@@ -45,7 +45,8 @@ institutions_merge(
 
 - decisions:
 
-  The checked sheet, \`.xlsx\` or \`.csv\`.
+  The checked sheet: a data frame or the path of the \`.xlsx\` or
+  \`.csv\` file.
 
 - by:
 
@@ -86,12 +87,12 @@ papers <- data.frame(
 sheet <- tempfile(fileext = ".csv")
 unchanged <- institutions_clean(papers, level = "all", decisions = sheet, min_papers = 1,
                                 openalex = FALSE)
-#> file1ef06adf95e7.csv: 3 groups and single institutions, 0 confirmed merges and 0 to check, institutions in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then institutions_merge(data, decisions = "file1ef06adf95e7.csv"). A prompt for a model is in file1ef06adf95e7_prompt.txt.
+#> file1ff63fc1886b.csv: 3 groups and single institutions, 0 confirmed merges and 0 to check, institutions in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then institutions_merge(data, decisions = "file1ff63fc1886b.csv"). A prompt for a model is in file1ff63fc1886b_prompt.txt.
 checked <- utils::read.csv(sheet)
 checked$merge <- ifelse(checked$institution == "TURKU UNIVERSITY", "yes", "no")
 utils::write.csv(checked, sheet, row.names = FALSE)
 institutions_merge(papers, decisions = sheet, openalex = FALSE)
-#> institutions_merge: from file1ef06adf95e7.csv, 0 merge(s) applied, 0 confirmed merge(s) undone
+#> institutions_merge: from file1ff63fc1886b.csv, 0 merge(s) applied, 0 confirmed merge(s) undone
 #> institutions: 3 institutions in 4 of 4 papers; links by OpenAlex ID 0, by an address OpenAlex linked 0, by OpenAlex name 0, from address text 4, by your table or sheet 0
 #>     DI                           C1               AU_UN
 #> 1 <NA> UNIVERSITY OF TURKU, FINLAND UNIVERSITY OF TURKU

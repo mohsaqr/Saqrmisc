@@ -91,7 +91,7 @@ by its `merge` answers, or by the edits of `keyword` against the untouched
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.18</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.19</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -305,7 +305,7 @@ Datasets* (3rd ed.), chapter 3. Cambridge University Press.</p>
 <span class="r-in"><span><span class="co"># Every merge to a sheet, for a person or a model to check.</span></span></span>
 <span class="r-in"><span><span class="va">sheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="fu">keywords_clean</span><span class="op">(</span><span class="va">papers</span>, level <span class="op">=</span> <span class="st">"all"</span>, decisions <span class="op">=</span> <span class="va">sheet</span>, min_papers <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> file1ef01daa3435.csv: 5 groups and single keywords, 2 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1ef01daa3435.csv"). A prompt for a model is in file1ef01daa3435_prompt.txt.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> file1ff627a70ed0.csv: 5 groups and single keywords, 2 confirmed merges and 2 to check, keywords in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then keywords_merge(data, decisions = "file1ff627a70ed0.csv"). A prompt for a model is in file1ff627a70ed0_prompt.txt.</span>
 <span class="r-in"><span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">sheet</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   group                        name    keyword keyword_backup         status</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1     1                     CHATBOT  CHAT-BOTS      CHAT-BOTS      confirmed</span>

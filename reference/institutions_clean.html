@@ -81,7 +81,7 @@ it back with [institutions_merge()]."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">Saqrmisc</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.18</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.19</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -298,7 +298,7 @@ scholarly works, authors, venues, institutions, and concepts.
 <span class="r-in"><span><span class="va">sheet</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">unchanged</span> <span class="op">&lt;-</span> <span class="fu">institutions_clean</span><span class="op">(</span><span class="va">papers</span>, level <span class="op">=</span> <span class="st">"all"</span>, decisions <span class="op">=</span> <span class="va">sheet</span>, min_papers <span class="op">=</span> <span class="fl">1</span>,</span></span>
 <span class="r-in"><span>                                openalex <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> file1ef0998c97b.csv: 3 groups and single institutions, 1 confirmed merges and 0 to check, institutions in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then institutions_merge(data, decisions = "file1ef0998c97b.csv"). A prompt for a model is in file1ef0998c97b_prompt.txt.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> file1ff67bd7069e.csv: 3 groups and single institutions, 1 confirmed merges and 0 to check, institutions in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then institutions_merge(data, decisions = "file1ff67bd7069e.csv"). A prompt for a model is in file1ff67bd7069e_prompt.txt.</span>
 <span class="r-in"><span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">sheet</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   group                          name                   institution</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1     1           UNIVERSITY OF TURKU           UNIVERSITY-OF-TURKU</span>

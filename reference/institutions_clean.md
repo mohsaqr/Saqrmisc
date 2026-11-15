@@ -186,7 +186,7 @@ institutions_clean(papers, openalex = FALSE)
 sheet <- tempfile(fileext = ".csv")
 unchanged <- institutions_clean(papers, level = "all", decisions = sheet, min_papers = 1,
                                 openalex = FALSE)
-#> file1ef0998c97b.csv: 3 groups and single institutions, 1 confirmed merges and 0 to check, institutions in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then institutions_merge(data, decisions = "file1ef0998c97b.csv"). A prompt for a model is in file1ef0998c97b_prompt.txt.
+#> file1ff67bd7069e.csv: 3 groups and single institutions, 1 confirmed merges and 0 to check, institutions in 1 or more papers. Nothing is merged yet: add a column `merge` (yes or no), then institutions_merge(data, decisions = "file1ff67bd7069e.csv"). A prompt for a model is in file1ff67bd7069e_prompt.txt.
 utils::read.csv(sheet)
 #>   group                          name                   institution
 #> 1     1           UNIVERSITY OF TURKU           UNIVERSITY-OF-TURKU
