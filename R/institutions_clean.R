@@ -178,7 +178,8 @@ institutions_clean <- function(data,
 #' Pass the same arguments as to [institutions_clean()].
 #'
 #' @param data A data frame with one row per paper.
-#' @param decisions The checked sheet, `.xlsx` or `.csv`.
+#' @param decisions The checked sheet: a data frame or the path of the
+#'   `.xlsx` or `.csv` file.
 #' @param by `"merge"` (default) reads the `merge` column; `"edit"` reads the
 #'   edits of `institution` against `institution_backup`.
 #' @param affiliations,doi,replace,openalex,cache,mailto,output As in
@@ -216,15 +217,13 @@ institutions_merge <- function(data, decisions, by = c("merge", "edit"), affilia
   by <- match.arg(by)
   output <- match.arg(output)
   .in_check(data, affiliations, doi, openalex, cache, mailto)
-  if (missing(decisions) || !(is.character(decisions) && length(decisions) == 1L)) {
-    .bad_input("`decisions` must be the path of the sheet institutions_clean(level = \"all\") wrote")
-  }
-  sheet <- if (by == "merge") .kw_read_sheet(decisions, term = "institution") else
-    .kw_read_edits(decisions, term = "institution")
+  given <- .kw_decisions(decisions, "institutions_clean")
+  sheet <- if (by == "merge") .kw_read_sheet(given$table, term = "institution", by_status = TRUE) else
+    .kw_read_edits(given$table, term = "institution")
   maps <- c(.kw_replacements(replace), if (length(sheet$moved) > 0L) list(sheet$moved))
   run <- .in_run(data, affiliations, doi, openalex, cache, mailto, maps, sheet$merge, sheet$apart)
   message(sprintf("institutions_merge: from %s, %d merge(s) applied, %d confirmed merge(s) undone",
-                  basename(decisions), length(sheet$merge) + length(sheet$moved), length(sheet$apart)))
+                  given$name, length(sheet$merge) + length(sheet$moved), length(sheet$apart)))
   .in_output(data, run, output)
 }
 

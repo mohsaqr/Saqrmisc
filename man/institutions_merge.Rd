@@ -20,7 +20,8 @@ institutions_merge(
 \arguments{
 \item{data}{A data frame with one row per paper.}
 
-\item{decisions}{The checked sheet, `.xlsx` or `.csv`.}
+\item{decisions}{The checked sheet: a data frame or the path of the
+`.xlsx` or `.csv` file.}
 
 \item{by}{`"merge"` (default) reads the `merge` column; `"edit"` reads the
 edits of `institution` against `institution_backup`.}

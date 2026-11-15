@@ -1,7 +1,7 @@
 Package: Saqrmisc
 Type: Package
 Title: Miscellaneous Functions for Data Processing and Analysis
-Version: 0.9.18
+Version: 0.9.19
 Authors@R: 
     person("Mohammed", "Saqr", 
            email = "saqr@saqr.me",

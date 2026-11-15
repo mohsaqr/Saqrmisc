@@ -16,7 +16,9 @@ keywords_merge(
 \arguments{
 \item{data}{A data frame with one row per paper.}
 
-\item{decisions}{The checked sheet, `.xlsx` or `.csv`.}
+\item{decisions}{The checked sheet: a data frame (as read with
+`rio::import()` or `readxl::read_excel()`) or the path of the `.xlsx` or
+`.csv` file.}
 
 \item{by}{`"merge"` (default) reads the `merge` column; `"edit"` reads the
 edits of `keyword` against `keyword_backup`. See above.}
@@ -36,10 +38,14 @@ it was checked outside R, and returns the data frame. The confirmed steps of
 
 * `by = "merge"` (default), for a person or a model that adds a column
   `merge` and answers `yes` or `no` in it:
-  * a `needs_revision` row with `yes` becomes its `name`;
-  * a `confirmed` row is merged unless `merge` says `no`; with `no` it keeps
-    its own spelling;
-  * an empty `merge` keeps what the row's `status` says.
+  * `yes`: the keyword becomes its `name`;
+  * `no`: the keyword keeps its own spelling, also where cleaning had
+    merged it (a `confirmed` row);
+  * empty: what cleaning does stands.
+
+  `status` is not read, so a tool that overwrites it (an LLM run log
+  writing `success` on every row) changes nothing, and rows without a
+  `keyword` or `name`, such as a prompt pasted under the table, are skipped.
 * `by = "edit"`, for a tool that rewrites the keywords themselves, such as
   OpenRefine clustering the `keyword` column: every keyword whose `keyword`
   no longer equals its untouched `keyword_backup` becomes the new text.
@@ -56,7 +62,7 @@ else gives the same result).
 \section{Errors}{
 
 Raises `saqrmisc_bad_input` for a missing sheet; with `by = "merge"`, one
-without `name`, `status`, `merge` and `keyword_backup` (or `keyword`), or a
+without `name`, `merge` and `keyword_backup` (or `keyword`), or a
 `merge` other than empty, `yes` or `no`; with `by = "edit"`, one without
 `keyword` and `keyword_backup`; and the errors of [keywords_clean()].
 }

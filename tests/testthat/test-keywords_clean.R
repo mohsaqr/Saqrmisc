@@ -320,7 +320,31 @@ test_that("keywords_merge applies yes, keeps no, and undoes a confirmed merge ma
   cleaned <- kc(papers, columns = c("DE", "ID"))
   expect_identical(suppressMessages(keywords_merge(cleaned, decisions = sheet, columns = c("DE", "ID")))$DE[-7],
                    out$DE[-7])
-  expect_message(keywords_merge(papers, decisions = sheet), "1 merge\\(s\\) and renames applied, 1 confirmed")
+  expect_message(keywords_merge(papers, decisions = sheet), "1 keyword\\(s\\) marked yes merged into their name")
+})
+
+test_that("keywords_merge takes the sheet as a data frame and does not need status", {
+  sheet <- tempfile(fileext = ".csv")
+  papers <- decision_papers()
+  kc(papers, columns = c("DE", "ID"), level = "all", decisions = sheet, min_papers = 1)
+  checked <- write_checked(sheet, c(NLP = "yes", "INTERPERSONAL INJUSTICE" = "no", "SELF-ESTEEM" = "no"))
+  from_file <- suppressMessages(keywords_merge(papers, decisions = sheet, columns = c("DE", "ID")))
+  # As an LLM tool returns it: status overwritten, the prompt pasted below.
+  llm <- checked
+  llm$status <- "success"
+  prompt_rows <- llm[seq_len(2L), ]
+  prompt_rows[] <- NA
+  prompt_rows$merge <- "no"
+  llm <- rbind(llm, prompt_rows)
+  from_frame <- suppressMessages(keywords_merge(papers, decisions = llm, columns = c("DE", "ID")))
+  expect_identical(from_frame, from_file)
+  expect_identical(from_frame$DE[7], "SELF-ESTEEM")
+  expect_identical(from_frame$DE[2], "CHATBOT; NATURAL LANGUAGE PROCESSING")
+  expect_message(keywords_merge(papers, decisions = llm), "from the decisions data frame")
+  # No status column at all works the same.
+  expect_identical(suppressMessages(keywords_merge(papers, decisions = subset(llm, select = -status),
+                                                   columns = c("DE", "ID"))), from_file)
+  expect_error(keywords_merge(papers, decisions = list(a = 1)), class = "saqrmisc_bad_input")
 })
 
 test_that("rows match on keyword_backup", {

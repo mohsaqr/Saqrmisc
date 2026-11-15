@@ -170,10 +170,14 @@ keywords_clean <- function(data,
 #'
 #' * `by = "merge"` (default), for a person or a model that adds a column
 #'   `merge` and answers `yes` or `no` in it:
-#'   * a `needs_revision` row with `yes` becomes its `name`;
-#'   * a `confirmed` row is merged unless `merge` says `no`; with `no` it keeps
-#'     its own spelling;
-#'   * an empty `merge` keeps what the row's `status` says.
+#'   * `yes`: the keyword becomes its `name`;
+#'   * `no`: the keyword keeps its own spelling, also where cleaning had
+#'     merged it (a `confirmed` row);
+#'   * empty: what cleaning does stands.
+#'
+#'   `status` is not read, so a tool that overwrites it (an LLM run log
+#'   writing `success` on every row) changes nothing, and rows without a
+#'   `keyword` or `name`, such as a prompt pasted under the table, are skipped.
 #' * `by = "edit"`, for a tool that rewrites the keywords themselves, such as
 #'   OpenRefine clustering the `keyword` column: every keyword whose `keyword`
 #'   no longer equals its untouched `keyword_backup` becomes the new text.
@@ -188,7 +192,9 @@ keywords_clean <- function(data,
 #' else gives the same result).
 #'
 #' @param data A data frame with one row per paper.
-#' @param decisions The checked sheet, `.xlsx` or `.csv`.
+#' @param decisions The checked sheet: a data frame (as read with
+#'   `rio::import()` or `readxl::read_excel()`) or the path of the `.xlsx` or
+#'   `.csv` file.
 #' @param by `"merge"` (default) reads the `merge` column; `"edit"` reads the
 #'   edits of `keyword` against `keyword_backup`. See above.
 #' @param columns,replace,output As in [keywords_clean()].
@@ -200,7 +206,7 @@ keywords_clean <- function(data,
 #'
 #' @section Errors:
 #' Raises `saqrmisc_bad_input` for a missing sheet; with `by = "merge"`, one
-#' without `name`, `status`, `merge` and `keyword_backup` (or `keyword`), or a
+#' without `name`, `merge` and `keyword_backup` (or `keyword`), or a
 #' `merge` other than empty, `yes` or `no`; with `by = "edit"`, one without
 #' `keyword` and `keyword_backup`; and the errors of [keywords_clean()].
 #'
@@ -230,19 +236,18 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
   by <- match.arg(by)
   output <- match.arg(output)
   .kw_check_columns(data, columns)
-  if (missing(decisions) || !(is.character(decisions) && length(decisions) == 1L)) {
-    .bad_input("`decisions` must be the path of the sheet keywords_clean(level = \"all\") wrote")
-  }
-  sheet <- if (by == "merge") .kw_read_sheet(decisions) else .kw_read_edits(decisions)
+  given <- .kw_decisions(decisions, "keywords_clean")
+  source_name <- given$name
+  sheet <- if (by == "merge") .kw_read_sheet(given$table) else .kw_read_edits(given$table)
   maps <- c(.kw_replacements(replace), if (length(sheet$moved) > 0L) list(sheet$moved))
   run <- .kw_run(data, columns, maps, sheet$merge, sheet$apart, output)
   if (by == "merge") {
-    message(sprintf("keywords_merge: from %s, %d merge(s) and renames applied, %d confirmed merge(s) undone",
-                    basename(decisions), length(sheet$merge), length(sheet$apart)))
+    message(sprintf("keywords_merge: from %s, %d keyword(s) marked yes merged into their name, %d marked no kept apart",
+                    source_name, length(sheet$merge), length(sheet$apart)))
   } else {
     targets <- unique(c(unname(sheet$merge), unname(sheet$moved)))
     message(sprintf("keywords_merge: from %s, %d edited keyword(s) applied, %d to a spelling not in the data",
-                    basename(decisions), length(sheet$merge) + length(sheet$moved),
+                    source_name, length(sheet$merge) + length(sheet$moved),
                     sum(!targets %in% run$vocabulary$stage)))
   }
   run$data
@@ -595,13 +600,28 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
 
 # ---- decisions sheet ----------------------------------------------------------
 
-# A checked sheet as `merge` (keyword -> name: needs_revision rows with
-# `yes`, and renamed groups) and `apart` (confirmed forms marked `no`).
-.kw_read_sheet <- function(path, term = "keyword") {
-  sheet <- .kw_read_table(path, argument = "decisions")
+# `decisions` as a table and a name for messages: a data frame as given, or
+# the file at that path.
+.kw_decisions <- function(decisions, wrote_by) {
+  if (missing(decisions) || !(is.data.frame(decisions) || (is.character(decisions) && length(decisions) == 1L))) {
+    .bad_input(sprintf("`decisions` must be the checked sheet: a data frame or the path of the file %s(level = \"all\") wrote",
+                       wrote_by))
+  }
+  if (is.data.frame(decisions)) return(list(table = as.data.frame(decisions), name = "the decisions data frame"))
+  list(table = .kw_read_table(decisions, argument = "decisions"), name = basename(decisions))
+}
+
+# A checked sheet as `merge` (keyword -> name, rows marked `yes`) and `apart`
+# (keywords marked `no`, which keep their own spelling). `status` is not read:
+# `yes` on a row cleaning already merged changes nothing, and `no` on a row it
+# never merged changes nothing, so `merge`, `keyword` and `name` say it all.
+# A tool that overwrites `status` (an LLM run log) therefore loses nothing.
+# Institutions need `status` (`by_status = TRUE`): there `no` also undoes an
+# OpenAlex match, so only `confirmed` rows may be held apart.
+.kw_read_sheet <- function(sheet, term = "keyword", by_status = FALSE) {
   backup <- paste0(term, "_backup")
   matched_on <- if (backup %in% names(sheet)) backup else term
-  absent <- setdiff(c("name", "status", "merge", matched_on), names(sheet))
+  absent <- setdiff(c("name", "merge", matched_on, if (by_status) "status"), names(sheet))
   if (length(absent) > 0L) {
     .bad_input(sprintf("the sheet has no column(s) %s; use the sheet that level = \"all\" wrote",
                        paste(absent, collapse = ", ")))
@@ -614,16 +634,18 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
   }
   keyword <- as.character(sheet[[matched_on]])
   name <- as.character(sheet$name)
-  status <- tolower(trimws(as.character(sheet$status)))
+  # Rows without both (a prompt pasted under the table) carry no decision.
+  proposed <- !is.na(keyword) & !is.na(name) & keyword != name
+  status <- if (by_status) tolower(trimws(as.character(sheet$status))) else rep("", nrow(sheet))
   status[is.na(status)] <- ""
-  take <- !is.na(keyword) & !is.na(name) &
-    ((status == "needs_revision" & answer == "yes") | (status == "name" & keyword != name))
+  take <- proposed & answer == "yes" & (!by_status | status == "needs_revision")
+  if (by_status) take <- take | (proposed & status == "name")
   merge <- if (any(take)) {
     .kw_table_map(data.frame(OLD = keyword[take], NEW = name[take]))
   } else {
     stats::setNames(character(), character())
   }
-  undone <- keyword[status == "confirmed" & answer == "no" & !is.na(keyword)]
+  undone <- keyword[proposed & answer == "no" & (!by_status | status == "confirmed")]
   list(merge = merge, apart = unique(.kw_brackets(.kw_normalise(undone))$term), moved = character())
 }
 
@@ -631,8 +653,7 @@ keywords_merge <- function(data, decisions, by = c("merge", "edit"), columns = "
 # leaves it) as maps backup -> keyword: `moved` for confirmed rows, applied
 # before the spelling merge so only that spelling moves; `merge` for every
 # other row, applied after it so all spellings of the keyword move.
-.kw_read_edits <- function(path, term = "keyword") {
-  sheet <- .kw_read_table(path, argument = "decisions")
+.kw_read_edits <- function(sheet, term = "keyword") {
   backup <- paste0(term, "_backup")
   absent <- setdiff(c(term, backup), names(sheet))
   if (length(absent) > 0L) {
